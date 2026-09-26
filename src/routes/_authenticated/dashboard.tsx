@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { accessStatus } from "@/lib/access";
 import { signedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Outlet Saya — Sales Pouch" }, { name: "description", content: "Daftar outlet Anda." }] }),
@@ -14,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const { data: p } = useProfile();
+  const [q, setQ] = useState("");
   const status = p?.profile ? accessStatus(p.profile, p.email) : null;
   const { data: outlets, isLoading } = useQuery({
     queryKey: ["outlets"],
@@ -41,7 +44,13 @@ function Dashboard() {
         </div>
       )}
 
+      <Button asChild variant="outline" className="mt-4 h-11 w-full"><Link to="/products"><Package className="mr-1 h-4 w-4" />Daftar Produk</Link></Button>
+
       <h2 className="mt-8 font-mono text-xs uppercase tracking-widest text-muted-foreground">Outlet ({outlets?.length ?? 0})</h2>
+      <div className="relative mt-3">
+        <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="Cari toko…" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 pl-9" />
+      </div>
       <div className="mt-3 space-y-3">
         {isLoading && <p className="text-sm text-muted-foreground">Memuat…</p>}
         {outlets?.length === 0 && (
@@ -50,7 +59,7 @@ function Dashboard() {
             <p className="mt-3 text-sm text-muted-foreground">Belum ada outlet. Tambahkan outlet pertama Anda.</p>
           </div>
         )}
-        {outlets?.map((o) => (
+        {outlets?.filter((o) => o.name.toLowerCase().includes(q.trim().toLowerCase())).map((o) => (
           <div key={o.id} className="flex gap-3 rounded-2xl border bg-card p-3">
             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
               {o.photoUrl ? <img src={o.photoUrl} alt={o.name} className="h-full w-full object-cover" /> : <Store className="m-5 h-6 w-6 text-muted-foreground" />}

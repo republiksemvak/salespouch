@@ -25,6 +25,19 @@ function ReceiptPage() {
       return data;
     },
   });
+  const { data: prev } = useQuery({
+    queryKey: ["receipt-prev", id],
+    enabled: !!t,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("transactions")
+        .select("receipt_number,visit_date,line_items,new_consignment_items,amount_paid,remaining_debt")
+        .eq("outlet_id", t!.outlet_id).neq("id", id)
+        .or(`visit_date.lt.${t!.visit_date},and(visit_date.eq.${t!.visit_date},created_at.lt.${t!.created_at})`)
+        .order("visit_date", { ascending: false }).order("created_at", { ascending: false }).limit(1);
+      if (error) throw error;
+      return data?.[0] ?? null;
+    },
+  });
 
   if (isLoading) return <p className="p-10 text-center text-muted-foreground">Memuat nota…</p>;
   if (error || !t) return <p className="p-10 text-center text-destructive">Nota tidak ditemukan.</p>;
@@ -34,9 +47,17 @@ function ReceiptPage() {
   const prevDebt = Number(t.previous_debt);
   const business = p?.profile?.business_name ?? "";
   const store = (t.outlets as { name: string } | null)?.name ?? "-";
+  const prevSold = prev ? ((prev.line_items as LineItem[]) ?? []).filter((l) => l.sold > 0) : [];
+  const prevTitip = prev ? ((prev.new_consignment_items as NewItem[]) ?? []) : [];
 
   function asText() {
     const L: string[] = [business.toUpperCase(), `No Nota : ${t!.receipt_number}`, `Toko    : ${store}`, `Sales   : ${t!.sales_name}`, `Tanggal : ${fmtDate(t!.visit_date)}`, "--------------------------------"];
+    if (prev) {
+      L.push(`TRANSAKSI SEBELUMNYA (${prev.receipt_number})`, `  ${fmtDate(prev.visit_date)}`);
+      prevSold.forEach((l) => L.push(`  Terjual ${l.name}: ${l.sold} x ${rp(l.price)}`));
+      prevTitip.forEach((n) => L.push(`  Titip ${n.name}: ${n.qty}`));
+      L.push(`  Dibayar: ${rp(Number(prev.amount_paid))} · Sisa: ${rp(Number(prev.remaining_debt))}`, "--------------------------------");
+    }
     items.forEach((i) => {
       L.push(i.name);
       if (t!.transaction_type === "Consignment") L.push(`  Titip Sebelumnya: ${i.prev_stock}`);
@@ -79,6 +100,17 @@ function ReceiptPage() {
         <Row k="Sales" v={t.sales_name} />
         <Row k="Tanggal" v={fmtDate(t.visit_date)} />
         {hr}
+        {prev && (
+          <>
+            <div className="font-semibold">TRANSAKSI SEBELUMNYA</div>
+            <Row k={prev.receipt_number} v={fmtDate(prev.visit_date)} />
+            {prevSold.map((l, i) => <Row key={"s" + i} k={`Terjual ${l.name} ${l.sold}x`} v={rp(l.subtotal)} />)}
+            {prevTitip.map((n, i) => <Row key={"t" + i} k={`Titip ${n.name}`} v={String(n.qty)} />)}
+            <Row k="Dibayar / Sisa" v={`${rp(Number(prev.amount_paid))} / ${rp(Number(prev.remaining_debt))}`} />
+            {hr}
+            <div className="font-semibold">KUNJUNGAN HARI INI</div>
+          </>
+        )}
         {items.length === 0 && <div className="text-center text-muted-foreground">— Tidak ada penjualan —</div>}
         {items.map((i, idx) => (
           <div key={idx} className="mb-2">
