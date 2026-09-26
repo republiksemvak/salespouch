@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut, Package, Search } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { accessStatus } from "@/lib/access";
@@ -44,7 +44,10 @@ function Dashboard() {
         </div>
       )}
 
-      <Button asChild variant="outline" className="mt-4 h-11 w-full"><Link to="/products"><Package className="mr-1 h-4 w-4" />Daftar Produk</Link></Button>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button asChild variant="outline" className="h-11"><Link to="/products"><Package className="mr-1 h-4 w-4" />Master Produk</Link></Button>
+        <Button asChild variant="outline" className="h-11"><Link to="/profile"><UserCog className="mr-1 h-4 w-4" />Profil Usaha</Link></Button>
+      </div>
 
       <h2 className="mt-8 font-mono text-xs uppercase tracking-widest text-muted-foreground">Outlet ({outlets?.length ?? 0})</h2>
       <div className="relative mt-3">

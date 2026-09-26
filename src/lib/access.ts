@@ -5,6 +5,8 @@ export const ADMIN_TELEGRAM = "https://t.me/yayazimu";
 export type Profile = {
   id: string;
   business_name: string | null;
+  business_address: string | null;
+  business_phone: string | null;
   user_email: string | null;
   license_until: string | null;
   created_at: string;
