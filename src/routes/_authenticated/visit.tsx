@@ -69,16 +69,17 @@ function VisitPage() {
       return directItems.filter((d) => d.name.trim() && d.qty > 0).map((d) => ({
         name: d.name.trim(), price: d.price, prev_stock: 0, sold: d.qty, returned: 0, remaining: 0, subtotal: d.qty * d.price,
       }));
-    return rows.map((r) => ({
-      ...r, remaining: Math.max(0, r.prev_stock - r.sold - r.returned), subtotal: r.sold * r.price,
-    }));
+    return rows.map((r) => {
+      const sold = Math.min(r.sold, r.prev_stock);
+      const returned = r.prev_stock - sold;
+      return { ...r, sold, returned, remaining: 0, subtotal: sold * r.price };
+    });
   }, [rows, directItems, type]);
 
   const totalSales = lineItems.reduce((a, l) => a + l.subtotal, 0);
   const totalDue = previousDebt + totalSales;
   const amountPaid = num(paid);
   const remainingDebt = Math.max(0, totalDue - amountPaid);
-  const overStock = type === "Consignment" && rows.some((r) => r.sold + r.returned > r.prev_stock);
 
   function start() {
     if (!outletId) { toast.error("Pilih outlet dulu"); return; }
@@ -93,7 +94,6 @@ function VisitPage() {
     const schema = z.object({ note: z.string().max(500), sales: z.string().trim().min(1).max(60) });
     const v = schema.safeParse({ note, sales: salesName });
     if (!v.success) { toast.error("Catatan maks 500 karakter"); return; }
-    if (overStock) { toast.error("Terjual + retur melebihi stok titipan"); return; }
     if (type === "Direct Sale" && lineItems.length === 0) { toast.error("Tambahkan produk yang dijual"); return; }
     if (type === "Consignment" && lineItems.length === 0 && cleanNew.length === 0)
       { toast.error("Tambahkan barang titipan baru"); return; }
@@ -184,19 +184,17 @@ function VisitPage() {
               <div className="mt-3 space-y-3">
                 {rows.map((r, i) => {
                   const li = lineItems[i];
-                  const bad = r.sold + r.returned > r.prev_stock;
                   const set = (patch: Partial<Row>) => setRows(rows.map((x, j) => (j === i ? { ...x, ...patch } : x)));
                   return (
-                    <div key={i} className={`rounded-2xl border bg-card p-4 ${bad ? "border-destructive" : ""}`}>
+                    <div key={i} className="rounded-2xl border bg-card p-4">
                       <div className="flex justify-between"><b>{r.name}</b><span className="text-sm text-muted-foreground">Titip: {r.prev_stock}</span></div>
-                      <div className="mt-3 grid grid-cols-3 gap-2">
+                      <div className="mt-3 grid grid-cols-2 gap-2">
                         <Field label="Harga" value={r.price} onChange={(v) => set({ price: v })} />
-                        <Field label="Terjual" value={r.sold} onChange={(v) => set({ sold: v })} />
-                        <Field label="Retur" value={r.returned} onChange={(v) => set({ returned: v })} />
+                        <Field label="Terjual" value={r.sold} onChange={(v) => set({ sold: Math.min(v, r.prev_stock) })} />
                       </div>
                       <div className="mt-3 flex justify-between font-mono text-xs">
-                        <span>Sisa stok: <b>{li?.remaining}</b></span>
-                        <span>{r.sold} × {rp(r.price)} = <b>{rp(li?.subtotal ?? 0)}</b></span>
+                        <span>Retur (otomatis): <b>{li?.returned ?? r.prev_stock}</b></span>
+                        <span>{li?.sold ?? 0} × {rp(r.price)} = <b>{rp(li?.subtotal ?? 0)}</b></span>
                       </div>
                     </div>
                   );

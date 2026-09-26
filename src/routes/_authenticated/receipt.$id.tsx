@@ -104,6 +104,8 @@ function ReceiptPage() {
 
       <article className="mx-auto mt-4 w-full max-w-[340px] bg-card px-5 py-6 font-mono text-[12px] leading-relaxed text-foreground shadow-lg [clip-path:polygon(0_0,100%_0,100%_calc(100%-8px),95%_100%,90%_calc(100%-8px),85%_100%,80%_calc(100%-8px),75%_100%,70%_calc(100%-8px),65%_100%,60%_calc(100%-8px),55%_100%,50%_calc(100%-8px),45%_100%,40%_calc(100%-8px),35%_100%,30%_calc(100%-8px),25%_100%,20%_calc(100%-8px),15%_100%,10%_calc(100%-8px),5%_100%,0_calc(100%-8px))] print:shadow-none">
         <div className="text-center text-sm font-semibold uppercase">{business}</div>
+        {p?.profile?.business_address && <div className="text-center text-[11px]">{p.profile.business_address}</div>}
+        {p?.profile?.business_phone && <div className="text-center text-[11px]">Telp: {p.profile.business_phone}</div>}
         {hr}
         <Row k="No Nota" v={t.receipt_number} />
         <Row k="Toko" v={store} />

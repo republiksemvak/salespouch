@@ -1,0 +1,67 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useProfile, profileQueryKey } from "@/hooks/use-profile";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
+export const Route = createFileRoute("/_authenticated/profile")({
+  head: () => ({ meta: [{ title: "Profil Usaha — Sales Pouch" }, { name: "description", content: "Edit profil usaha Anda." }] }),
+  component: ProfilePage,
+});
+
+function ProfilePage() {
+  const { data: p, isLoading } = useProfile();
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!p?.profile) return;
+    setName(p.profile.business_name ?? "");
+    setAddress(p.profile.business_address ?? "");
+    setPhone(p.profile.business_phone ?? "");
+  }, [p]);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) { toast.error("Nama usaha wajib diisi"); return; }
+    setBusy(true);
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase.from("profiles").update({
+      business_name: name.trim(),
+      business_address: address.trim() || null,
+      business_phone: phone.trim() || null,
+    }).eq("id", u.user!.id);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Profil usaha disimpan");
+    qc.invalidateQueries({ queryKey: profileQueryKey });
+  }
+
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
+      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
+      <h1 className="mt-4 text-2xl font-bold">Profil Usaha</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Nama, alamat, dan telepon ini tampil di bagian atas setiap nota.</p>
+      {isLoading ? <p className="mt-6 text-sm text-muted-foreground">Memuat…</p> : (
+        <form onSubmit={save} className="mt-6 space-y-4">
+          <div className="space-y-2"><Label>Nama Usaha</Label>
+            <Input required value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="h-12" /></div>
+          <div className="space-y-2"><Label>Alamat Usaha</Label>
+            <Textarea value={address} maxLength={200} onChange={(e) => setAddress(e.target.value)} rows={2} placeholder="cth. Jl. Merdeka No. 10, Bandung" /></div>
+          <div className="space-y-2"><Label>No. Telepon</Label>
+            <Input value={phone} maxLength={20} inputMode="tel" onChange={(e) => setPhone(e.target.value)} placeholder="cth. 0812xxxxxxx" className="h-12" /></div>
+          <Button disabled={busy} className="h-12 w-full">{busy ? "Menyimpan…" : "Simpan"}</Button>
+        </form>
+      )}
+    </main>
+  );
+}
