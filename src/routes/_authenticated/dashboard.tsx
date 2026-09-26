@@ -1,0 +1,77 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { MapPin, Phone, Plus, Store, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useProfile } from "@/hooks/use-profile";
+import { accessStatus } from "@/lib/access";
+import { signedPhotoUrls } from "@/lib/photos";
+import { Button } from "@/components/ui/button";
+
+export const Route = createFileRoute("/_authenticated/dashboard")({
+  head: () => ({ meta: [{ title: "Outlet Saya — Sales Pouch" }, { name: "description", content: "Daftar outlet Anda." }] }),
+  component: Dashboard,
+});
+
+function Dashboard() {
+  const { data: p } = useProfile();
+  const status = p?.profile ? accessStatus(p.profile, p.email) : null;
+  const { data: outlets, isLoading } = useQuery({
+    queryKey: ["outlets"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("outlets").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      const urls = await signedPhotoUrls(data.map((o) => o.store_photo).filter(Boolean) as string[]);
+      return data.map((o) => ({ ...o, photoUrl: o.store_photo ? urls[o.store_photo] : undefined }));
+    },
+  });
+
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-5 pb-28 pt-6">
+      <header className="flex items-start justify-between">
+        <div>
+          <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Sales Pouch</div>
+          <h1 className="mt-1 text-2xl font-bold">{p?.profile?.business_name}</h1>
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => supabase.auth.signOut()} aria-label="Keluar"><LogOut className="h-5 w-5" /></Button>
+      </header>
+
+      {status?.reason === "trial" && status.trialEndsAt && (
+        <div className="mt-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
+          Trial aktif sampai <b>{status.trialEndsAt.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}</b>
+        </div>
+      )}
+
+      <h2 className="mt-8 font-mono text-xs uppercase tracking-widest text-muted-foreground">Outlet ({outlets?.length ?? 0})</h2>
+      <div className="mt-3 space-y-3">
+        {isLoading && <p className="text-sm text-muted-foreground">Memuat…</p>}
+        {outlets?.length === 0 && (
+          <div className="rounded-2xl border border-dashed p-8 text-center">
+            <Store className="mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="mt-3 text-sm text-muted-foreground">Belum ada outlet. Tambahkan outlet pertama Anda.</p>
+          </div>
+        )}
+        {outlets?.map((o) => (
+          <div key={o.id} className="flex gap-3 rounded-2xl border bg-card p-3">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+              {o.photoUrl ? <img src={o.photoUrl} alt={o.name} className="h-full w-full object-cover" /> : <Store className="m-5 h-6 w-6 text-muted-foreground" />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-semibold">{o.name}</div>
+              {o.owner_phone && <a href={`tel:${o.owner_phone}`} className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Phone className="h-3 w-3" />{o.owner_phone}</a>}
+              {o.map_location && (
+                <a href={o.map_location.startsWith("http") ? o.map_location : `https://maps.google.com/?q=${encodeURIComponent(o.map_location)}`}
+                  target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-xs text-accent underline">
+                  <MapPin className="h-3 w-3" />Buka peta
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md bg-gradient-to-t from-background via-background to-transparent px-5 pb-5 pt-8">
+        <Button asChild size="lg" className="h-14 w-full text-base"><Link to="/outlets/new"><Plus className="mr-1 h-5 w-5" />Tambah Outlet</Link></Button>
+      </div>
+    </main>
+  );
+}
