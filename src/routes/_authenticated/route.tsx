@@ -54,7 +54,7 @@ function Setup() {
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("profiles").update({ business_name: name.trim() }).eq("id", u.user!.id);
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: profileQueryKey });
   }
   return (

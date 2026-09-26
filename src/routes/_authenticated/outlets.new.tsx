@@ -25,7 +25,7 @@ function NewOutlet() {
   const [locating, setLocating] = useState(false);
 
   function useGps() {
-    if (!navigator.geolocation) return toast.error("GPS tidak tersedia di perangkat ini.");
+    if (!navigator.geolocation) { toast.error("GPS tidak tersedia di perangkat ini."); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => { setMap(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`); setLocating(false); },
