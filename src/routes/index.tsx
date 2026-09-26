@@ -1,24 +1,49 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
+import { Store, Receipt, Wallet } from "lucide-react";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Sales Pouch — Nota Konsinyasi untuk Sales Lapangan" },
+      { name: "description", content: "Catat kunjungan outlet, hitung konsinyasi & piutang, dan cetak nota thermal digital dari HP." },
+      { property: "og:title", content: "Sales Pouch — Nota Konsinyasi untuk Sales Lapangan" },
+      { property: "og:description", content: "Catat kunjungan outlet, hitung konsinyasi & piutang, dan cetak nota thermal digital dari HP." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-10">
+      <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <span className="h-2 w-2 rounded-full bg-primary" /> Sales Pouch
+      </div>
+      <h1 className="mt-10 text-5xl font-bold leading-[1.05] tracking-tight">
+        Kantong kerja<br />sales lapangan.
+      </h1>
+      <p className="mt-4 text-muted-foreground">
+        Titip barang, hitung laku & retur, catat piutang, lalu kirim nota thermal — semua dari HP.
+      </p>
+      <ul className="mt-8 space-y-3">
+        {[
+          { icon: Store, t: "Kelola outlet + foto & lokasi" },
+          { icon: Wallet, t: "Hitung konsinyasi & sisa utang otomatis" },
+          { icon: Receipt, t: "Nota thermal digital siap dibagikan" },
+        ].map(({ icon: I, t }) => (
+          <li key={t} className="flex items-center gap-3 rounded-xl border bg-card p-4">
+            <I className="h-5 w-5 text-primary" /> <span className="text-sm font-medium">{t}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-auto pt-10">
+        <Button asChild size="lg" className="h-14 w-full text-base">
+          <Link to="/dashboard">Mulai — Trial 24 Jam Gratis</Link>
+        </Button>
+      </div>
+    </main>
   );
 }
