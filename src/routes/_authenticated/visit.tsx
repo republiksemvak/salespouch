@@ -58,7 +58,7 @@ function VisitPage() {
 
   useEffect(() => {
     if (!history.data) return;
-    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, sold: 0, returned: 0 })));
+    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, sisa: s.qty })));
   }, [history.data]);
 
   const isFirst = started && history.isSuccess && history.data === null;
@@ -70,9 +70,9 @@ function VisitPage() {
         name: d.name.trim(), price: d.price, prev_stock: 0, sold: d.qty, returned: 0, remaining: 0, subtotal: d.qty * d.price,
       }));
     return rows.map((r) => {
-      const sold = Math.min(r.sold, r.prev_stock);
-      const returned = r.prev_stock - sold;
-      return { ...r, sold, returned, remaining: 0, subtotal: sold * r.price };
+      const sisa = Math.min(Math.max(0, r.sisa), r.prev_stock);
+      const sold = r.prev_stock - sisa;
+      return { ...r, sold, returned: 0, remaining: sisa, subtotal: sold * r.price };
     });
   }, [rows, directItems, type]);
 
