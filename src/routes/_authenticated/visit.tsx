@@ -190,10 +190,10 @@ function VisitPage() {
                       <div className="flex justify-between"><b>{r.name}</b><span className="text-sm text-muted-foreground">Titip: {r.prev_stock}</span></div>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <Field label="Harga" value={r.price} onChange={(v) => set({ price: v })} />
-                        <Field label="Terjual" value={r.sold} onChange={(v) => set({ sold: Math.min(v, r.prev_stock) })} />
+                        <Field label="Sisa di toko" value={r.sisa} onChange={(v) => set({ sisa: Math.min(v, r.prev_stock) })} />
                       </div>
                       <div className="mt-3 flex justify-between font-mono text-xs">
-                        <span>Retur (otomatis): <b>{li?.returned ?? r.prev_stock}</b></span>
+                        <span>Terjual (otomatis): <b>{li?.sold ?? 0}</b></span>
                         <span>{li?.sold ?? 0} × {rp(r.price)} = <b>{rp(li?.subtotal ?? 0)}</b></span>
                       </div>
                     </div>
