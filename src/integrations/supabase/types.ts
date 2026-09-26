@@ -73,21 +73,27 @@ export type Database = {
       }
       profiles: {
         Row: {
+          business_address: string | null
           business_name: string | null
+          business_phone: string | null
           created_at: string
           id: string
           license_until: string | null
           user_email: string | null
         }
         Insert: {
+          business_address?: string | null
           business_name?: string | null
+          business_phone?: string | null
           created_at?: string
           id: string
           license_until?: string | null
           user_email?: string | null
         }
         Update: {
+          business_address?: string | null
           business_name?: string | null
+          business_phone?: string | null
           created_at?: string
           id?: string
           license_until?: string | null
