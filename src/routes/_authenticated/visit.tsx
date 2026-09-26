@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadLastVisit, nextReceiptNumber, rp, type LineItem, type NewItem } from "@/lib/visit";
+import { useProducts, rememberProducts, type Product } from "@/lib/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,8 @@ function VisitPage() {
   const [paid, setPaid] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [outletQ, setOutletQ] = useState("");
+  const { data: products } = useProducts();
 
   useEffect(() => { setSalesName(localStorage.getItem("sp_sales_name") ?? ""); }, []);
 
@@ -96,6 +99,8 @@ function VisitPage() {
       { toast.error("Tambahkan barang titipan baru"); return; }
     setBusy(true);
     try {
+      await rememberProducts([...lineItems, ...cleanNew], products ?? []).catch(() => {});
+      qc.invalidateQueries({ queryKey: ["products"] });
       const receipt_number = await nextReceiptNumber();
       const { data, error } = await supabase.from("transactions").insert({
         receipt_number, outlet_id: outletId, sales_name: salesName.trim(), transaction_type: type,
@@ -112,6 +117,7 @@ function VisitPage() {
   }
 
   const outletName = outlets?.find((o) => o.id === outletId)?.name;
+  const matches = (outlets ?? []).filter((o) => o.name.toLowerCase().includes(outletQ.trim().toLowerCase())).slice(0, 30);
 
   if (!started) {
     return (
@@ -121,10 +127,25 @@ function VisitPage() {
         <div className="mt-6 space-y-5">
           <div className="space-y-2">
             <Label>Outlet</Label>
-            <select value={outletId} onChange={(e) => setOutletId(e.target.value)} className="h-12 w-full rounded-md border bg-card px-3">
-              <option value="">— Pilih outlet —</option>
-              {outlets?.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
+            {outletId && outletName ? (
+              <div className="flex items-center justify-between rounded-md border bg-card px-3 py-3">
+                <b>{outletName}</b>
+                <button type="button" onClick={() => { setOutletId(""); setOutletQ(""); }} className="text-xs text-accent underline">Ganti</button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Cari nama toko…" value={outletQ} onChange={(e) => setOutletQ(e.target.value)} className="h-12 pl-9" autoFocus />
+                </div>
+                <div className="max-h-72 divide-y overflow-y-auto rounded-md border bg-card">
+                  {matches.length === 0 && <p className="p-3 text-sm text-muted-foreground">Toko tidak ditemukan.</p>}
+                  {matches.map((o) => (
+                    <button key={o.id} type="button" onClick={() => setOutletId(o.id)} className="block w-full px-3 py-3 text-left hover:bg-muted">{o.name}</button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
           <div className="space-y-2"><Label>Nama Sales</Label><Input value={salesName} maxLength={60} onChange={(e) => setSalesName(e.target.value)} className="h-12" /></div>
           <Button onClick={start} className="h-14 w-full text-base">Lanjut</Button>
@@ -182,11 +203,11 @@ function VisitPage() {
           )}
 
           {type === "Direct Sale" && (
-            <ItemEditor title="Produk Terjual" items={directItems} setItems={setDirectItems} qtyLabel="Qty" />
+            <ItemEditor title="Produk Terjual" items={directItems} setItems={setDirectItems} qtyLabel="Qty" products={products ?? []} />
           )}
 
           {type === "Consignment" && (
-            <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Qty Titip" />
+            <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Qty Titip" products={products ?? []} />
           )}
 
           {!isFirst && (
@@ -231,16 +252,21 @@ function Line({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
   return <div className={`flex justify-between ${bold ? "font-semibold" : ""}`}><span>{k}</span><span>{v}</span></div>;
 }
 
-function ItemEditor({ title, items, setItems, qtyLabel }: { title: string; items: NewItem[]; setItems: (i: NewItem[]) => void; qtyLabel: string }) {
+function ItemEditor({ title, items, setItems, qtyLabel, products }: { title: string; items: NewItem[]; setItems: (i: NewItem[]) => void; qtyLabel: string; products: Product[] }) {
   const set = (i: number, patch: Partial<NewItem>) => setItems(items.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const pickName = (i: number, name: string) => {
+    const match = products.find((p) => p.name.toLowerCase() === name.trim().toLowerCase());
+    set(i, match ? { name: match.name, price: match.price } : { name });
+  };
   return (
     <section className="mt-6">
       <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{title}</h2>
+      <datalist id="product-list">{products.map((p) => <option key={p.id} value={p.name}>{rp(p.price)}</option>)}</datalist>
       <div className="mt-3 space-y-3">
         {items.map((it, i) => (
           <div key={i} className="rounded-2xl border bg-card p-4">
             <div className="flex gap-2">
-              <Input placeholder="Nama produk" maxLength={80} value={it.name} onChange={(e) => set(i, { name: e.target.value })} className="h-11" />
+              <Input placeholder="Ketik / pilih produk" list="product-list" maxLength={80} value={it.name} onChange={(e) => pickName(i, e.target.value)} className="h-11" />
               <Button variant="ghost" size="icon" onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
