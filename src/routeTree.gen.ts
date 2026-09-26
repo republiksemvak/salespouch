@@ -13,7 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedVisitRouteImport } from './routes/_authenticated/visit'
 import { Route as AuthenticatedOutletsNewRouteImport } from './routes/_authenticated/outlets.new'
+import { Route as AuthenticatedReceiptIdRouteImport } from './routes/_authenticated/receipt.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,9 +36,19 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedVisitRoute = AuthenticatedVisitRouteImport.update({
+  id: '/visit',
+  path: '/visit',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedOutletsNewRoute = AuthenticatedOutletsNewRouteImport.update({
   id: '/outlets/new',
   path: '/outlets/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedReceiptIdRoute = AuthenticatedReceiptIdRouteImport.update({
+  id: '/receipt/$id',
+  path: '/receipt/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
@@ -44,13 +56,17 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/visit': typeof AuthenticatedVisitRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
+  '/receipt/$id': typeof AuthenticatedReceiptIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/visit': typeof AuthenticatedVisitRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
+  '/receipt/$id': typeof AuthenticatedReceiptIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,20 +74,25 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/visit': typeof AuthenticatedVisitRoute
   '/_authenticated/outlets/new': typeof AuthenticatedOutletsNewRoute
+  '/_authenticated/receipt/$id': typeof AuthenticatedReceiptIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/outlets/new'
+  fullPaths:
+    '/' | '/auth' | '/dashboard' | '/visit' | '/outlets/new' | '/receipt/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/outlets/new'
+  to: '/' | '/auth' | '/dashboard' | '/visit' | '/outlets/new' | '/receipt/$id'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/visit'
     | '/_authenticated/outlets/new'
+    | '/_authenticated/receipt/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -110,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/visit': {
+      id: '/_authenticated/visit'
+      path: '/visit'
+      fullPath: '/visit'
+      preLoaderRoute: typeof AuthenticatedVisitRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/outlets/new': {
       id: '/_authenticated/outlets/new'
       path: '/outlets/new'
@@ -117,17 +145,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOutletsNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/receipt/$id': {
+      id: '/_authenticated/receipt/$id'
+      path: '/receipt/$id'
+      fullPath: '/receipt/$id'
+      preLoaderRoute: typeof AuthenticatedReceiptIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedVisitRoute: typeof AuthenticatedVisitRoute
   AuthenticatedOutletsNewRoute: typeof AuthenticatedOutletsNewRoute
+  AuthenticatedReceiptIdRoute: typeof AuthenticatedReceiptIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedVisitRoute: AuthenticatedVisitRoute,
   AuthenticatedOutletsNewRoute: AuthenticatedOutletsNewRoute,
+  AuthenticatedReceiptIdRoute: AuthenticatedReceiptIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

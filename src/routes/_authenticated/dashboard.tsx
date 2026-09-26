@@ -65,11 +65,13 @@ function Dashboard() {
                 </a>
               )}
             </div>
+            <Button asChild size="sm" className="self-center"><Link to="/visit" search={{ outlet: o.id }}>Kunjungi</Link></Button>
           </div>
         ))}
       </div>
 
       <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md bg-gradient-to-t from-background via-background to-transparent px-5 pb-5 pt-8">
+        <Button asChild size="lg" variant="outline" className="mb-2 h-12 w-full"><Link to="/visit" search={{ outlet: undefined }}>Mulai Kunjungan</Link></Button>
         <Button asChild size="lg" className="h-14 w-full text-base"><Link to="/outlets/new"><Plus className="mr-1 h-5 w-5" />Tambah Outlet</Link></Button>
       </div>
     </main>
