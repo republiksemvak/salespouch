@@ -50,7 +50,7 @@ function ProductsPage() {
     return { ...p, toko, retur, total: toko + p.warehouse_stock };
   });
   const list = rows.filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()));
-  const sum = rows.reduce((a, r) => ({ toko: a.toko + r.toko, gudang: a.gudang + r.warehouse_stock, retur: a.retur + r.retur, total: a.total + r.total, nilai: a.nilai + r.total * r.price }), { toko: 0, gudang: 0, retur: 0, total: 0, nilai: 0 });
+  const sum = rows.reduce((a, r) => ({ toko: a.toko + r.toko, gudang: a.gudang + r.warehouse_stock, retur: a.retur + r.retur, total: a.total + r.total, nilai: a.nilai + r.total * r.price, nilaiToko: a.nilaiToko + r.toko * r.price }), { toko: 0, gudang: 0, retur: 0, total: 0, nilai: 0, nilaiToko: 0 });
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
@@ -59,6 +59,7 @@ function ProductsPage() {
 
       <div className="mt-4 grid grid-cols-4 gap-2 rounded-2xl border bg-card p-3 text-center">
         <Stat label="Di toko" v={sum.toko} /><Stat label="Gudang" v={sum.gudang} /><Stat label="Retur" v={sum.retur} /><Stat label="Total" v={sum.total} />
+        <div className="col-span-4 rounded-xl bg-primary/10 p-2 text-sm">Uang di toko (belum ditagih): <b className="text-primary">{rp(sum.nilaiToko)}</b></div>
         <div className="col-span-4 border-t border-dashed pt-2 text-xs text-muted-foreground">Nilai stok (toko + gudang): <b className="text-foreground">{rp(sum.nilai)}</b></div>
       </div>
 
@@ -96,11 +97,44 @@ function ProductsPage() {
             <div className="mt-2 grid grid-cols-4 gap-1 text-center font-mono text-xs">
               <Stat label="Di toko" v={p.toko} /><Stat label="Gudang" v={p.warehouse_stock} /><Stat label="Retur" v={p.retur} /><Stat label="Total" v={p.total} />
             </div>
-            <div className="mt-1 text-right text-xs text-muted-foreground">Subtotal nilai: <b className="text-foreground">{rp(p.total * p.price)}</b></div>
+            <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Di toko: <b className="text-foreground">{rp(p.toko * p.price)}</b></span><span>Subtotal nilai: <b className="text-foreground">{rp(p.total * p.price)}</b></span></div>
           </div>
         ))}
       </div>
+      <ResetPanel onDone={() => qc.invalidateQueries()} />
     </main>
+  );
+}
+
+function ResetPanel({ onDone }: { onDone: () => void }) {
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function run(kind: "outlets" | "stock") {
+    const label = kind === "outlets" ? "SEMUA data toko beserta riwayat transaksinya" : "stok gudang semua produk menjadi 0";
+    if (!pw) { toast.error("Masukkan password akun"); return; }
+    if (!confirm(`Yakin reset ${label}? Tidak bisa dibatalkan.`)) return;
+    setBusy(true);
+    const { data: u } = await supabase.auth.getUser();
+    const email = u.user?.email;
+    const { error: authErr } = email ? await supabase.auth.signInWithPassword({ email, password: pw }) : { error: new Error("x") };
+    if (authErr) { setBusy(false); toast.error("Password salah"); return; }
+    const { error } = kind === "outlets"
+      ? await supabase.from("outlets").delete().not("id", "is", null)
+      : await supabase.from("products").update({ warehouse_stock: 0 }).not("id", "is", null);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setPw(""); toast.success("Reset berhasil"); onDone();
+  }
+  return (
+    <div className="mt-10 space-y-2 rounded-2xl border border-destructive/40 p-4">
+      <div className="font-semibold text-destructive">Reset Data</div>
+      <p className="text-xs text-muted-foreground">Butuh password akun Anda.</p>
+      <Input type="password" placeholder="Password akun" value={pw} onChange={(e) => setPw(e.target.value)} className="h-11" />
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="destructive" disabled={busy} onClick={() => run("outlets")}>Reset Data Toko</Button>
+        <Button variant="destructive" disabled={busy} onClick={() => run("stock")}>Reset Stok Gudang</Button>
+      </div>
+    </div>
   );
 }
 
