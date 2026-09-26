@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/visit")({
 
 const num = (v: string) => Math.max(0, Number(v.replace(/[^\d.]/g, "")) || 0);
 
-type Row = { name: string; price: number; prev_stock: number; sold: number; returned: number };
+type Row = { name: string; price: number; prev_stock: number; sisa: number };
 
 function VisitPage() {
   const { outlet: preselected } = Route.useSearch();
@@ -58,7 +58,7 @@ function VisitPage() {
 
   useEffect(() => {
     if (!history.data) return;
-    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, sold: 0, returned: 0 })));
+    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, sisa: s.qty })));
   }, [history.data]);
 
   const isFirst = started && history.isSuccess && history.data === null;
@@ -70,9 +70,9 @@ function VisitPage() {
         name: d.name.trim(), price: d.price, prev_stock: 0, sold: d.qty, returned: 0, remaining: 0, subtotal: d.qty * d.price,
       }));
     return rows.map((r) => {
-      const sold = Math.min(r.sold, r.prev_stock);
-      const returned = r.prev_stock - sold;
-      return { ...r, sold, returned, remaining: 0, subtotal: sold * r.price };
+      const sisa = Math.min(Math.max(0, r.sisa), r.prev_stock);
+      const sold = r.prev_stock - sisa;
+      return { ...r, sold, returned: 0, remaining: sisa, subtotal: sold * r.price };
     });
   }, [rows, directItems, type]);
 
@@ -190,10 +190,10 @@ function VisitPage() {
                       <div className="flex justify-between"><b>{r.name}</b><span className="text-sm text-muted-foreground">Titip: {r.prev_stock}</span></div>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <Field label="Harga" value={r.price} onChange={(v) => set({ price: v })} />
-                        <Field label="Terjual" value={r.sold} onChange={(v) => set({ sold: Math.min(v, r.prev_stock) })} />
+                        <Field label="Sisa di toko" value={r.sisa} onChange={(v) => set({ sisa: Math.min(v, r.prev_stock) })} />
                       </div>
                       <div className="mt-3 flex justify-between font-mono text-xs">
-                        <span>Retur (otomatis): <b>{li?.returned ?? r.prev_stock}</b></span>
+                        <span>Terjual (otomatis): <b>{li?.sold ?? 0}</b></span>
                         <span>{li?.sold ?? 0} × {rp(r.price)} = <b>{rp(li?.subtotal ?? 0)}</b></span>
                       </div>
                     </div>
