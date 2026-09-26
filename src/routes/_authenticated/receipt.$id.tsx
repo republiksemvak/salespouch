@@ -53,7 +53,10 @@ function ReceiptPage() {
   const prevTitip = prev ? ((prev.new_consignment_items as NewItem[]) ?? []) : [];
 
   function asText() {
-    const L: string[] = [business.toUpperCase(), `No Nota : ${t!.receipt_number}`, `Toko    : ${store}`, `Sales   : ${t!.sales_name}`, `Tanggal : ${fmtDate(t!.visit_date)}`, "--------------------------------"];
+    const L: string[] = [business.toUpperCase()];
+    if (p?.profile?.business_address) L.push(p.profile.business_address);
+    if (p?.profile?.business_phone) L.push(`Telp: ${p.profile.business_phone}`);
+    L.push(`No Nota : ${t!.receipt_number}`, `Toko    : ${store}`, `Sales   : ${t!.sales_name}`, `Tanggal : ${fmtDate(t!.visit_date)}`, "--------------------------------");
     if (prev) {
       L.push(`TRANSAKSI SEBELUMNYA (${prev.receipt_number})`, `  ${fmtDate(prev.visit_date)}`);
       prevSold.forEach((l) => L.push(`  Terjual ${l.name}: ${l.sold} x ${rp(l.price)}`));
