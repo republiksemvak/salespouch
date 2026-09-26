@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedVisitRouteImport } from './routes/_authenticated/visit'
 import { Route as AuthenticatedOutletsNewRouteImport } from './routes/_authenticated/outlets.new'
 import { Route as AuthenticatedReceiptIdRouteImport } from './routes/_authenticated/receipt.$id'
@@ -42,6 +43,11 @@ const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
   path: '/products',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedVisitRoute = AuthenticatedVisitRouteImport.update({
   id: '/visit',
   path: '/visit',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/products': typeof AuthenticatedProductsRoute
+  '/profile': typeof AuthenticatedProfileRoute
   '/visit': typeof AuthenticatedVisitRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/products': typeof AuthenticatedProductsRoute
+  '/profile': typeof AuthenticatedProfileRoute
   '/visit': typeof AuthenticatedVisitRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
+  '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/visit': typeof AuthenticatedVisitRoute
   '/_authenticated/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/_authenticated/receipt/$id': typeof AuthenticatedReceiptIdRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/products'
+    | '/profile'
     | '/visit'
     | '/outlets/new'
     | '/receipt/$id'
@@ -103,6 +113,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/products'
+    | '/profile'
     | '/visit'
     | '/outlets/new'
     | '/receipt/$id'
@@ -113,6 +124,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/products'
+    | '/_authenticated/profile'
     | '/_authenticated/visit'
     | '/_authenticated/outlets/new'
     | '/_authenticated/receipt/$id'
@@ -161,6 +173,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProductsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/visit': {
       id: '/_authenticated/visit'
       path: '/visit'
@@ -188,6 +207,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
+  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedVisitRoute: typeof AuthenticatedVisitRoute
   AuthenticatedOutletsNewRoute: typeof AuthenticatedOutletsNewRoute
   AuthenticatedReceiptIdRoute: typeof AuthenticatedReceiptIdRoute
@@ -196,6 +216,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
+  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedVisitRoute: AuthenticatedVisitRoute,
   AuthenticatedOutletsNewRoute: AuthenticatedOutletsNewRoute,
   AuthenticatedReceiptIdRoute: AuthenticatedReceiptIdRoute,
