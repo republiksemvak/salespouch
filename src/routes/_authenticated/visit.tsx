@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadLastVisit, nextReceiptNumber, rp, type LineItem, type NewItem } from "@/lib/visit";
-import { useProducts, rememberProducts, type Product } from "@/lib/products";
+import { useProducts, adjustWarehouse, type Product } from "@/lib/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,8 +99,6 @@ function VisitPage() {
       { toast.error("Tambahkan barang titipan baru"); return; }
     setBusy(true);
     try {
-      await rememberProducts([...lineItems, ...cleanNew], products ?? []).catch(() => {});
-      qc.invalidateQueries({ queryKey: ["products"] });
       const receipt_number = await nextReceiptNumber();
       const { data, error } = await supabase.from("transactions").insert({
         receipt_number, outlet_id: outletId, sales_name: salesName.trim(), transaction_type: type,
@@ -110,6 +108,11 @@ function VisitPage() {
         custom_note: note.trim() || null,
       }).select("id").single();
       if (error) throw error;
+      const out = type === "Consignment" ? cleanNew : lineItems.map((l) => ({ name: l.name, qty: l.sold }));
+      const back = type === "Consignment" ? lineItems.map((l) => ({ name: l.name, qty: l.returned })) : [];
+      await adjustWarehouse(products ?? [], out, back).catch(() => {});
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["stock-summary"] });
       qc.invalidateQueries({ queryKey: ["last-visit", outletId] });
       navigate({ to: "/receipt/$id", params: { id: data.id } });
     } catch (e) { toast.error((e as Error).message); }
@@ -253,31 +256,53 @@ function Line({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
 }
 
 function ItemEditor({ title, items, setItems, qtyLabel, products }: { title: string; items: NewItem[]; setItems: (i: NewItem[]) => void; qtyLabel: string; products: Product[] }) {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
   const set = (i: number, patch: Partial<NewItem>) => setItems(items.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-  const pickName = (i: number, name: string) => {
-    const match = products.find((p) => p.name.toLowerCase() === name.trim().toLowerCase());
-    set(i, match ? { name: match.name, price: match.price } : { name });
-  };
+  const taken = new Set(items.map((i) => i.name.toLowerCase()));
+  const matches = products.filter((p) => !taken.has(p.name.toLowerCase()) && p.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 30);
+  const pick = (p: Product) => { setItems([...items, { name: p.name, price: p.price, qty: 0 }]); setQ(""); setOpen(false); };
   return (
     <section className="mt-6">
       <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{title}</h2>
-      <datalist id="product-list">{products.map((p) => <option key={p.id} value={p.name}>{rp(p.price)}</option>)}</datalist>
       <div className="mt-3 space-y-3">
-        {items.map((it, i) => (
-          <div key={i} className="rounded-2xl border bg-card p-4">
-            <div className="flex gap-2">
-              <Input placeholder="Ketik / pilih produk" list="product-list" maxLength={80} value={it.name} onChange={(e) => pickName(i, e.target.value)} className="h-11" />
-              <Button variant="ghost" size="icon" onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button>
+        {items.map((it, i) => {
+          const stock = products.find((p) => p.name.toLowerCase() === it.name.toLowerCase())?.warehouse_stock;
+          return (
+            <div key={i} className="rounded-2xl border bg-card p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div><b>{it.name}</b>{stock !== undefined && <div className="text-xs text-muted-foreground">Stok gudang: {stock}</div>}</div>
+                <Button variant="ghost" size="icon" onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Field label="Harga" value={it.price} onChange={(v) => set(i, { price: v })} />
+                <Field label={qtyLabel} value={it.qty} onChange={(v) => set(i, { qty: v })} />
+              </div>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <Field label="Harga" value={it.price} onChange={(v) => set(i, { price: v })} />
-              <Field label={qtyLabel} value={it.qty} onChange={(v) => set(i, { qty: v })} />
+          );
+        })}
+        {open ? (
+          <div className="rounded-2xl border bg-card p-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+              <Input autoFocus placeholder="Cari produk master…" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 pl-9" />
             </div>
+            <div className="mt-2 max-h-60 divide-y overflow-y-auto">
+              {products.length === 0 && <p className="p-3 text-sm text-muted-foreground">Belum ada produk. Tambahkan di <Link to="/products" className="underline">Daftar Produk</Link>.</p>}
+              {products.length > 0 && matches.length === 0 && <p className="p-3 text-sm text-muted-foreground">Produk tidak ditemukan.</p>}
+              {matches.map((p) => (
+                <button key={p.id} type="button" onClick={() => pick(p)} className="flex w-full justify-between px-2 py-3 text-left text-sm hover:bg-muted">
+                  <span>{p.name}</span><span className="text-muted-foreground">{rp(p.price)} · gudang {p.warehouse_stock}</span>
+                </button>
+              ))}
+            </div>
+            <Button variant="ghost" className="mt-1 w-full" onClick={() => setOpen(false)}>Tutup</Button>
           </div>
-        ))}
-        <Button variant="outline" className="h-12 w-full" onClick={() => setItems([...items, { name: "", price: 0, qty: 0 }])}>
-          <Plus className="mr-1 h-4 w-4" />Tambah produk
-        </Button>
+        ) : (
+          <Button variant="outline" className="h-12 w-full" onClick={() => setOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" />Tambah produk
+          </Button>
+        )}
       </div>
     </section>
   );

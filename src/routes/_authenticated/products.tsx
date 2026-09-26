@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useProducts } from "@/lib/products";
+import { useProducts, useStockSummary } from "@/lib/products";
 import { rp } from "@/lib/visit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,39 +14,60 @@ export const Route = createFileRoute("/_authenticated/products")({
   component: ProductsPage,
 });
 
+const toNum = (v: string) => Number(v.replace(/\D/g, "")) || 0;
+
 function ProductsPage() {
   const qc = useQueryClient();
   const { data: products, isLoading } = useProducts();
+  const { data: summary } = useStockSummary();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [stock, setStock] = useState("");
   const [q, setQ] = useState("");
   const refresh = () => qc.invalidateQueries({ queryKey: ["products"] });
 
   async function add() {
     const n = name.trim();
     if (!n || n.length > 80) { toast.error("Isi nama produk (maks 80 karakter)"); return; }
-    const { error } = await supabase.from("products").insert({ name: n, price: Number(price.replace(/\D/g, "")) || 0 });
+    const { error } = await supabase.from("products").insert({ name: n, price: toNum(price), warehouse_stock: toNum(stock) });
     if (error) { toast.error(error.code === "23505" ? "Produk sudah ada" : error.message); return; }
-    setName(""); setPrice(""); refresh();
+    setName(""); setPrice(""); setStock(""); refresh();
   }
-  async function updatePrice(id: string, v: string) {
-    const { error } = await supabase.from("products").update({ price: Number(v.replace(/\D/g, "")) || 0 }).eq("id", id);
+  async function update(id: string, patch: { price?: number; warehouse_stock?: number }) {
+    const { error } = await supabase.from("products").update(patch).eq("id", id);
     if (error) toast.error(error.message); else refresh();
   }
   async function remove(id: string) {
+    if (!confirm("Hapus produk ini?")) return;
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) toast.error(error.message); else refresh();
   }
 
-  const list = (products ?? []).filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const k = (n: string) => n.trim().toLowerCase();
+  const rows = (products ?? []).map((p) => {
+    const toko = summary?.atStore.get(k(p.name)) ?? 0;
+    const retur = summary?.returned.get(k(p.name)) ?? 0;
+    return { ...p, toko, retur, total: toko + p.warehouse_stock };
+  });
+  const list = rows.filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const sum = rows.reduce((a, r) => ({ toko: a.toko + r.toko, gudang: a.gudang + r.warehouse_stock, retur: a.retur + r.retur, total: a.total + r.total, nilai: a.nilai + r.total * r.price }), { toko: 0, gudang: 0, retur: 0, total: 0, nilai: 0 });
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
-      <h1 className="mt-4 text-2xl font-bold">Daftar Produk</h1>
+      <h1 className="mt-4 text-2xl font-bold">Master Produk</h1>
+
+      <div className="mt-4 grid grid-cols-4 gap-2 rounded-2xl border bg-card p-3 text-center">
+        <Stat label="Di toko" v={sum.toko} /><Stat label="Gudang" v={sum.gudang} /><Stat label="Retur" v={sum.retur} /><Stat label="Total" v={sum.total} />
+        <div className="col-span-4 border-t border-dashed pt-2 text-xs text-muted-foreground">Nilai stok (toko + gudang): <b className="text-foreground">{rp(sum.nilai)}</b></div>
+      </div>
+
       <div className="mt-5 space-y-2 rounded-2xl border bg-card p-4">
         <Input placeholder="Nama produk" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
-        <Input placeholder="Harga (Rp)" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" />
+        <div className="grid grid-cols-2 gap-2">
+          <Input placeholder="Harga (Rp)" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" />
+          <Input placeholder="Stok gudang" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} className="h-11" />
+        </div>
         <Button onClick={add} className="h-12 w-full">Tambah Produk</Button>
       </div>
       <div className="relative mt-6">
@@ -57,17 +78,32 @@ function ProductsPage() {
         {isLoading && <p className="text-sm text-muted-foreground">Memuat…</p>}
         {!isLoading && list.length === 0 && <p className="text-sm text-muted-foreground">Belum ada produk.</p>}
         {list.map((p) => (
-          <div key={p.id} className="flex items-center gap-2 rounded-xl border bg-card p-3">
-            <div className="min-w-0 flex-1">
+          <div key={p.id} className="rounded-xl border bg-card p-3">
+            <div className="flex items-center justify-between gap-2">
               <div className="truncate font-medium">{p.name}</div>
-              <div className="text-xs text-muted-foreground">{rp(p.price)}</div>
+              <Button variant="ghost" size="icon" onClick={() => remove(p.id)} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button>
             </div>
-            <Input key={p.price} defaultValue={p.price || ""} inputMode="numeric" className="h-10 w-28" aria-label="Harga"
-              onBlur={(e) => { if (Number(e.target.value.replace(/\D/g, "")) !== p.price) void updatePrice(p.id, e.target.value); }} />
-            <Button variant="ghost" size="icon" onClick={() => remove(p.id)} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <label className="text-[11px] text-muted-foreground">Harga
+                <Input key={"p" + p.price} defaultValue={p.price || ""} inputMode="numeric" className="h-10"
+                  onBlur={(e) => { if (toNum(e.target.value) !== p.price) void update(p.id, { price: toNum(e.target.value) }); }} />
+              </label>
+              <label className="text-[11px] text-muted-foreground">Stok gudang
+                <Input key={"s" + p.warehouse_stock} defaultValue={p.warehouse_stock || ""} inputMode="numeric" className="h-10"
+                  onBlur={(e) => { if (toNum(e.target.value) !== p.warehouse_stock) void update(p.id, { warehouse_stock: toNum(e.target.value) }); }} />
+              </label>
+            </div>
+            <div className="mt-2 grid grid-cols-4 gap-1 text-center font-mono text-xs">
+              <Stat label="Di toko" v={p.toko} /><Stat label="Gudang" v={p.warehouse_stock} /><Stat label="Retur" v={p.retur} /><Stat label="Total" v={p.total} />
+            </div>
+            <div className="mt-1 text-right text-xs text-muted-foreground">Subtotal nilai: <b className="text-foreground">{rp(p.total * p.price)}</b></div>
           </div>
         ))}
       </div>
     </main>
   );
+}
+
+function Stat({ label, v }: { label: string; v: number }) {
+  return <div><div className="text-[10px] uppercase text-muted-foreground">{label}</div><div className="font-semibold">{v}</div></div>;
 }

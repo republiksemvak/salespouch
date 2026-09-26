@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS warehouse_stock numeric NOT NULL DEFAULT 0;
