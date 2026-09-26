@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadLastVisit, nextReceiptNumber, rp, type LineItem, type NewItem } from "@/lib/visit";
-import { useProducts, rememberProducts, type Product } from "@/lib/products";
+import { useProducts, adjustWarehouse, type Product } from "@/lib/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,6 +108,11 @@ function VisitPage() {
         custom_note: note.trim() || null,
       }).select("id").single();
       if (error) throw error;
+      const out = type === "Consignment" ? cleanNew : lineItems.map((l) => ({ name: l.name, qty: l.sold }));
+      const back = type === "Consignment" ? lineItems.map((l) => ({ name: l.name, qty: l.returned })) : [];
+      await adjustWarehouse(products ?? [], out, back).catch(() => {});
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["stock-summary"] });
       qc.invalidateQueries({ queryKey: ["last-visit", outletId] });
       navigate({ to: "/receipt/$id", params: { id: data.id } });
     } catch (e) { toast.error((e as Error).message); }
