@@ -14,7 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      outlets: {
+        Row: {
+          created_at: string
+          id: string
+          map_location: string | null
+          name: string
+          owner_phone: string | null
+          store_photo: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          map_location?: string | null
+          name: string
+          owner_phone?: string | null
+          store_photo?: string | null
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          map_location?: string | null
+          name?: string
+          owner_phone?: string | null
+          store_photo?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          business_name: string | null
+          created_at: string
+          id: string
+          license_until: string | null
+          user_email: string | null
+        }
+        Insert: {
+          business_name?: string | null
+          created_at?: string
+          id: string
+          license_until?: string | null
+          user_email?: string | null
+        }
+        Update: {
+          business_name?: string | null
+          created_at?: string
+          id?: string
+          license_until?: string | null
+          user_email?: string | null
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          custom_note: string | null
+          id: string
+          line_items: Json
+          new_consignment_items: Json
+          outlet_id: string
+          previous_debt: number
+          receipt_number: string
+          remaining_debt: number
+          sales_name: string
+          total_due: number
+          total_sales: number
+          transaction_type: string
+          user_id: string
+          visit_date: string
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          custom_note?: string | null
+          id?: string
+          line_items?: Json
+          new_consignment_items?: Json
+          outlet_id: string
+          previous_debt?: number
+          receipt_number: string
+          remaining_debt?: number
+          sales_name: string
+          total_due?: number
+          total_sales?: number
+          transaction_type?: string
+          user_id?: string
+          visit_date?: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          custom_note?: string | null
+          id?: string
+          line_items?: Json
+          new_consignment_items?: Json
+          outlet_id?: string
+          previous_debt?: number
+          receipt_number?: string
+          remaining_debt?: number
+          sales_name?: string
+          total_due?: number
+          total_sales?: number
+          transaction_type?: string
+          user_id?: string
+          visit_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_outlet_id_fkey"
+            columns: ["outlet_id"]
+            isOneToOne: false
+            referencedRelation: "outlets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
