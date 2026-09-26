@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/visit")({
-  validateSearch: (s: Record<string, unknown>) => ({ outlet: typeof s.outlet === "string" ? s.outlet : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({ outlet: typeof s['outlet'] === "string" ? s['outlet'] : undefined }),
   head: () => ({ meta: [{ title: "Kunjungan Outlet — Sales Pouch" }, { name: "description", content: "Catat kunjungan & konsinyasi." }] }),
   component: VisitPage,
 });
@@ -78,9 +78,9 @@ function VisitPage() {
   const overStock = type === "Consignment" && rows.some((r) => r.sold + r.returned > r.prev_stock);
 
   function start() {
-    if (!outletId) return toast.error("Pilih outlet dulu");
+    if (!outletId) { toast.error("Pilih outlet dulu"); return; }
     const n = salesName.trim();
-    if (!n || n.length > 60) return toast.error("Isi nama sales (maks 60 karakter)");
+    if (!n || n.length > 60) { toast.error("Isi nama sales (maks 60 karakter)"); return; }
     localStorage.setItem("sp_sales_name", n);
     setStarted(true);
   }
@@ -89,11 +89,11 @@ function VisitPage() {
     const cleanNew = newItems.filter((i) => i.name.trim() && i.qty > 0).map((i) => ({ ...i, name: i.name.trim() }));
     const schema = z.object({ note: z.string().max(500), sales: z.string().trim().min(1).max(60) });
     const v = schema.safeParse({ note, sales: salesName });
-    if (!v.success) return toast.error("Catatan maks 500 karakter");
-    if (overStock) return toast.error("Terjual + retur melebihi stok titipan");
-    if (type === "Direct Sale" && lineItems.length === 0) return toast.error("Tambahkan produk yang dijual");
+    if (!v.success) { toast.error("Catatan maks 500 karakter"); return; }
+    if (overStock) { toast.error("Terjual + retur melebihi stok titipan"); return; }
+    if (type === "Direct Sale" && lineItems.length === 0) { toast.error("Tambahkan produk yang dijual"); return; }
     if (type === "Consignment" && lineItems.length === 0 && cleanNew.length === 0)
-      return toast.error("Tambahkan barang titipan baru");
+      { toast.error("Tambahkan barang titipan baru"); return; }
     setBusy(true);
     try {
       const receipt_number = await nextReceiptNumber();
