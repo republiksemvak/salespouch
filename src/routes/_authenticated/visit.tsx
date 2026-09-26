@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/visit")({
 
 const num = (v: string) => Math.max(0, Number(v.replace(/[^\d.]/g, "")) || 0);
 
-type Row = { name: string; price: number; prev_stock: number; sold: number; returned: number };
+type Row = { name: string; price: number; prev_stock: number; sisa: number };
 
 function VisitPage() {
   const { outlet: preselected } = Route.useSearch();
