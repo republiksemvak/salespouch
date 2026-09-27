@@ -1,38 +1,66 @@
-import html2canvas from "html2canvas";
-
 /**
- * Force plain black-on-white styles during capture: html2canvas cannot parse
- * oklch/theme colors, and the zigzag clip-path would cut the image.
+ * Render receipt text lines into a monochrome PNG canvas.
+ * Drawn manually (no DOM capture) so it works everywhere and prints crisply
+ * on thermal printers.
  */
-export function prepareReceipt(el: HTMLElement) {
-  const nodes = [el, ...el.querySelectorAll<HTMLElement>("*")];
-  const saved = nodes.map((n) => ({ n, css: n.style.cssText }));
-  el.style.background = "#ffffff";
-  el.style.boxShadow = "none";
-  el.style.clipPath = "none";
-  for (const n of nodes) {
-    n.style.color = "#000000";
-    n.style.borderColor = "#000000";
-    n.style.background = "transparent";
-    n.style.backgroundImage = "none";
-    n.style.outlineColor = "#000000";
-    n.style.textDecorationColor = "#000000";
-    n.style.boxShadow = "none";
-    n.style.textShadow = "none";
+
+export type ReceiptLine = { text: string; bold?: boolean; center?: boolean };
+
+const FONT = 'ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace';
+
+export function receiptTextToCanvas(lines: ReceiptLine[], width = 640): HTMLCanvasElement {
+  const pad = 28;
+  const fontSize = 26;
+  const lineHeight = 38;
+
+  const measure = document.createElement("canvas").getContext("2d")!;
+  const setFont = (bold?: boolean) => {
+    measure.font = `${bold ? "700" : "400"} ${fontSize}px ${FONT}`;
+  };
+
+  // Word-wrap long lines to fit the width.
+  const wrapped: ReceiptLine[] = [];
+  for (const line of lines) {
+    setFont(line.bold);
+    if (measure.measureText(line.text).width <= width - pad * 2 || !line.text) {
+      wrapped.push(line);
+      continue;
+    }
+    let rest = line.text;
+    while (rest) {
+      let end = rest.length;
+      while (end > 1 && measure.measureText(rest.slice(0, end)).width > width - pad * 2) end--;
+      const cut = rest.lastIndexOf(" ", end);
+      if (cut > 0) end = cut;
+      wrapped.push({ ...line, text: rest.slice(0, end) });
+      rest = rest.slice(end).trimStart();
+    }
   }
-  el.style.background = "#ffffff";
-  return () => saved.forEach(({ n, css }) => (n.style.cssText = css));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = pad * 2 + wrapped.length * lineHeight;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#000000";
+  ctx.textBaseline = "top";
+
+  wrapped.forEach((line, i) => {
+    ctx.font = `${line.bold ? "700" : "400"} ${fontSize}px ${FONT}`;
+    const y = pad + i * lineHeight;
+    if (line.center) {
+      ctx.textAlign = "center";
+      ctx.fillText(line.text, width / 2, y);
+    } else {
+      ctx.textAlign = "left";
+      ctx.fillText(line.text, pad, y);
+    }
+  });
+  return canvas;
 }
 
-/** Render the receipt DOM node into a PNG blob (2x scale for crisp sharing/printing). */
-export async function receiptToPng(el: HTMLElement): Promise<Blob> {
-  const restore = prepareReceipt(el);
-  let canvas: HTMLCanvasElement;
-  try {
-    canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
-  } finally {
-    restore();
-  }
+export async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
   if (!blob) throw new Error("Gagal membuat gambar nota");
   return blob;
@@ -47,9 +75,9 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-/** Share the receipt as a PNG file; falls back to download when file sharing is unsupported. */
-export async function shareReceiptPng(el: HTMLElement, filename: string): Promise<"shared" | "downloaded"> {
-  const blob = await receiptToPng(el);
+/** Share receipt lines as a PNG file; falls back to download when file sharing is unsupported. */
+export async function shareReceiptPng(lines: ReceiptLine[], filename: string): Promise<"shared" | "downloaded"> {
+  const blob = await canvasToPngBlob(receiptTextToCanvas(lines));
   const file = new File([blob], filename, { type: "image/png" });
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({ files: [file], title: filename });
