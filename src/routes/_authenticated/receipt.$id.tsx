@@ -49,7 +49,6 @@ function ReceiptPage() {
   const outlet = t.outlets as { name: string; owner_phone: string | null } | null;
   const store = outlet?.name ?? "-";
   const phone = outlet?.owner_phone ?? "";
-  const prevSold = prev ? ((prev.line_items as LineItem[]) ?? []).filter((l) => l.sold > 0) : [];
   const prevTitip = prev ? ((prev.new_consignment_items as NewItem[]) ?? []) : [];
 
   function asText() {
@@ -57,11 +56,10 @@ function ReceiptPage() {
     if (p?.profile?.business_address) L.push(p.profile.business_address);
     if (p?.profile?.business_phone) L.push(`Telp: ${p.profile.business_phone}`);
     L.push(`No Nota : ${t!.receipt_number}`, `Toko    : ${store}`, `Sales   : ${t!.sales_name}`, `Tanggal : ${fmtDate(t!.visit_date)}`, "--------------------------------");
-    if (prev) {
-      L.push(`TRANSAKSI SEBELUMNYA (${prev.receipt_number})`, `  ${fmtDate(prev.visit_date)}`);
-      prevSold.forEach((l) => L.push(`  Terjual ${l.name}: ${l.sold} x ${rp(l.price)}`));
-      prevTitip.forEach((n) => L.push(`  Titip ${n.name}: ${n.qty}`));
-      L.push(`  Dibayar: ${rp(Number(prev.amount_paid))} · Sisa: ${rp(Number(prev.remaining_debt))}`, "--------------------------------");
+    if (prev && prevTitip.length > 0) {
+      L.push("TITIPAN SEBELUMNYA");
+      prevTitip.forEach((n) => L.push(`  ${n.name}: ${n.qty} pcs`));
+      L.push("--------------------------------");
     }
     items.forEach((i) => {
       L.push(i.name);
@@ -115,13 +113,10 @@ function ReceiptPage() {
         <Row k="Sales" v={t.sales_name} />
         <Row k="Tanggal" v={fmtDate(t.visit_date)} />
         {hr}
-        {prev && (
+        {prev && prevTitip.length > 0 && (
           <>
-            <div className="font-semibold">TRANSAKSI SEBELUMNYA</div>
-            <Row k={prev.receipt_number} v={fmtDate(prev.visit_date)} />
-            {prevSold.map((l, i) => <Row key={"s" + i} k={`Terjual ${l.name} ${l.sold}x`} v={rp(l.subtotal)} />)}
-            {prevTitip.map((n, i) => <Row key={"t" + i} k={`Titip ${n.name}`} v={String(n.qty)} />)}
-            <Row k="Dibayar / Sisa" v={`${rp(Number(prev.amount_paid))} / ${rp(Number(prev.remaining_debt))}`} />
+            <div className="font-semibold">TITIPAN SEBELUMNYA</div>
+            {prevTitip.map((n, i) => <Row key={"t" + i} k={n.name} v={`${n.qty} pcs`} />)}
             {hr}
             <div className="font-semibold">KUNJUNGAN HARI INI</div>
           </>
