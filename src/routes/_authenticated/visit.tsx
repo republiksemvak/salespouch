@@ -106,6 +106,7 @@ function VisitPage() {
     if (type === "Direct Sale" && lineItems.length === 0) { toast.error("Tambahkan produk yang dijual"); return; }
     if (type === "Consignment" && lineItems.length === 0 && cleanNew.length === 0)
       { toast.error("Tambahkan barang titipan baru"); return; }
+    if (type === "Consignment" && rows.some((r) => r.sisa === null)) { toast.error("Isi sisa di toko untuk semua produk"); return; }
     setBusy(true);
     try {
       const receipt_number = await nextReceiptNumber();
