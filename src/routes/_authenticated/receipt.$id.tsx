@@ -123,7 +123,7 @@ function ReceiptPage() {
         <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Beranda</Link>
       </div>
 
-      <article className="mx-auto mt-4 w-full max-w-[340px] bg-card px-5 py-6 font-mono text-[12px] leading-relaxed text-foreground shadow-lg [clip-path:polygon(0_0,100%_0,100%_calc(100%-8px),95%_100%,90%_calc(100%-8px),85%_100%,80%_calc(100%-8px),75%_100%,70%_calc(100%-8px),65%_100%,60%_calc(100%-8px),55%_100%,50%_calc(100%-8px),45%_100%,40%_calc(100%-8px),35%_100%,30%_calc(100%-8px),25%_100%,20%_calc(100%-8px),15%_100%,10%_calc(100%-8px),5%_100%,0_calc(100%-8px))] print:shadow-none">
+      <article ref={receiptRef} className="mx-auto mt-4 w-full max-w-[340px] bg-card px-5 py-6 font-mono text-[12px] leading-relaxed text-foreground shadow-lg [clip-path:polygon(0_0,100%_0,100%_calc(100%-8px),95%_100%,90%_calc(100%-8px),85%_100%,80%_calc(100%-8px),75%_100%,70%_calc(100%-8px),65%_100%,60%_calc(100%-8px),55%_100%,50%_calc(100%-8px),45%_100%,40%_calc(100%-8px),35%_100%,30%_calc(100%-8px),25%_100%,20%_calc(100%-8px),15%_100%,10%_calc(100%-8px),5%_100%,0_calc(100%-8px))] print:shadow-none">
         <div className="text-center text-sm font-semibold uppercase">{business}</div>
         {p?.profile?.business_address && <div className="text-center text-[11px]">{p.profile.business_address}</div>}
         {p?.profile?.business_phone && <div className="text-center text-[11px]">Telp: {p.profile.business_phone}</div>}
@@ -179,8 +179,15 @@ function ReceiptPage() {
 
       <div className="mt-6 grid grid-cols-2 gap-3 print:hidden">
         <Button className="col-span-2 h-12" onClick={sendWa}><MessageCircle className="mr-1 h-4 w-4" />Kirim ke WhatsApp Toko</Button>
+        {isBluetoothPrintSupported() && (
+          <Button className="col-span-2 h-12" variant="secondary" disabled={busy === "bt"} onClick={printBluetooth}>
+            <Bluetooth className="mr-1 h-4 w-4" />{busy === "bt" ? "Mencetak…" : "Cetak via Printer Bluetooth"}
+          </Button>
+        )}
         <Button variant="outline" className="h-12" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" />Cetak</Button>
-        <Button variant="outline" className="h-12" onClick={share}><Share2 className="mr-1 h-4 w-4" />Bagikan</Button>
+        <Button variant="outline" className="h-12" disabled={busy === "share"} onClick={share}>
+          <Share2 className="mr-1 h-4 w-4" />{busy === "share" ? "Menyiapkan gambar…" : "Bagikan (PNG)"}
+        </Button>
       </div>
     </main>
   );
