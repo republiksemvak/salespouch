@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/visit")({
 
 const num = (v: string) => Math.max(0, Number(v.replace(/[^\d.]/g, "")) || 0);
 
-type Row = { name: string; price: number; prev_stock: number; sisa: number };
+type Row = { name: string; price: number; prev_stock: number; sisa: number | null };
 
 function VisitPage() {
   const { outlet: preselected } = Route.useSearch();
@@ -58,7 +58,7 @@ function VisitPage() {
 
   useEffect(() => {
     if (!history.data) return;
-    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, sisa: s.qty })));
+    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, sisa: null })));
   }, [history.data]);
 
   const isFirst = started && history.isSuccess && history.data === null;
@@ -70,11 +70,20 @@ function VisitPage() {
         name: d.name.trim(), price: d.price, prev_stock: 0, sold: d.qty, returned: 0, remaining: 0, subtotal: d.qty * d.price,
       }));
     return rows.map((r) => {
-      const sisa = Math.min(Math.max(0, r.sisa), r.prev_stock);
-      const sold = r.prev_stock - sisa;
-      return { ...r, sold, returned: 0, remaining: sisa, subtotal: sold * r.price };
+      const sisa = Math.min(Math.max(0, r.sisa ?? 0), r.prev_stock);
+      const sold = r.sisa === null ? 0 : r.prev_stock - sisa;
+      // Leftover stock is pulled back to the warehouse as a return; nothing stays at the store.
+      return { name: r.name, price: r.price, prev_stock: r.prev_stock, sold, returned: sisa, remaining: 0, subtotal: sold * r.price };
     });
   }, [rows, directItems, type]);
+
+  const [savedInput, setSavedInput] = useState(false);
+  useEffect(() => { setSavedInput(false); }, [rows, newItems, directItems, type]);
+  function saveInput() {
+    if (type === "Consignment" && rows.some((r) => r.sisa === null)) { toast.error("Isi sisa di toko untuk semua produk"); return; }
+    setSavedInput(true);
+    toast.success("Input produk tersimpan");
+  }
 
   const totalSales = lineItems.reduce((a, l) => a + l.subtotal, 0);
   const totalDue = previousDebt + totalSales;
@@ -97,6 +106,7 @@ function VisitPage() {
     if (type === "Direct Sale" && lineItems.length === 0) { toast.error("Tambahkan produk yang dijual"); return; }
     if (type === "Consignment" && lineItems.length === 0 && cleanNew.length === 0)
       { toast.error("Tambahkan barang titipan baru"); return; }
+    if (type === "Consignment" && rows.some((r) => r.sisa === null)) { toast.error("Isi sisa di toko untuk semua produk"); return; }
     setBusy(true);
     try {
       const receipt_number = await nextReceiptNumber();
@@ -190,12 +200,17 @@ function VisitPage() {
                       <div className="flex justify-between"><b>{r.name}</b><span className="text-sm text-muted-foreground">Titip: {r.prev_stock}</span></div>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <Field label="Harga" value={r.price} onChange={(v) => set({ price: v })} />
-                        <Field label="Sisa di toko" value={r.sisa} onChange={(v) => set({ sisa: Math.min(v, r.prev_stock) })} />
+                        <label className="block">
+                          <span className="text-[11px] text-muted-foreground">Sisa di toko</span>
+                          <Input inputMode="numeric" value={r.sisa === null ? "" : String(r.sisa)} placeholder="Isi sisa"
+                            onChange={(e) => set({ sisa: e.target.value.trim() === "" ? null : Math.min(num(e.target.value), r.prev_stock) })} className="h-11" />
+                        </label>
                       </div>
                       <div className="mt-3 flex justify-between font-mono text-xs">
                         <span>Terjual (otomatis): <b>{li?.sold ?? 0}</b></span>
                         <span>{li?.sold ?? 0} × {rp(r.price)} = <b>{rp(li?.subtotal ?? 0)}</b></span>
                       </div>
+                      <div className="mt-1 font-mono text-xs text-muted-foreground">Retur ke gudang: <b>{li?.returned ?? 0}</b></div>
                     </div>
                   );
                 })}
@@ -210,6 +225,10 @@ function VisitPage() {
           {type === "Consignment" && (
             <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Qty Titip" products={products ?? []} />
           )}
+
+          <Button type="button" variant={savedInput ? "secondary" : "outline"} onClick={saveInput} className="mt-4 h-12 w-full">
+            {savedInput ? "✓ Input produk tersimpan" : "Simpan Input Produk"}
+          </Button>
 
           {!isFirst && (
             <section className="mt-6 space-y-2 rounded-2xl border bg-card p-4 font-mono text-sm">
