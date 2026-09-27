@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, MessageCircle, Printer, Share2 } from "lucide-react";
+import { ArrowLeft, Bluetooth, MessageCircle, Printer, Share2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { rp, type LineItem, type NewItem } from "@/lib/visit";
+import { shareReceiptPng } from "@/lib/receipt-image";
+import { isBluetoothPrintSupported, printReceiptBluetooth } from "@/lib/thermal-print";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/receipt/$id")({
