@@ -20,6 +20,8 @@ const fmtDate = (d: string) => new Date(d).toLocaleString("id-ID", { dateStyle: 
 function ReceiptPage() {
   const { id } = Route.useParams();
   const { data: p } = useProfile();
+  const receiptRef = useRef<HTMLElement>(null);
+  const [busy, setBusy] = useState<"share" | "bt" | null>(null);
   const { data: t, isLoading, error } = useQuery({
     queryKey: ["receipt", id],
     queryFn: async () => {
@@ -91,11 +93,26 @@ function ReceiptPage() {
   }
 
   async function share() {
-    const text = asText();
+    if (!receiptRef.current) return;
+    setBusy("share");
     try {
-      if (navigator.share) await navigator.share({ title: t!.receipt_number, text });
-      else { await navigator.clipboard.writeText(text); toast.success("Nota disalin"); }
-    } catch { /* cancelled */ }
+      const how = await shareReceiptPng(receiptRef.current, `${t!.receipt_number}.png`);
+      if (how === "downloaded") toast.success("Gambar nota diunduh");
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") toast.error("Gagal membagikan gambar nota");
+    } finally { setBusy(null); }
+  }
+
+  async function printBluetooth() {
+    if (!receiptRef.current) return;
+    setBusy("bt");
+    try {
+      await printReceiptBluetooth(receiptRef.current);
+      toast.success("Nota terkirim ke printer");
+    } catch (e) {
+      const err = e as Error;
+      if (err.name !== "NotFoundError") toast.error(err.message || "Gagal mencetak via Bluetooth");
+    } finally { setBusy(null); }
   }
 
   const hr = <div className="my-2 border-t border-dashed border-foreground/40" />;
