@@ -13,7 +13,14 @@ export function prepareReceipt(el: HTMLElement) {
   for (const n of nodes) {
     n.style.color = "#000000";
     n.style.borderColor = "#000000";
+    n.style.background = "transparent";
+    n.style.backgroundImage = "none";
+    n.style.outlineColor = "#000000";
+    n.style.textDecorationColor = "#000000";
+    n.style.boxShadow = "none";
+    n.style.textShadow = "none";
   }
+  el.style.background = "#ffffff";
   return () => saved.forEach(({ n, css }) => (n.style.cssText = css));
 }
 
