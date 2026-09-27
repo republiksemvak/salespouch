@@ -62,7 +62,7 @@ async function receiptToEscPos(el: HTMLElement): Promise<Uint8Array> {
         for (let bit = 0; bit < 8; bit++) {
           const x = bx * 8 + bit;
           const i = ((y + row) * width + x) * 4;
-          const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          const lum = 0.299 * (data[i] ?? 255) + 0.587 * (data[i + 1] ?? 255) + 0.114 * (data[i + 2] ?? 255);
           if (lum < 140) byte |= 0x80 >> bit;
         }
         out.push(byte);
