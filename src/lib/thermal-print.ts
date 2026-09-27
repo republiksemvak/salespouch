@@ -1,8 +1,7 @@
-import html2canvas from "html2canvas";
-import { prepareReceipt } from "./receipt-image";
+import { receiptTextToCanvas, type ReceiptLine } from "./receipt-image";
 
 /**
- * Print the receipt to a Bluetooth thermal printer (ESC/POS raster, 58mm = 384 dots).
+ * Print receipt lines to a Bluetooth thermal printer (ESC/POS raster, 58mm = 384 dots).
  * Uses Web Bluetooth — works in Chrome/Edge on Android & desktop.
  */
 
@@ -25,27 +24,13 @@ const PRINTER_WIDTH = 384; // dots for 58mm printers
 export const isBluetoothPrintSupported = () =>
   typeof navigator !== "undefined" && "bluetooth" in navigator;
 
-/** Convert the receipt element to ESC/POS raster bytes (GS v 0). */
-async function receiptToEscPos(el: HTMLElement): Promise<Uint8Array> {
-  const restore = prepareReceipt(el);
-  let src: HTMLCanvasElement;
-  try {
-    src = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
-  } finally {
-    restore();
-  }
-
-  const canvas = document.createElement("canvas");
-  canvas.width = PRINTER_WIDTH;
-  canvas.height = Math.round((src.height / src.width) * PRINTER_WIDTH);
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
-
-  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const width = canvas.width;
-  const height = canvas.height;
+/** Convert receipt lines to ESC/POS raster bytes (GS v 0). */
+function linesToEscPos(lines: ReceiptLine[]): Uint8Array {
+  const src = receiptTextToCanvas(lines, PRINTER_WIDTH);
+  const ctx = src.getContext("2d")!;
+  const { data } = ctx.getImageData(0, 0, src.width, src.height);
+  const width = src.width;
+  const height = src.height;
   const bytesPerRow = width / 8;
 
   const out: number[] = [
@@ -75,7 +60,7 @@ async function receiptToEscPos(el: HTMLElement): Promise<Uint8Array> {
   return new Uint8Array(out);
 }
 
-export async function printReceiptBluetooth(el: HTMLElement): Promise<void> {
+export async function printReceiptBluetooth(lines: ReceiptLine[]): Promise<void> {
   const nav = navigator as Navigator & { bluetooth?: any };
   if (!nav.bluetooth) throw new Error("Browser ini tidak mendukung Bluetooth. Gunakan Chrome di Android/PC.");
 
@@ -104,7 +89,7 @@ export async function printReceiptBluetooth(el: HTMLElement): Promise<void> {
   }
   if (!characteristic) throw new Error("Printer ditemukan, tapi layanan cetaknya tidak dikenali.");
 
-  const payload = await receiptToEscPos(el);
+  const payload = linesToEscPos(lines);
   const CHUNK = 180; // safe BLE MTU chunk
   for (let i = 0; i < payload.length; i += CHUNK) {
     const chunk = payload.subarray(i, i + CHUNK);
