@@ -5,17 +5,16 @@ import html2canvas from "html2canvas";
  * oklch/theme colors, and the zigzag clip-path would cut the image.
  */
 export function prepareReceipt(el: HTMLElement) {
-  const prev = { bg: el.style.background, color: el.style.color, shadow: el.style.boxShadow, clip: el.style.clipPath };
+  const nodes = [el, ...el.querySelectorAll<HTMLElement>("*")];
+  const saved = nodes.map((n) => ({ n, css: n.style.cssText }));
   el.style.background = "#ffffff";
-  el.style.color = "#000000";
   el.style.boxShadow = "none";
   el.style.clipPath = "none";
-  return () => {
-    el.style.background = prev.bg;
-    el.style.color = prev.color;
-    el.style.boxShadow = prev.shadow;
-    el.style.clipPath = prev.clip;
-  };
+  for (const n of nodes) {
+    n.style.color = "#000000";
+    n.style.borderColor = "#000000";
+  }
+  return () => saved.forEach(({ n, css }) => (n.style.cssText = css));
 }
 
 /** Render the receipt DOM node into a PNG blob (2x scale for crisp sharing/printing). */
