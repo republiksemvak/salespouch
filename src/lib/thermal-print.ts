@@ -1,4 +1,5 @@
 import html2canvas from "html2canvas";
+import { prepareReceipt } from "./receipt-image";
 
 /**
  * Print the receipt to a Bluetooth thermal printer (ESC/POS raster, 58mm = 384 dots).
@@ -26,7 +27,13 @@ export const isBluetoothPrintSupported = () =>
 
 /** Convert the receipt element to ESC/POS raster bytes (GS v 0). */
 async function receiptToEscPos(el: HTMLElement): Promise<Uint8Array> {
-  const src = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+  const restore = prepareReceipt(el);
+  let src: HTMLCanvasElement;
+  try {
+    src = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+  } finally {
+    restore();
+  }
 
   const canvas = document.createElement("canvas");
   canvas.width = PRINTER_WIDTH;
