@@ -199,12 +199,17 @@ function VisitPage() {
                       <div className="flex justify-between"><b>{r.name}</b><span className="text-sm text-muted-foreground">Titip: {r.prev_stock}</span></div>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <Field label="Harga" value={r.price} onChange={(v) => set({ price: v })} />
-                        <Field label="Sisa di toko" value={r.sisa} onChange={(v) => set({ sisa: Math.min(v, r.prev_stock) })} />
+                        <label className="block">
+                          <span className="text-[11px] text-muted-foreground">Sisa di toko</span>
+                          <Input inputMode="numeric" value={r.sisa === null ? "" : String(r.sisa)} placeholder="Isi sisa"
+                            onChange={(e) => set({ sisa: e.target.value.trim() === "" ? null : Math.min(num(e.target.value), r.prev_stock) })} className="h-11" />
+                        </label>
                       </div>
                       <div className="mt-3 flex justify-between font-mono text-xs">
                         <span>Terjual (otomatis): <b>{li?.sold ?? 0}</b></span>
                         <span>{li?.sold ?? 0} × {rp(r.price)} = <b>{rp(li?.subtotal ?? 0)}</b></span>
                       </div>
+                      <div className="mt-1 font-mono text-xs text-muted-foreground">Retur ke gudang: <b>{li?.returned ?? 0}</b></div>
                     </div>
                   );
                 })}
@@ -219,6 +224,10 @@ function VisitPage() {
           {type === "Consignment" && (
             <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Qty Titip" products={products ?? []} />
           )}
+
+          <Button type="button" variant={savedInput ? "secondary" : "outline"} onClick={saveInput} className="mt-4 h-12 w-full">
+            {savedInput ? "✓ Input produk tersimpan" : "Simpan Input Produk"}
+          </Button>
 
           {!isFirst && (
             <section className="mt-6 space-y-2 rounded-2xl border bg-card p-4 font-mono text-sm">
