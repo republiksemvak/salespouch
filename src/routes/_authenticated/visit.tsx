@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/visit")({
 
 const num = (v: string) => Math.max(0, Number(v.replace(/[^\d.]/g, "")) || 0);
 
-type Row = { name: string; price: number; prev_stock: number; sisa: number };
+type Row = { name: string; price: number; prev_stock: number; sisa: number | null };
 
 function VisitPage() {
   const { outlet: preselected } = Route.useSearch();
@@ -58,7 +58,7 @@ function VisitPage() {
 
   useEffect(() => {
     if (!history.data) return;
-    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, sisa: s.qty })));
+    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, sisa: null })));
   }, [history.data]);
 
   const isFirst = started && history.isSuccess && history.data === null;
@@ -70,11 +70,20 @@ function VisitPage() {
         name: d.name.trim(), price: d.price, prev_stock: 0, sold: d.qty, returned: 0, remaining: 0, subtotal: d.qty * d.price,
       }));
     return rows.map((r) => {
-      const sisa = Math.min(Math.max(0, r.sisa), r.prev_stock);
-      const sold = r.prev_stock - sisa;
-      return { ...r, sold, returned: 0, remaining: sisa, subtotal: sold * r.price };
+      const sisa = Math.min(Math.max(0, r.sisa ?? 0), r.prev_stock);
+      const sold = r.sisa === null ? 0 : r.prev_stock - sisa;
+      // Leftover stock is pulled back to the warehouse as a return; nothing stays at the store.
+      return { name: r.name, price: r.price, prev_stock: r.prev_stock, sold, returned: sisa, remaining: 0, subtotal: sold * r.price };
     });
   }, [rows, directItems, type]);
+
+  const [savedInput, setSavedInput] = useState(false);
+  useEffect(() => { setSavedInput(false); }, [rows, newItems, directItems, type]);
+  function saveInput() {
+    if (type === "Consignment" && rows.some((r) => r.sisa === null)) { toast.error("Isi sisa di toko untuk semua produk"); return; }
+    setSavedInput(true);
+    toast.success("Input produk tersimpan");
+  }
 
   const totalSales = lineItems.reduce((a, l) => a + l.subtotal, 0);
   const totalDue = previousDebt + totalSales;
