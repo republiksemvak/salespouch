@@ -1,10 +1,10 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, profileQueryKey } from "@/hooks/use-profile";
-import { accessStatus, ADMIN_TELEGRAM } from "@/lib/access";
+import { accessStatus, ADMIN_TELEGRAM, ADMIN_WHATSAPP } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,14 +30,47 @@ function Gate() {
 }
 
 function Blocked() {
+  const { data: pkgs } = useQuery({
+    queryKey: ["packages-public"],
+    queryFn: async () => (await supabase.from("license_packages").select("*").eq("active", true).order("days")).data ?? [],
+  });
+  const { data: promos } = useQuery({
+    queryKey: ["promos-public"],
+    queryFn: async () => (await supabase.from("promos").select("*").order("created_at", { ascending: false })).data ?? [],
+  });
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
+    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-10 text-center">
       <div className="text-5xl">⏳</div>
       <p className="mt-6 text-lg font-medium">
         Masa trial 24 jam Anda telah berakhir. Silakan hubungi admin untuk memperpanjang lisensi.
       </p>
+      {!!pkgs?.length && (
+        <div className="mt-6 w-full space-y-2 text-left">
+          {pkgs.map((p) => (
+            <div key={p.id} className="flex justify-between rounded-xl border bg-card px-4 py-3 text-sm">
+              <span className="font-medium">{p.name} <span className="text-muted-foreground">({p.days} hari)</span></span>
+              <span className="font-mono">Rp {Number(p.price).toLocaleString("id-ID")}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {!!promos?.length && (
+        <div className="mt-3 w-full space-y-2 text-left">
+          {promos.map((p) => (
+            <div key={p.id} className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm">
+              Promo <b className="font-mono">{p.code}</b>
+              {p.discount_percent > 0 && <> · diskon {p.discount_percent}%</>}
+              {p.bonus_days > 0 && <> · bonus {p.bonus_days} hari</>}
+              {p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}
+            </div>
+          ))}
+        </div>
+      )}
       <Button asChild size="lg" className="mt-8 h-14 w-full">
-        <a href={ADMIN_TELEGRAM} target="_blank" rel="noreferrer">Hubungi Admin via Telegram</a>
+        <a href={ADMIN_WHATSAPP} target="_blank" rel="noreferrer">Hubungi Admin via WhatsApp</a>
+      </Button>
+      <Button asChild size="lg" variant="outline" className="mt-2 h-12 w-full">
+        <a href={ADMIN_TELEGRAM} target="_blank" rel="noreferrer">Telegram @salespouch</a>
       </Button>
       <button className="mt-4 text-sm text-muted-foreground underline" onClick={() => supabase.auth.signOut()}>Keluar</button>
     </main>
