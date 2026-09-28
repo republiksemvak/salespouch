@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { accessStatus } from "@/lib/access";
 import { signedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const { data: p } = useProfile();
+  const { data: isAdmin } = useIsAdmin();
   const [q, setQ] = useState("");
   const status = p?.profile ? accessStatus(p.profile, p.email) : null;
   const { data: outlets, isLoading } = useQuery({
@@ -47,6 +49,7 @@ function Dashboard() {
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Button asChild variant="outline" className="h-11"><Link to="/products"><Package className="mr-1 h-4 w-4" />Master Produk</Link></Button>
         <Button asChild variant="outline" className="h-11"><Link to="/profile"><UserCog className="mr-1 h-4 w-4" />Profil Usaha</Link></Button>
+        {isAdmin && <Button asChild className="col-span-2 h-11"><Link to="/admin"><ShieldCheck className="mr-1 h-4 w-4" />Dashboard Super Admin</Link></Button>}
       </div>
 
       <h2 className="mt-8 font-mono text-xs uppercase tracking-widest text-muted-foreground">Outlet ({outlets?.length ?? 0})</h2>
