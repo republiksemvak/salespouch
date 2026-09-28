@@ -126,7 +126,7 @@ function Packages() {
   async function add(e: React.FormEvent) {
     e.preventDefault();
     const { error } = await supabase.from("license_packages").insert({ name: f.name.trim(), days: Number(f.days), price: Number(f.price) || 0 });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setF({ name: "", days: "", price: "" }); refresh();
   }
   return (
@@ -162,7 +162,7 @@ function Promos() {
       discount_percent: Number(f.discount) || 0, bonus_days: Number(f.bonus) || 0,
       valid_until: f.until ? new Date(`${f.until}T23:59:59`).toISOString() : null,
     });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setF({ code: "", description: "", discount: "", bonus: "", until: "" }); refresh();
   }
   return (
