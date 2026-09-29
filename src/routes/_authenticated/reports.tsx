@@ -5,6 +5,7 @@ import { ArrowLeft, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { rp, type LineItem } from "@/lib/visit";
+import { packSize } from "@/lib/units";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -35,14 +36,15 @@ function ReportsPage() {
   });
 
   const r = useMemo(() => {
-    const cost = new Map((products ?? []).map((p) => [k(p.name), p.cost_price]));
+     const cost = new Map((products ?? []).map((p) => [k(p.name), { price: p.cost_price, size: p.pcs_per_pack }]));
     const perProduct = new Map<string, { name: string; qty: number; omset: number; hpp: number }>();
     const rows = (txs ?? []).map((t) => {
       let hpp = 0;
       for (const li of (t.line_items as LineItem[]) ?? []) {
         const q = Number(li.sold) || 0; if (!q) continue;
-        const c = (cost.get(k(li.name)) ?? 0) * q;
-        const om = Number(li.subtotal) || q * Number(li.price);
+         const productCost = cost.get(k(li.name));
+         const c = (productCost?.price ?? 0) * q / packSize(li.pcs_per_pack ?? productCost?.size);
+         const om = Number(li.subtotal) || Math.round(q * Number(li.price) / packSize(li.pcs_per_pack));
         hpp += c;
         const e = perProduct.get(k(li.name)) ?? { name: li.name, qty: 0, omset: 0, hpp: 0 };
         e.qty += q; e.omset += om; e.hpp += c; perProduct.set(k(li.name), e);
