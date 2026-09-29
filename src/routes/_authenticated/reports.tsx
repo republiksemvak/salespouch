@@ -63,7 +63,7 @@ function ReportsPage() {
       ...r.rows.map((x) => [x.tanggal, x.nota, x.toko, x.sales, x.jenis, x.omset, x.hpp, x.profit, x.dibayar, x.sisa]),
       ["TOTAL", "", "", "", "", { f: `SUM(F2:F${n1})` }, { f: `SUM(G2:G${n1})` }, { f: `SUM(H2:H${n1})` }, { f: `SUM(I2:I${n1})` }, { f: `SUM(J2:J${n1})` }],
     ]);
-    r.rows.forEach((_, i) => { s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: r.rows[i].profit }; });
+    r.rows.forEach((x, i) => { s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: x.profit }; });
     s1["!cols"] = [12, 18, 20, 14, 12, 14, 14, 14, 14, 14].map((wch) => ({ wch }));
     XLSX.utils.book_append_sheet(wb, s1, "Transaksi");
     const n2 = r.products.length + 1;
