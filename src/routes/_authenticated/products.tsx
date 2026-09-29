@@ -23,17 +23,18 @@ function ProductsPage() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
+  const [cost, setCost] = useState("");
   const [q, setQ] = useState("");
   const refresh = () => qc.invalidateQueries({ queryKey: ["products"] });
 
   async function add() {
     const n = name.trim();
     if (!n || n.length > 80) { toast.error("Isi nama produk (maks 80 karakter)"); return; }
-    const { error } = await supabase.from("products").insert({ name: n, price: toNum(price), warehouse_stock: toNum(stock) });
+    const { error } = await supabase.from("products").insert({ name: n, price: toNum(price), cost_price: toNum(cost), warehouse_stock: toNum(stock) });
     if (error) { toast.error(error.code === "23505" ? "Produk sudah ada" : error.message); return; }
-    setName(""); setPrice(""); setStock(""); refresh();
+    setName(""); setPrice(""); setStock(""); setCost(""); refresh();
   }
-  async function update(id: string, patch: { price?: number; warehouse_stock?: number }) {
+  async function update(id: string, patch: { price?: number; cost_price?: number; warehouse_stock?: number }) {
     const { error } = await supabase.from("products").update(patch).eq("id", id);
     if (error) toast.error(error.message); else refresh();
   }
@@ -66,8 +67,9 @@ function ProductsPage() {
       <div className="mt-5 space-y-2 rounded-2xl border bg-card p-4">
         <Input placeholder="Nama produk" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
         <div className="grid grid-cols-2 gap-2">
-          <Input placeholder="Harga (Rp)" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" />
-          <Input placeholder="Stok gudang" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} className="h-11" />
+          <Input placeholder="Harga Modal / HPP (Rp)" inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} className="h-11" />
+          <Input placeholder="Harga Jual (Rp)" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" />
+          <Input placeholder="Stok gudang" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} className="h-11 col-span-2" />
         </div>
         <Button onClick={add} className="h-12 w-full">Tambah Produk</Button>
       </div>
@@ -84,8 +86,12 @@ function ProductsPage() {
               <div className="truncate font-medium">{p.name}</div>
               <Button variant="ghost" size="icon" onClick={() => remove(p.id)} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button>
             </div>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              <label className="text-[11px] text-muted-foreground">Harga
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              <label className="text-[11px] text-muted-foreground">HPP
+                <Input key={"c" + p.cost_price} defaultValue={p.cost_price || ""} inputMode="numeric" className="h-10"
+                  onBlur={(e) => { if (toNum(e.target.value) !== p.cost_price) void update(p.id, { cost_price: toNum(e.target.value) }); }} />
+              </label>
+              <label className="text-[11px] text-muted-foreground">Harga jual
                 <Input key={"p" + p.price} defaultValue={p.price || ""} inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.price) void update(p.id, { price: toNum(e.target.value) }); }} />
               </label>
@@ -98,6 +104,7 @@ function ProductsPage() {
               <Stat label="Di toko" v={p.toko} /><Stat label="Gudang" v={p.warehouse_stock} /><Stat label="Retur" v={p.retur} /><Stat label="Total" v={p.total} />
             </div>
             <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Di toko: <b className="text-foreground">{rp(p.toko * p.price)}</b></span><span>Subtotal nilai: <b className="text-foreground">{rp(p.total * p.price)}</b></span></div>
+            <div className="mt-1 text-xs text-muted-foreground">Margin/pcs: <b className={p.price - p.cost_price < 0 ? "text-destructive" : "text-primary"}>{rp(p.price - p.cost_price)}</b></div>
           </div>
         ))}
       </div>
