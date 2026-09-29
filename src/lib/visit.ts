@@ -3,13 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 export type LineItem = {
   name: string;
   price: number;
+  pcs_per_pack?: number;
   prev_stock: number;
   sold: number;
   returned: number;
   remaining: number;
   subtotal: number;
 };
-export type NewItem = { name: string; price: number; qty: number };
+export type NewItem = { name: string; price: number; qty: number; pcs_per_pack?: number };
 
 export const rp = (n: number) => "Rp " + Math.round(n || 0).toLocaleString("id-ID");
 
@@ -25,15 +26,15 @@ export async function loadLastVisit(outletId: string) {
   if (error) throw error;
   const last = data?.[0];
   if (!last) return null;
-  const stock = new Map<string, { name: string; price: number; qty: number }>();
-  const add = (name: string, price: number, qty: number) => {
+  const stock = new Map<string, { name: string; price: number; qty: number; pcs_per_pack: number }>();
+  const add = (name: string, price: number, qty: number, pcs_per_pack = 1) => {
     if (!name || qty <= 0) return;
     const key = name.trim().toLowerCase();
     const cur = stock.get(key);
-    stock.set(key, { name: name.trim(), price: price || cur?.price || 0, qty: (cur?.qty ?? 0) + qty });
+    stock.set(key, { name: name.trim(), price: price || cur?.price || 0, qty: (cur?.qty ?? 0) + qty, pcs_per_pack });
   };
-  for (const li of (last.line_items as LineItem[]) ?? []) add(li.name, li.price, Number(li.remaining) || 0);
-  for (const ni of (last.new_consignment_items as NewItem[]) ?? []) add(ni.name, ni.price, Number(ni.qty) || 0);
+  for (const li of (last.line_items as LineItem[]) ?? []) add(li.name, li.price, Number(li.remaining) || 0, li.pcs_per_pack);
+  for (const ni of (last.new_consignment_items as NewItem[]) ?? []) add(ni.name, ni.price, Number(ni.qty) || 0, ni.pcs_per_pack);
   return { stock: [...stock.values()], previousDebt: Number(last.remaining_debt) || 0 };
 }
 
