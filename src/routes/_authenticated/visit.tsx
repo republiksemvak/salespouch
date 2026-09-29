@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadLastVisit, nextReceiptNumber, rp, type LineItem, type NewItem } from "@/lib/visit";
-import { useProducts, adjustWarehouse, type Product } from "@/lib/products";
+import { useProducts, adjustWarehouse, tierPrice, TIERS, type Product, type PriceTier } from "@/lib/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,15 @@ function VisitPage() {
   const [busy, setBusy] = useState(false);
   const [outletQ, setOutletQ] = useState("");
   const { data: products } = useProducts();
+  const [tier, setTier] = useState<PriceTier>("eceran");
+  function changeTier(t: PriceTier) {
+    setTier(t);
+    const reprice = (items: NewItem[]) => items.map((i) => {
+      const p = products?.find((x) => x.name.toLowerCase() === i.name.toLowerCase());
+      return p ? { ...i, price: tierPrice(p, t) } : i;
+    });
+    setNewItems(reprice); setDirectItems(reprice);
+  }
 
   useEffect(() => { setSalesName(localStorage.getItem("sp_sales_name") ?? ""); }, []);
 
@@ -218,12 +227,21 @@ function VisitPage() {
             </section>
           )}
 
+          <div className="mt-6">
+            <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Tier Harga Nota Ini</h2>
+            <div className="mt-2 grid grid-cols-3 rounded-xl border bg-card p-1 text-sm">
+              {TIERS.map((t) => (
+                <button key={t.id} type="button" onClick={() => changeTier(t.id)} className={`rounded-lg py-2 font-medium ${tier === t.id ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.label}</button>
+              ))}
+            </div>
+          </div>
+
           {type === "Direct Sale" && (
-            <ItemEditor title="Produk Terjual" items={directItems} setItems={setDirectItems} qtyLabel="Qty" products={products ?? []} />
+            <ItemEditor title="Produk Terjual" items={directItems} setItems={setDirectItems} qtyLabel="Qty" products={products ?? []} tier={tier} />
           )}
 
           {type === "Consignment" && (
-            <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Qty Titip" products={products ?? []} />
+            <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Qty Titip" products={products ?? []} tier={tier} />
           )}
 
           <Button type="button" variant={savedInput ? "secondary" : "outline"} onClick={saveInput} className="mt-4 h-12 w-full">
@@ -272,13 +290,13 @@ function Line({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
   return <div className={`flex justify-between ${bold ? "font-semibold" : ""}`}><span>{k}</span><span>{v}</span></div>;
 }
 
-function ItemEditor({ title, items, setItems, qtyLabel, products }: { title: string; items: NewItem[]; setItems: (i: NewItem[]) => void; qtyLabel: string; products: Product[] }) {
+function ItemEditor({ title, items, setItems, qtyLabel, products, tier }: { title: string; items: NewItem[]; setItems: (i: NewItem[]) => void; qtyLabel: string; products: Product[]; tier: PriceTier }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const set = (i: number, patch: Partial<NewItem>) => setItems(items.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const taken = new Set(items.map((i) => i.name.toLowerCase()));
   const matches = products.filter((p) => !taken.has(p.name.toLowerCase()) && p.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 30);
-  const pick = (p: Product) => { setItems([...items, { name: p.name, price: p.price, qty: 0 }]); setQ(""); setOpen(false); };
+  const pick = (p: Product) => { setItems([...items, { name: p.name, price: tierPrice(p, tier), qty: 0 }]); setQ(""); setOpen(false); };
   return (
     <section className="mt-6">
       <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{title}</h2>
@@ -309,7 +327,7 @@ function ItemEditor({ title, items, setItems, qtyLabel, products }: { title: str
               {products.length > 0 && matches.length === 0 && <p className="p-3 text-sm text-muted-foreground">Produk tidak ditemukan.</p>}
               {matches.map((p) => (
                 <button key={p.id} type="button" onClick={() => pick(p)} className="flex w-full justify-between px-2 py-3 text-left text-sm hover:bg-muted">
-                  <span>{p.name}</span><span className="text-muted-foreground">{rp(p.price)} · gudang {p.warehouse_stock}</span>
+                  <span>{p.name}</span><span className="text-muted-foreground">{rp(tierPrice(p, tier))} · gudang {p.warehouse_stock}</span>
                 </button>
               ))}
             </div>

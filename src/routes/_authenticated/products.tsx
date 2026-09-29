@@ -34,7 +34,7 @@ function ProductsPage() {
     if (error) { toast.error(error.code === "23505" ? "Produk sudah ada" : error.message); return; }
     setName(""); setPrice(""); setStock(""); setCost(""); refresh();
   }
-  async function update(id: string, patch: { price?: number; cost_price?: number; warehouse_stock?: number }) {
+  async function update(id: string, patch: { price?: number; price_grosir?: number; price_agen?: number; cost_price?: number; warehouse_stock?: number }) {
     const { error } = await supabase.from("products").update(patch).eq("id", id);
     if (error) toast.error(error.message); else refresh();
   }
@@ -91,9 +91,17 @@ function ProductsPage() {
                 <Input key={"c" + p.cost_price} defaultValue={p.cost_price || ""} inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.cost_price) void update(p.id, { cost_price: toNum(e.target.value) }); }} />
               </label>
-              <label className="text-[11px] text-muted-foreground">Harga jual
+              <label className="text-[11px] text-muted-foreground">Harga eceran
                 <Input key={"p" + p.price} defaultValue={p.price || ""} inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.price) void update(p.id, { price: toNum(e.target.value) }); }} />
+              </label>
+              <label className="text-[11px] text-muted-foreground">Harga grosir
+                <Input key={"g" + p.price_grosir} defaultValue={p.price_grosir || ""} placeholder="= eceran" inputMode="numeric" className="h-10"
+                  onBlur={(e) => { if (toNum(e.target.value) !== p.price_grosir) void update(p.id, { price_grosir: toNum(e.target.value) }); }} />
+              </label>
+              <label className="text-[11px] text-muted-foreground">Harga agen
+                <Input key={"a" + p.price_agen} defaultValue={p.price_agen || ""} placeholder="= eceran" inputMode="numeric" className="h-10"
+                  onBlur={(e) => { if (toNum(e.target.value) !== p.price_agen) void update(p.id, { price_agen: toNum(e.target.value) }); }} />
               </label>
               <label className="text-[11px] text-muted-foreground">Stok gudang
                 <Input key={"s" + p.warehouse_stock} defaultValue={p.warehouse_stock || ""} inputMode="numeric" className="h-10"

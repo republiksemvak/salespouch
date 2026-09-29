@@ -78,6 +78,8 @@ export type Database = {
           id: string
           name: string
           price: number
+          price_agen: number
+          price_grosir: number
           user_id: string
           warehouse_stock: number
         }
@@ -87,6 +89,8 @@ export type Database = {
           id?: string
           name: string
           price?: number
+          price_agen?: number
+          price_grosir?: number
           user_id?: string
           warehouse_stock?: number
         }
@@ -96,6 +100,8 @@ export type Database = {
           id?: string
           name?: string
           price?: number
+          price_agen?: number
+          price_grosir?: number
           user_id?: string
           warehouse_stock?: number
         }
