@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts, useStockSummary } from "@/lib/products";
+import { useProfile } from "@/hooks/use-profile";
 import { rp } from "@/lib/visit";
 import { formatQty, packSize } from "@/lib/units";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,13 @@ export const Route = createFileRoute("/_authenticated/products")({
 const toNum = (v: string) => Number(v.replace(/\D/g, "")) || 0;
 
 function ProductsPage() {
+  const { data: account, isLoading: accountLoading } = useProfile();
+  if (accountLoading) return <div className="p-10 text-center">Memuat…</div>;
+  if (account?.role !== "owner") return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat melihat Master Produk.</div>;
+  return <OwnerProductsPage />;
+}
+
+function OwnerProductsPage() {
   const qc = useQueryClient();
   const { data: products, isLoading } = useProducts();
   const { data: summary } = useStockSummary();

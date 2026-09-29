@@ -173,6 +173,42 @@ export type Database = {
         }
         Relationships: []
       }
+      team_members: {
+        Row: {
+          created_at: string
+          owner_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          owner_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          owner_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount_paid: number
@@ -258,9 +294,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      sales_catalog: {
+        Row: {
+          id: string | null
+          name: string | null
+          pcs_per_pack: number | null
+          price: number | null
+          price_agen: number | null
+          price_grosir: number | null
+          user_id: string | null
+          warehouse_stock: number | null
+        }
+        Insert: {
+          id?: string | null
+          name?: string | null
+          pcs_per_pack?: number | null
+          price?: number | null
+          price_agen?: number | null
+          price_grosir?: number | null
+          user_id?: string | null
+          warehouse_stock?: number | null
+        }
+        Update: {
+          id?: string | null
+          name?: string | null
+          pcs_per_pack?: number | null
+          price?: number | null
+          price_agen?: number | null
+          price_grosir?: number | null
+          user_id?: string | null
+          warehouse_stock?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      business_owner_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -268,6 +337,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_business_owner: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"

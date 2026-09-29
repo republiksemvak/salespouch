@@ -1,0 +1,12 @@
+DROP VIEW public.sales_catalog;
+CREATE OR REPLACE FUNCTION public.business_owner_id() RETURNS uuid LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public AS $$ SELECT coalesce((SELECT owner_id FROM public.team_members WHERE user_id = auth.uid()), auth.uid()) $$;
+CREATE OR REPLACE FUNCTION public.is_business_owner() RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public AS $$ SELECT auth.uid() IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.team_members WHERE user_id = auth.uid()) $$;
+DROP POLICY "owner manages products" ON public.products;
+CREATE POLICY "team reads products" ON public.products FOR SELECT TO authenticated USING (user_id = public.business_owner_id());
+CREATE POLICY "owner adds products" ON public.products FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid() AND public.is_business_owner());
+CREATE POLICY "owner edits products" ON public.products FOR UPDATE TO authenticated USING (user_id = auth.uid() AND public.is_business_owner()) WITH CHECK (user_id = auth.uid() AND public.is_business_owner());
+CREATE POLICY "owner deletes products" ON public.products FOR DELETE TO authenticated USING (user_id = auth.uid() AND public.is_business_owner());
+REVOKE SELECT ON public.products FROM authenticated;
+GRANT SELECT (id,user_id,name,price,price_grosir,price_agen,warehouse_stock,pcs_per_pack,created_at) ON public.products TO authenticated;
+CREATE VIEW public.sales_catalog WITH (security_invoker = true) AS SELECT id,user_id,name,price,price_grosir,price_agen,warehouse_stock,pcs_per_pack FROM public.products WHERE user_id = public.business_owner_id();
+GRANT SELECT ON public.sales_catalog TO authenticated;

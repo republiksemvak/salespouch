@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
+import { useProfile } from "@/hooks/use-profile";
 import { rp, type LineItem } from "@/lib/visit";
 import { packSize } from "@/lib/units";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,13 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10);
 const k = (n: string) => n.trim().toLowerCase();
 
 function ReportsPage() {
+  const { data: account, isLoading } = useProfile();
+  if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
+  if (account?.role !== "owner") return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat melihat laporan keuangan.</div>;
+  return <OwnerReportsPage />;
+}
+
+function OwnerReportsPage() {
   const now = new Date();
   const [from, setFrom] = useState(ymd(new Date(now.getFullYear(), now.getMonth(), 1)));
   const [to, setTo] = useState(ymd(now));

@@ -1,0 +1,4 @@
+- [ ] Isolasi data bisnis Owner/Sales dan rahasiakan HPP pada tingkat akses data.
+- [ ] Tambahkan pembuatan/pengelolaan akun sales oleh Owner.
+- [ ] Batasi menu dan halaman sensitif; hubungkan transaksi dan stok sales ke bisnis Owner.
+- [ ] Uji alur Owner dan Sales, termasuk akses yang ditolak.

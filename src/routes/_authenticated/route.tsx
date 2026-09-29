@@ -25,7 +25,7 @@ function Gate() {
   if (error || !data?.profile) return <div className="p-10 text-center text-destructive">Profil tidak ditemukan.</div>;
   const status = accessStatus(data.profile, data.email);
   if (!status.allowed) return <Blocked />;
-  if (!data.profile.business_name) return <Setup />;
+  if (data.role === "owner" && !data.profile.business_name) return <Setup />;
   return <Outlet />;
 }
 
