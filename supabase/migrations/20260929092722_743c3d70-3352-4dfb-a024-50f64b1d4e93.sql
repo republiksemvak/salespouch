@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN price_grosir numeric NOT NULL DEFAULT 0, ADD COLUMN price_agen numeric NOT NULL DEFAULT 0;
