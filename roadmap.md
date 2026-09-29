@@ -1,4 +1,4 @@
-- [ ] Isolasi data bisnis Owner/Sales dan rahasiakan HPP pada tingkat akses data.
-- [ ] Tambahkan pembuatan/pengelolaan akun sales oleh Owner.
-- [ ] Batasi menu dan halaman sensitif; hubungkan transaksi dan stok sales ke bisnis Owner.
-- [ ] Uji alur Owner dan Sales, termasuk akses yang ditolak.
+- [x] Isolasi data bisnis Owner/Sales dan rahasiakan HPP pada tingkat akses data.
+- [x] Tambahkan pembuatan/pengelolaan akun sales oleh Owner.
+- [x] Batasi menu dan halaman sensitif; hubungkan transaksi dan stok sales ke bisnis Owner.
+- [ ] Uji alur Owner dan Sales, termasuk akses yang ditolak — memerlukan sesi Owner/Sales aktif; izin masuk ke akun Owner ditolak dan akun uji yang tersedia sudah melewati trial.

@@ -20,7 +20,7 @@ export function useProfile() {
         if (ownerError) throw ownerError;
         profile = business as Profile;
       }
-      return { profile, email: membership ? profile?.user_email ?? null : u.user.email ?? null, role: membership ? "sales" as const : "owner" as const, ownerId: membership?.owner_id ?? u.user.id };
+      return { profile, email: u.user.email ?? null, role: membership ? "sales" as const : "owner" as const, ownerId: membership?.owner_id ?? u.user.id };
     },
   });
 }
