@@ -50,6 +50,7 @@ function ReceiptPage() {
   const items = (t.line_items as LineItem[]) ?? [];
   const newItems = (t.new_consignment_items as NewItem[]) ?? [];
   const prevDebt = Number(t.previous_debt);
+  const discountAmount = Number(t.discount_amount) || 0;
   const business = p?.profile?.business_name ?? "";
   const outlet = t.outlets as { name: string; owner_phone: string | null } | null;
   const store = outlet?.name ?? "-";
@@ -74,8 +75,11 @@ function ReceiptPage() {
     });
     L.push("--------------------------------");
     if (prevDebt > 0) {
-      L.push(`Utang Sebelumnya : ${rp(prevDebt)}`, `Total Penjualan  : ${rp(t!.total_sales)}`, `Total Tagihan    : ${rp(t!.total_due)}`, `Dibayar          : ${rp(t!.amount_paid)}`, `Sisa Utang       : ${rp(t!.remaining_debt)}`);
+      L.push(`Utang Sebelumnya : ${rp(prevDebt)}`, `Total Penjualan  : ${rp(t!.total_sales)}`);
+      if (discountAmount > 0) L.push(`Diskon Nota      : -${rp(discountAmount)}`);
+      L.push(`Total Tagihan    : ${rp(t!.total_due)}`, `Dibayar          : ${rp(t!.amount_paid)}`, `Sisa Utang       : ${rp(t!.remaining_debt)}`);
     } else {
+      if (discountAmount > 0) L.push(`Total Penjualan  : ${rp(t!.total_sales)}`, `Diskon Nota      : -${rp(discountAmount)}`);
       L.push(`TOTAL TAGIHAN / DIBAYAR : ${rp(t!.total_due)} (Status: Lunas / Tanpa Tunggakan) ✅`);
     }
     if (newItems.length) { L.push("--------------------------------", "TITIP BARU HARI INI"); newItems.forEach((n) => L.push(`  ${n.name}: ${formatQty(n.qty, n.pcs_per_pack)} @ ${rp(n.price)}/pack`)); }
@@ -119,12 +123,14 @@ function ReceiptPage() {
     if (prevDebt > 0) {
       L.push(
         { text: `Utang Sebelumnya : ${rp(prevDebt)}` },
-        { text: `Total Penjualan  : ${rp(t!.total_sales)}` },
-        { text: `Total Tagihan    : ${rp(t!.total_due)}`, bold: true },
+         { text: `Total Penjualan  : ${rp(t!.total_sales)}` },
+         ...(discountAmount > 0 ? [{ text: `Diskon Nota      : -${rp(discountAmount)}` }] : []),
+         { text: `Total Tagihan    : ${rp(t!.total_due)}`, bold: true },
         { text: `Dibayar          : ${rp(t!.amount_paid)}` },
         { text: `Sisa Utang       : ${rp(t!.remaining_debt)}`, bold: true },
       );
     } else {
+      if (discountAmount > 0) L.push({ text: `Total Penjualan  : ${rp(t!.total_sales)}` }, { text: `Diskon Nota      : -${rp(discountAmount)}` });
       L.push({ text: `TOTAL TAGIHAN / DIBAYAR : ${rp(t!.total_due)}`, bold: true }, { text: "Status: Lunas / Tanpa Tunggakan" });
     }
     if (newItems.length) {
@@ -197,14 +203,16 @@ function ReceiptPage() {
           <>
             <Row k="Utang Sebelumnya" v={rp(prevDebt)} />
             <Row k="Total Penjualan" v={rp(Number(t.total_sales))} />
+            {discountAmount > 0 && <Row k="Diskon Nota" v={`-${rp(discountAmount)}`} />}
             <Row k="Total Tagihan" v={rp(Number(t.total_due))} bold />
             <Row k="Dibayar" v={rp(Number(t.amount_paid))} />
             <Row k="Sisa Utang" v={rp(Number(t.remaining_debt))} bold />
           </>
         ) : (
-          <div className="font-semibold">
-            TOTAL TAGIHAN / DIBAYAR : {rp(Number(t.total_due))} (Status: Lunas / Tanpa Tunggakan) ✅
-          </div>
+          <>
+            {discountAmount > 0 && <><Row k="Total Penjualan" v={rp(Number(t.total_sales))} /><Row k="Diskon Nota" v={`-${rp(discountAmount)}`} /></>}
+            <div className="font-semibold">TOTAL TAGIHAN / DIBAYAR : {rp(Number(t.total_due))} (Status: Lunas / Tanpa Tunggakan) ✅</div>
+          </>
         )}
         {newItems.length > 0 && (
           <>
