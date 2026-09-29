@@ -2,15 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LineItem, NewItem } from "@/lib/visit";
 
-export type Product = { id: string; name: string; price: number; warehouse_stock: number };
+export type Product = { id: string; name: string; price: number; cost_price: number; warehouse_stock: number };
 
 export function useProducts() {
   return useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("id,name,price,warehouse_stock").order("name");
+      const { data, error } = await supabase.from("products").select("id,name,price,cost_price,warehouse_stock").order("name");
       if (error) throw error;
-      return data.map((p) => ({ ...p, price: Number(p.price), warehouse_stock: Number(p.warehouse_stock) })) as Product[];
+      return data.map((p) => ({ ...p, price: Number(p.price), cost_price: Number(p.cost_price), warehouse_stock: Number(p.warehouse_stock) })) as Product[];
     },
   });
 }
