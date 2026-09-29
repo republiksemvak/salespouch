@@ -60,7 +60,7 @@ function ReportsPage() {
     const n1 = r.rows.length + 1;
     const s1 = XLSX.utils.aoa_to_sheet([
       ["Tanggal", "No Nota", "Toko", "Sales", "Jenis", "Omset", "HPP", "Profit", "Dibayar", "Sisa Hutang"],
-      ...r.rows.map((x) => [x.tanggal, x.nota, x.toko, x.sales, x.jenis, x.omset, x.hpp, { f: `F${0}-G${0}` }, x.dibayar, x.sisa]),
+      ...r.rows.map((x) => [x.tanggal, x.nota, x.toko, x.sales, x.jenis, x.omset, x.hpp, x.profit, x.dibayar, x.sisa]),
       ["TOTAL", "", "", "", "", { f: `SUM(F2:F${n1})` }, { f: `SUM(G2:G${n1})` }, { f: `SUM(H2:H${n1})` }, { f: `SUM(I2:I${n1})` }, { f: `SUM(J2:J${n1})` }],
     ]);
     r.rows.forEach((_, i) => { s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: r.rows[i].profit }; });
