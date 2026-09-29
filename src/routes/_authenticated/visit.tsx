@@ -7,6 +7,7 @@ import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadLastVisit, nextReceiptNumber, rp, type LineItem, type NewItem } from "@/lib/visit";
 import { useProducts, adjustWarehouse, tierPrice, TIERS, type Product, type PriceTier } from "@/lib/products";
+import { formatQty, packSize, proportionalPrice, toPieces } from "@/lib/units";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,9 @@ export const Route = createFileRoute("/_authenticated/visit")({
 
 const num = (v: string) => Math.max(0, Number(v.replace(/[^\d.]/g, "")) || 0);
 
-type Row = { name: string; price: number; prev_stock: number; sisa: number | null };
+type Row = { name: string; price: number; prev_stock: number; pcs_per_pack: number; sisaPack: string; sisaPcs: string };
+const whole = (value: string) => /^\d+$/.test(value) ? Number(value) : 0;
+const invalidRemainder = (value: string, size: number) => value !== "" && (!/^\d+$/.test(value) || Number(value) >= size);
 
 function VisitPage() {
   const { outlet: preselected } = Route.useSearch();
@@ -67,7 +70,7 @@ function VisitPage() {
 
   useEffect(() => {
     if (!history.data) return;
-    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, sisa: null })));
+    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, pcs_per_pack: packSize(s.pcs_per_pack), sisaPack: "", sisaPcs: "" })));
   }, [history.data]);
 
   const isFirst = started && history.isSuccess && history.data === null;
@@ -76,20 +79,21 @@ function VisitPage() {
   const lineItems: LineItem[] = useMemo(() => {
     if (type === "Direct Sale")
       return directItems.filter((d) => d.name.trim() && d.qty > 0).map((d) => ({
-        name: d.name.trim(), price: d.price, prev_stock: 0, sold: d.qty, returned: 0, remaining: 0, subtotal: d.qty * d.price,
+        name: d.name.trim(), price: d.price, pcs_per_pack: packSize(d.pcs_per_pack), prev_stock: 0, sold: d.qty, returned: 0, remaining: 0, subtotal: proportionalPrice(d.qty, d.price, packSize(d.pcs_per_pack)),
       }));
     return rows.map((r) => {
-      const sisa = Math.min(Math.max(0, r.sisa ?? 0), r.prev_stock);
-      const sold = r.sisa === null ? 0 : r.prev_stock - sisa;
+      const entered = r.sisaPack !== "" || r.sisaPcs !== "";
+      const sisa = toPieces(whole(r.sisaPack), whole(r.sisaPcs), r.pcs_per_pack);
+      const sold = entered ? Math.max(0, r.prev_stock - sisa) : 0;
       // Leftover stock is pulled back to the warehouse as a return; nothing stays at the store.
-      return { name: r.name, price: r.price, prev_stock: r.prev_stock, sold, returned: sisa, remaining: 0, subtotal: sold * r.price };
+      return { name: r.name, price: r.price, pcs_per_pack: r.pcs_per_pack, prev_stock: r.prev_stock, sold, returned: entered ? sisa : 0, remaining: 0, subtotal: proportionalPrice(sold, r.price, r.pcs_per_pack) };
     });
   }, [rows, directItems, type]);
 
   const [savedInput, setSavedInput] = useState(false);
   useEffect(() => { setSavedInput(false); }, [rows, newItems, directItems, type]);
   function saveInput() {
-    if (type === "Consignment" && rows.some((r) => r.sisa === null)) { toast.error("Isi sisa di toko untuk semua produk"); return; }
+    if (type === "Consignment" && !validReturns()) return;
     setSavedInput(true);
     toast.success("Input produk tersimpan");
   }
@@ -98,6 +102,14 @@ function VisitPage() {
   const totalDue = previousDebt + totalSales;
   const amountPaid = num(paid);
   const remainingDebt = Math.max(0, totalDue - amountPaid);
+
+  function validReturns() {
+    if (rows.some((r) => r.sisaPack === "" && r.sisaPcs === "")) { toast.error("Isi sisa di toko untuk semua produk"); return false; }
+    if (rows.some((r) => (r.sisaPack !== "" && !/^\d+$/.test(r.sisaPack)) || invalidRemainder(r.sisaPcs, r.pcs_per_pack) || toPieces(whole(r.sisaPack), whole(r.sisaPcs), r.pcs_per_pack) > r.prev_stock)) {
+      toast.error("Sisa harus berupa pcs utuh, kurang dari isi pack, dan tidak melebihi titipan"); return false;
+    }
+    return true;
+  }
 
   function start() {
     if (!outletId) { toast.error("Pilih outlet dulu"); return; }
@@ -115,7 +127,7 @@ function VisitPage() {
     if (type === "Direct Sale" && lineItems.length === 0) { toast.error("Tambahkan produk yang dijual"); return; }
     if (type === "Consignment" && lineItems.length === 0 && cleanNew.length === 0)
       { toast.error("Tambahkan barang titipan baru"); return; }
-    if (type === "Consignment" && rows.some((r) => r.sisa === null)) { toast.error("Isi sisa di toko untuk semua produk"); return; }
+    if (type === "Consignment" && !validReturns()) return;
     setBusy(true);
     try {
       const receipt_number = await nextReceiptNumber();
@@ -206,20 +218,17 @@ function VisitPage() {
                   const set = (patch: Partial<Row>) => setRows(rows.map((x, j) => (j === i ? { ...x, ...patch } : x)));
                   return (
                     <div key={i} className="rounded-2xl border bg-card p-4">
-                      <div className="flex justify-between"><b>{r.name}</b><span className="text-sm text-muted-foreground">Titip: {r.prev_stock}</span></div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <Field label="Harga" value={r.price} onChange={(v) => set({ price: v })} />
-                        <label className="block">
-                          <span className="text-[11px] text-muted-foreground">Sisa di toko</span>
-                          <Input inputMode="numeric" value={r.sisa === null ? "" : String(r.sisa)} placeholder="Isi sisa"
-                            onChange={(e) => set({ sisa: e.target.value.trim() === "" ? null : Math.min(num(e.target.value), r.prev_stock) })} className="h-11" />
-                        </label>
-                      </div>
+                       <div className="flex justify-between gap-2"><b>{r.name}</b><span className="text-sm text-muted-foreground">Titip: {formatQty(r.prev_stock, r.pcs_per_pack)}</span></div>
+                       <div className="mt-3"><Field label="Harga per pack" value={r.price} onChange={(v) => set({ price: v })} /></div>
+                       <div className="mt-3 grid grid-cols-2 gap-2">
+                         <label className="block"><span className="text-[11px] text-muted-foreground">Sisa / retur (pack)</span><Input aria-label={`Sisa ${r.name} pack`} type="number" min={0} step={1} value={r.sisaPack} placeholder="0" onChange={(e) => set({ sisaPack: e.target.value })} className="h-11" /></label>
+                         <label className="block"><span className="text-[11px] text-muted-foreground">Sisa / retur (pcs)</span><Input aria-label={`Sisa ${r.name} pcs`} type="number" min={0} max={r.pcs_per_pack - 1} step={1} value={r.sisaPcs} placeholder="0" onChange={(e) => set({ sisaPcs: e.target.value })} className="h-11" /></label>
+                       </div>
                       <div className="mt-3 flex justify-between font-mono text-xs">
-                        <span>Terjual (otomatis): <b>{li?.sold ?? 0}</b></span>
-                        <span>{li?.sold ?? 0} × {rp(r.price)} = <b>{rp(li?.subtotal ?? 0)}</b></span>
+                         <span>Terjual: <b>{formatQty(li?.sold ?? 0, r.pcs_per_pack)}</b></span>
+                         <span>{rp(r.price / r.pcs_per_pack)}/pcs = <b>{rp(li?.subtotal ?? 0)}</b></span>
                       </div>
-                      <div className="mt-1 font-mono text-xs text-muted-foreground">Retur ke gudang: <b>{li?.returned ?? 0}</b></div>
+                       <div className="mt-1 font-mono text-xs text-muted-foreground">Retur ke gudang: <b>{formatQty(li?.returned ?? 0, r.pcs_per_pack)}</b></div>
                     </div>
                   );
                 })}
@@ -237,11 +246,11 @@ function VisitPage() {
           </div>
 
           {type === "Direct Sale" && (
-            <ItemEditor title="Produk Terjual" items={directItems} setItems={setDirectItems} qtyLabel="Qty" products={products ?? []} tier={tier} />
+             <ItemEditor title="Produk Terjual" items={directItems} setItems={setDirectItems} qtyLabel="Terjual" products={products ?? []} tier={tier} />
           )}
 
           {type === "Consignment" && (
-            <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Qty Titip" products={products ?? []} tier={tier} />
+             <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Titip" products={products ?? []} tier={tier} />
           )}
 
           <Button type="button" variant={savedInput ? "secondary" : "outline"} onClick={saveInput} className="mt-4 h-12 w-full">
@@ -296,23 +305,28 @@ function ItemEditor({ title, items, setItems, qtyLabel, products, tier }: { titl
   const set = (i: number, patch: Partial<NewItem>) => setItems(items.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const taken = new Set(items.map((i) => i.name.toLowerCase()));
   const matches = products.filter((p) => !taken.has(p.name.toLowerCase()) && p.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 30);
-  const pick = (p: Product) => { setItems([...items, { name: p.name, price: tierPrice(p, tier), qty: 0 }]); setQ(""); setOpen(false); };
+  const pick = (p: Product) => { setItems([...items, { name: p.name, price: tierPrice(p, tier), qty: 0, pcs_per_pack: p.pcs_per_pack }]); setQ(""); setOpen(false); };
   return (
     <section className="mt-6">
       <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{title}</h2>
       <div className="mt-3 space-y-3">
         {items.map((it, i) => {
-          const stock = products.find((p) => p.name.toLowerCase() === it.name.toLowerCase())?.warehouse_stock;
+           const stock = products.find((p) => p.name.toLowerCase() === it.name.toLowerCase())?.warehouse_stock;
+           const size = packSize(it.pcs_per_pack);
           return (
             <div key={i} className="rounded-2xl border bg-card p-4">
               <div className="flex items-center justify-between gap-2">
-                <div><b>{it.name}</b>{stock !== undefined && <div className="text-xs text-muted-foreground">Stok gudang: {stock}</div>}</div>
+                 <div><b>{it.name}</b>{stock !== undefined && <div className="text-xs text-muted-foreground">Stok gudang: {formatQty(stock, size)}</div>}</div>
                 <Button variant="ghost" size="icon" onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <Field label="Harga" value={it.price} onChange={(v) => set(i, { price: v })} />
-                <Field label={qtyLabel} value={it.qty} onChange={(v) => set(i, { qty: v })} />
+                 <Field label="Harga per pack" value={it.price} onChange={(v) => set(i, { price: v })} />
+                 <div className="self-end pb-2 text-xs text-muted-foreground">{rp(it.price / size)} / pcs</div>
               </div>
+               <div className="mt-2 grid grid-cols-2 gap-2">
+                 <label className="text-[11px] text-muted-foreground">{qtyLabel} (pack)<Input aria-label={`${qtyLabel} ${it.name} pack`} type="number" min={0} step={1} value={Math.floor(it.qty / size) || ""} placeholder="0" onChange={(e) => set(i, { qty: toPieces(whole(e.target.value), it.qty % size, size) })} className="h-11" /></label>
+                 <label className="text-[11px] text-muted-foreground">{qtyLabel} (pcs)<Input aria-label={`${qtyLabel} ${it.name} pcs`} type="number" min={0} max={size - 1} step={1} value={it.qty % size || ""} placeholder="0" onChange={(e) => { const value = e.target.value; if (value === "" || (!invalidRemainder(value, size) && /^\d+$/.test(value))) set(i, { qty: toPieces(Math.floor(it.qty / size), whole(value), size) }); }} className="h-11" /></label>
+               </div>
             </div>
           );
         })}
@@ -327,7 +341,7 @@ function ItemEditor({ title, items, setItems, qtyLabel, products, tier }: { titl
               {products.length > 0 && matches.length === 0 && <p className="p-3 text-sm text-muted-foreground">Produk tidak ditemukan.</p>}
               {matches.map((p) => (
                 <button key={p.id} type="button" onClick={() => pick(p)} className="flex w-full justify-between px-2 py-3 text-left text-sm hover:bg-muted">
-                  <span>{p.name}</span><span className="text-muted-foreground">{rp(tierPrice(p, tier))} · gudang {p.warehouse_stock}</span>
+                   <span>{p.name}</span><span className="text-muted-foreground">{rp(tierPrice(p, tier))}/pack · gudang {formatQty(p.warehouse_stock, p.pcs_per_pack)}</span>
                 </button>
               ))}
             </div>
