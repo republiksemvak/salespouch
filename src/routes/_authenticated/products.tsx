@@ -54,7 +54,7 @@ function ProductsPage() {
     return { ...p, toko, retur, total: toko + p.warehouse_stock };
   });
   const list = rows.filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()));
-  const sum = rows.reduce((a, r) => ({ toko: a.toko + r.toko, gudang: a.gudang + r.warehouse_stock, retur: a.retur + r.retur, total: a.total + r.total, nilai: a.nilai + r.total * r.price, nilaiToko: a.nilaiToko + r.toko * r.price }), { toko: 0, gudang: 0, retur: 0, total: 0, nilai: 0, nilaiToko: 0 });
+  const sum = rows.reduce((a, r) => ({ toko: a.toko + r.toko, gudang: a.gudang + r.warehouse_stock, retur: a.retur + r.retur, total: a.total + r.total, nilai: a.nilai + r.total * r.price / packSize(r.pcs_per_pack), nilaiToko: a.nilaiToko + r.toko * r.price / packSize(r.pcs_per_pack) }), { toko: 0, gudang: 0, retur: 0, total: 0, nilai: 0, nilaiToko: 0 });
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
