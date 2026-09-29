@@ -1,0 +1,1 @@
+ALTER TABLE public.transactions ADD COLUMN discount_amount numeric NOT NULL DEFAULT 0 CHECK (discount_amount >= 0 AND discount_amount <= total_sales);

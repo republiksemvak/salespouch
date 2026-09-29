@@ -214,6 +214,7 @@ export type Database = {
           amount_paid: number
           created_at: string
           custom_note: string | null
+          discount_amount: number
           id: string
           line_items: Json
           new_consignment_items: Json
@@ -232,6 +233,7 @@ export type Database = {
           amount_paid?: number
           created_at?: string
           custom_note?: string | null
+          discount_amount?: number
           id?: string
           line_items?: Json
           new_consignment_items?: Json
@@ -250,6 +252,7 @@ export type Database = {
           amount_paid?: number
           created_at?: string
           custom_note?: string | null
+          discount_amount?: number
           id?: string
           line_items?: Json
           new_consignment_items?: Json
