@@ -31,7 +31,7 @@ export const listTeam = createServerFn({ method: "GET" })
 
 export const inviteSales = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ email: z.email().max(254) }).parse(input))
+  .inputValidator((input) => z.object({ email: z.string().email().max(254) }).parse(input))
   .handler(async ({ context, data }) => {
     await assertOwner(context);
     const email = data.email.trim().toLowerCase();
@@ -45,7 +45,7 @@ export const inviteSales = createServerFn({ method: "POST" })
 
 export const removeSales = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ userId: z.uuid() }).parse(input))
+  .inputValidator((input) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
     await assertOwner(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
