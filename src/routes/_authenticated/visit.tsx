@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/visit")({
   validateSearch: (s: Record<string, unknown>) => ({ outlet: typeof s['outlet'] === "string" ? s['outlet'] : undefined }),
-  head: () => ({ meta: [{ title: "Kunjungan Outlet — Sales Pouch" }, { name: "description", content: "Catat kunjungan & konsinyasi." }] }),
+  head: () => ({ meta: [{ title: "Kunjungan Outlet — Sales Pouch" }, { name: "description", content: "Catat titipan pack dan retur pcs saat kunjungan outlet." }, { property: "og:title", content: "Kunjungan Outlet — Sales Pouch" }, { property: "og:description", content: "Catat titipan pack dan retur pcs saat kunjungan outlet." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: VisitPage,
 });
 

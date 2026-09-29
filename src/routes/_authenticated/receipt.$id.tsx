@@ -12,7 +12,7 @@ import { isBluetoothPrintSupported, printReceiptBluetooth } from "@/lib/thermal-
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/receipt/$id")({
-  head: () => ({ meta: [{ title: "Nota — Sales Pouch" }, { name: "description", content: "Nota thermal digital." }] }),
+  head: () => ({ meta: [{ title: "Nota — Sales Pouch" }, { name: "description", content: "Nota thermal titipan dan penjualan pack serta pcs." }, { property: "og:title", content: "Nota — Sales Pouch" }, { property: "og:description", content: "Nota thermal titipan dan penjualan pack serta pcs." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ReceiptPage,
 });
 

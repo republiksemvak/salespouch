@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/products")({
-  head: () => ({ meta: [{ title: "Daftar Produk — Sales Pouch" }, { name: "description", content: "Kelola daftar produk dan harga." }] }),
+  head: () => ({ meta: [{ title: "Daftar Produk — Sales Pouch" }, { name: "description", content: "Kelola produk, isi per pack, harga, dan stok." }, { property: "og:title", content: "Daftar Produk — Sales Pouch" }, { property: "og:description", content: "Kelola produk, isi per pack, harga, dan stok." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ProductsPage,
 });
 

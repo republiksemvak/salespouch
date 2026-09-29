@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/reports")({
-  head: () => ({ meta: [{ title: "Laporan Keuangan — Sales Pouch" }, { name: "description", content: "Omset dan profit berdasarkan HPP." }] }),
+  head: () => ({ meta: [{ title: "Laporan Keuangan — Sales Pouch" }, { name: "description", content: "Omset dan profit penjualan pack dan pcs berdasarkan HPP." }, { property: "og:title", content: "Laporan Keuangan — Sales Pouch" }, { property: "og:description", content: "Omset dan profit penjualan pack dan pcs berdasarkan HPP." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ReportsPage,
 });
 
