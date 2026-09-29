@@ -36,10 +36,12 @@ export const inviteSales = createServerFn({ method: "POST" })
     await assertOwner(context);
     const email = data.email.trim().toLowerCase();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existing } = await supabaseAdmin.from("profiles").select("id").ilike("user_email", email).maybeSingle();
+    if (existing) throw new Error("Email sudah terdaftar. Gunakan email sales yang belum memiliki akun.");
     const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email);
     if (error || !invited.user) throw new Error(error?.message ?? "Undangan gagal dibuat.");
     const { error: linkError } = await supabaseAdmin.from("team_members").insert({ owner_id: context.userId, user_id: invited.user.id });
-    if (linkError) throw new Error(`Akun dibuat, tetapi tidak terhubung ke tim: ${linkError.message}`);
+    if (linkError) throw new Error(`Undangan dibuat, tetapi tidak terhubung ke tim: ${linkError.message}`);
     return { ok: true };
   });
 
