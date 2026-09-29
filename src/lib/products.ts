@@ -28,7 +28,7 @@ export function useProducts() {
         if (error) throw error;
         return data;
       })();
-      return data.map((p) => ({ ...p, price: Number(p.price), price_grosir: Number(p.price_grosir), price_agen: Number(p.price_agen), cost_price: Number(p.cost_price), warehouse_stock: Number(p.warehouse_stock), pcs_per_pack: packSize(p.pcs_per_pack) })) as Product[];
+      return data.map((p) => ({ ...p, price: Number(p.price), price_grosir: Number(p.price_grosir), price_agen: Number(p.price_agen), cost_price: "cost_price" in p ? Number(p.cost_price) : 0, warehouse_stock: Number(p.warehouse_stock), pcs_per_pack: packSize(p.pcs_per_pack) })) as Product[];
     },
   });
 }
@@ -64,12 +64,3 @@ export function useStockSummary() {
   });
 }
 
-/** Adjust warehouse stock: out = goods leaving the warehouse, back = returns coming in. */
-export async function adjustWarehouse(products: Product[], out: { name: string; qty: number }[], back: { name: string; qty: number }[]) {
-  const delta = new Map<string, number>();
-  for (const o of out) delta.set(key(o.name), (delta.get(key(o.name)) ?? 0) - o.qty);
-  for (const b of back) delta.set(key(b.name), (delta.get(key(b.name)) ?? 0) + b.qty);
-  await Promise.all(products.filter((p) => delta.get(key(p.name))).map((p) =>
-    supabase.from("products").update({ warehouse_stock: p.warehouse_stock + (delta.get(key(p.name)) ?? 0) }).eq("id", p.id),
-  ));
-}

@@ -16,6 +16,13 @@ export const Route = createFileRoute("/_authenticated/profile")({
 });
 
 function ProfilePage() {
+  const { data: account, isLoading } = useProfile();
+  if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
+  if (account?.role !== "owner") return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat mengubah profil usaha.</div>;
+  return <OwnerProfilePage />;
+}
+
+function OwnerProfilePage() {
   const { data: p, isLoading } = useProfile();
   const qc = useQueryClient();
   const [name, setName] = useState("");
