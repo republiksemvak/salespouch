@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN pcs_per_pack integer NOT NULL DEFAULT 1 CHECK (pcs_per_pack > 0);

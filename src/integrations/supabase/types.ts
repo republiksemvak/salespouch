@@ -77,6 +77,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          pcs_per_pack: number
           price: number
           price_agen: number
           price_grosir: number
@@ -88,6 +89,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          pcs_per_pack?: number
           price?: number
           price_agen?: number
           price_grosir?: number
@@ -99,6 +101,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          pcs_per_pack?: number
           price?: number
           price_agen?: number
           price_grosir?: number
