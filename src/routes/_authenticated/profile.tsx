@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/profile")({
-  head: () => ({ meta: [{ title: "Profil Usaha — Sales Pouch" }, { name: "description", content: "Edit profil usaha Anda." }] }),
+  head: () => ({ meta: [{ title: "Profil Usaha — Sales Pouch" }, { name: "description", content: "Edit profil usaha Anda." }, { property: "og:title", content: "Profil Usaha — Sales Pouch" }, { property: "og:description", content: "Edit profil usaha Anda." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ProfilePage,
 });
 

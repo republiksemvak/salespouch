@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/_authenticated/outlets/new")({
-  head: () => ({ meta: [{ title: "Tambah Outlet — Sales Pouch" }, { name: "description", content: "Tambah outlet baru." }] }),
+  head: () => ({ meta: [{ title: "Tambah Outlet — Sales Pouch" }, { name: "description", content: "Tambah outlet baru." }, { property: "og:title", content: "Tambah Outlet — Sales Pouch" }, { property: "og:description", content: "Tambah outlet baru." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: NewOutlet,
 });
 
