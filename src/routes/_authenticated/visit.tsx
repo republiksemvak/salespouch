@@ -38,6 +38,7 @@ function VisitPage() {
   const [newItems, setNewItems] = useState<NewItem[]>([]);
   const [directItems, setDirectItems] = useState<NewItem[]>([]);
   const [paid, setPaid] = useState("");
+  const [discount, setDiscount] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [outletQ, setOutletQ] = useState("");
@@ -101,7 +102,8 @@ function VisitPage() {
   }
 
   const totalSales = lineItems.reduce((a, l) => a + l.subtotal, 0);
-  const totalDue = previousDebt + totalSales;
+  const discountAmount = num(discount);
+  const totalDue = previousDebt + totalSales - discountAmount;
   const amountPaid = num(paid);
   const remainingDebt = Math.max(0, totalDue - amountPaid);
 
@@ -130,13 +132,14 @@ function VisitPage() {
     if (type === "Consignment" && lineItems.length === 0 && cleanNew.length === 0)
       { toast.error("Tambahkan barang titipan baru"); return; }
     if (type === "Consignment" && !validReturns()) return;
+    if (!Number.isFinite(discountAmount) || discountAmount > totalSales || !/^\d*$/.test(discount)) { toast.error("Diskon harus berupa nominal rupiah dan tidak melebihi penjualan nota ini"); return; }
     setBusy(true);
     try {
       const receipt_number = await nextReceiptNumber();
       if (!account) throw new Error("Akun belum siap.");
       const { data, error } = await supabase.from("transactions").insert({
         user_id: account.ownerId, receipt_number, outlet_id: outletId, sales_name: salesName.trim(), transaction_type: type,
-        line_items: lineItems, total_sales: totalSales, previous_debt: previousDebt, total_due: totalDue,
+         line_items: lineItems, total_sales: totalSales, discount_amount: discountAmount, previous_debt: previousDebt, total_due: totalDue,
         amount_paid: amountPaid, remaining_debt: remainingDebt,
         new_consignment_items: type === "Consignment" ? cleanNew : [],
         custom_note: note.trim() || null,
@@ -261,11 +264,16 @@ function VisitPage() {
             <section className="mt-6 space-y-2 rounded-2xl border bg-card p-4 font-mono text-sm">
               <Line k="Utang sebelumnya" v={rp(previousDebt)} />
               <Line k="Total penjualan" v={rp(totalSales)} />
+               <div className="pt-2">
+                 <Label htmlFor="visit-discount" className="font-sans">Diskon nota (Rp)</Label>
+                 <Input id="visit-discount" inputMode="numeric" type="number" min={0} max={totalSales} step={1} value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" className="mt-1 h-12 text-base" />
+                 {discountAmount > totalSales && <p className="mt-1 text-xs text-destructive">Diskon tidak boleh melebihi total penjualan.</p>}
+               </div>
               <div className="border-t border-dashed pt-2"><Line k="Total tagihan" v={rp(totalDue)} bold /></div>
               <div className="pt-2">
                 <Label className="font-sans">Jumlah dibayar</Label>
                 <Input inputMode="numeric" value={paid} onChange={(e) => setPaid(e.target.value)} placeholder="0" className="mt-1 h-12 text-base" />
-                <button type="button" onClick={() => setPaid(String(totalDue))} className="mt-1 text-xs text-accent underline">Bayar lunas</button>
+                 <Button type="button" variant="link" onClick={() => setPaid(String(Math.max(0, totalDue)))} className="mt-1 h-auto p-0 text-xs text-accent">Bayar lunas</Button>
               </div>
               <div className="border-t border-dashed pt-2"><Line k="Sisa utang" v={rp(remainingDebt)} bold /></div>
             </section>

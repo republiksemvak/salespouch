@@ -2,3 +2,4 @@
 - [x] Tambahkan pembuatan/pengelolaan akun sales oleh Owner.
 - [x] Batasi menu dan halaman sensitif; hubungkan transaksi dan stok sales ke bisnis Owner.
 - [ ] Uji alur Owner dan Sales, termasuk akses yang ditolak — memerlukan sesi Owner/Sales aktif; izin masuk ke akun Owner ditolak dan akun uji yang tersedia sudah melewati trial.
+- [x] Tambahkan diskon nominal per nota kunjungan, tampilkan pada struk, dan hitung dalam laporan.
