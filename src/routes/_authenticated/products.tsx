@@ -70,8 +70,8 @@ function ProductsPage() {
       <div className="mt-5 space-y-2 rounded-2xl border bg-card p-4">
         <Input placeholder="Nama produk" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
         <div className="grid grid-cols-2 gap-2">
-          <Input placeholder="Harga Modal / HPP (Rp)" inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} className="h-11" />
-          <Input placeholder="Harga Jual (Rp)" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" />
+           <Input placeholder="HPP per pack (Rp)" inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} className="h-11" />
+           <Input placeholder="Harga jual per pack (Rp)" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" />
            <Input placeholder="Isi per pack (pcs)" type="number" min={1} step={1} value={pack} onChange={(e) => setPack(e.target.value)} className="h-11" />
            <Input placeholder="Stok gudang (pcs)" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} className="h-11" />
         </div>
@@ -96,19 +96,19 @@ function ProductsPage() {
                    onBlur={(e) => { const v = Number(e.target.value); if (Number.isInteger(v) && v >= 1 && v !== p.pcs_per_pack) void update(p.id, { pcs_per_pack: v }); else if (!Number.isInteger(v) || v < 1) e.target.value = String(p.pcs_per_pack); }} />
                </label>
                <div className="self-end pb-2 text-xs text-muted-foreground">Harga/pcs: <b className="text-foreground">{rp(p.price / packSize(p.pcs_per_pack))}</b></div>
-              <label className="text-[11px] text-muted-foreground">HPP
+               <label className="text-[11px] text-muted-foreground">HPP/pack
                 <Input key={"c" + p.cost_price} defaultValue={p.cost_price || ""} inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.cost_price) void update(p.id, { cost_price: toNum(e.target.value) }); }} />
               </label>
-              <label className="text-[11px] text-muted-foreground">Harga eceran
+               <label className="text-[11px] text-muted-foreground">Eceran/pack
                 <Input key={"p" + p.price} defaultValue={p.price || ""} inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.price) void update(p.id, { price: toNum(e.target.value) }); }} />
               </label>
-              <label className="text-[11px] text-muted-foreground">Harga grosir
+               <label className="text-[11px] text-muted-foreground">Grosir/pack
                 <Input key={"g" + p.price_grosir} defaultValue={p.price_grosir || ""} placeholder="= eceran" inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.price_grosir) void update(p.id, { price_grosir: toNum(e.target.value) }); }} />
               </label>
-              <label className="text-[11px] text-muted-foreground">Harga agen
+               <label className="text-[11px] text-muted-foreground">Agen/pack
                 <Input key={"a" + p.price_agen} defaultValue={p.price_agen || ""} placeholder="= eceran" inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.price_agen) void update(p.id, { price_agen: toNum(e.target.value) }); }} />
               </label>
