@@ -73,6 +73,7 @@ export type Database = {
       }
       products: {
         Row: {
+          cost_price: number
           created_at: string
           id: string
           name: string
@@ -81,6 +82,7 @@ export type Database = {
           warehouse_stock: number
         }
         Insert: {
+          cost_price?: number
           created_at?: string
           id?: string
           name: string
@@ -89,6 +91,7 @@ export type Database = {
           warehouse_stock?: number
         }
         Update: {
+          cost_price?: number
           created_at?: string
           id?: string
           name?: string
