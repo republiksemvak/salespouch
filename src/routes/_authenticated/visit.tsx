@@ -6,7 +6,8 @@ import { z } from "zod";
 import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadLastVisit, nextReceiptNumber, rp, type LineItem, type NewItem } from "@/lib/visit";
-import { useProducts, adjustWarehouse, tierPrice, TIERS, type Product, type PriceTier } from "@/lib/products";
+import { useProducts, tierPrice, TIERS, type Product, type PriceTier } from "@/lib/products";
+import { useProfile } from "@/hooks/use-profile";
 import { formatQty, packSize, proportionalPrice, toPieces } from "@/lib/units";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ function VisitPage() {
   const [busy, setBusy] = useState(false);
   const [outletQ, setOutletQ] = useState("");
   const { data: products } = useProducts();
+  const { data: account } = useProfile();
   const [tier, setTier] = useState<PriceTier>("eceran");
   function changeTier(t: PriceTier) {
     setTier(t);
@@ -131,17 +133,15 @@ function VisitPage() {
     setBusy(true);
     try {
       const receipt_number = await nextReceiptNumber();
+      if (!account) throw new Error("Akun belum siap.");
       const { data, error } = await supabase.from("transactions").insert({
-        receipt_number, outlet_id: outletId, sales_name: salesName.trim(), transaction_type: type,
+        user_id: account.ownerId, receipt_number, outlet_id: outletId, sales_name: salesName.trim(), transaction_type: type,
         line_items: lineItems, total_sales: totalSales, previous_debt: previousDebt, total_due: totalDue,
         amount_paid: amountPaid, remaining_debt: remainingDebt,
         new_consignment_items: type === "Consignment" ? cleanNew : [],
         custom_note: note.trim() || null,
       }).select("id").single();
       if (error) throw error;
-      const out = type === "Consignment" ? cleanNew : lineItems.map((l) => ({ name: l.name, qty: l.sold }));
-      const back = type === "Consignment" ? lineItems.map((l) => ({ name: l.name, qty: l.returned })) : [];
-      await adjustWarehouse(products ?? [], out, back).catch(() => {});
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["stock-summary"] });
       qc.invalidateQueries({ queryKey: ["last-visit", outletId] });

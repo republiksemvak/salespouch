@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Camera, Crosshair } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadStorePhoto } from "@/lib/photos";
+import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/outlets/new")({
 });
 
 function NewOutlet() {
+  const { data: account } = useProfile();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [name, setName] = useState("");
@@ -38,9 +40,10 @@ function NewOutlet() {
     e.preventDefault();
     setBusy(true);
     try {
+      if (!account) throw new Error("Akun belum siap.");
       const store_photo = file ? await uploadStorePhoto(file) : null;
       const { error } = await supabase.from("outlets").insert({
-        name: name.trim(), map_location: map.trim() || null, owner_phone: phone.trim() || null, store_photo,
+        user_id: account.ownerId, name: name.trim(), map_location: map.trim() || null, owner_phone: phone.trim() || null, store_photo,
       });
       if (error) throw error;
       toast.success("Outlet ditambahkan");

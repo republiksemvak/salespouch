@@ -2,6 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LineItem, NewItem } from "@/lib/visit";
 import { packSize } from "@/lib/units";
+import { useProfile } from "@/hooks/use-profile";
+import { getOwnerProducts } from "@/lib/team.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 export type Product = { id: string; name: string; price: number; price_grosir: number; price_agen: number; cost_price: number; warehouse_stock: number; pcs_per_pack: number };
 
@@ -14,11 +17,17 @@ export const tierPrice = (p: Product, t: PriceTier) =>
   (t === "grosir" ? p.price_grosir : t === "agen" ? p.price_agen : 0) || p.price;
 
 export function useProducts() {
+  const { data: account } = useProfile();
+  const fetchOwner = useServerFn(getOwnerProducts);
   return useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", account?.ownerId, account?.role],
+    enabled: !!account,
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("id,name,price,price_grosir,price_agen,cost_price,warehouse_stock,pcs_per_pack").order("name");
-      if (error) throw error;
+      const data = account?.role === "owner" ? await fetchOwner() : await (async () => {
+        const { data, error } = await supabase.from("sales_catalog").select("id,name,price,price_grosir,price_agen,warehouse_stock,pcs_per_pack").order("name");
+        if (error) throw error;
+        return data;
+      })();
       return data.map((p) => ({ ...p, price: Number(p.price), price_grosir: Number(p.price_grosir), price_agen: Number(p.price_agen), cost_price: Number(p.cost_price), warehouse_stock: Number(p.warehouse_stock), pcs_per_pack: packSize(p.pcs_per_pack) })) as Product[];
     },
   });
