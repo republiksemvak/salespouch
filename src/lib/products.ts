@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { LineItem, NewItem } from "@/lib/visit";
+import { packSize } from "@/lib/units";
 
-export type Product = { id: string; name: string; price: number; price_grosir: number; price_agen: number; cost_price: number; warehouse_stock: number };
+export type Product = { id: string; name: string; price: number; price_grosir: number; price_agen: number; cost_price: number; warehouse_stock: number; pcs_per_pack: number };
 
 export type PriceTier = "eceran" | "grosir" | "agen";
 export const TIERS: { id: PriceTier; label: string }[] = [
@@ -16,9 +17,9 @@ export function useProducts() {
   return useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("id,name,price,price_grosir,price_agen,cost_price,warehouse_stock").order("name");
+      const { data, error } = await supabase.from("products").select("id,name,price,price_grosir,price_agen,cost_price,warehouse_stock,pcs_per_pack").order("name");
       if (error) throw error;
-      return data.map((p) => ({ ...p, price: Number(p.price), price_grosir: Number(p.price_grosir), price_agen: Number(p.price_agen), cost_price: Number(p.cost_price), warehouse_stock: Number(p.warehouse_stock) })) as Product[];
+      return data.map((p) => ({ ...p, price: Number(p.price), price_grosir: Number(p.price_grosir), price_agen: Number(p.price_agen), cost_price: Number(p.cost_price), warehouse_stock: Number(p.warehouse_stock), pcs_per_pack: packSize(p.pcs_per_pack) })) as Product[];
     },
   });
 }

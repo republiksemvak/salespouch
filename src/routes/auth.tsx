@@ -14,6 +14,8 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Masuk atau daftar akun Sales Pouch." },
       { property: "og:title", content: "Masuk — Sales Pouch" },
       { property: "og:description", content: "Masuk atau daftar akun Sales Pouch." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: AuthPage,

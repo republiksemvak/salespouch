@@ -6,11 +6,12 @@ import { ArrowLeft, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts, useStockSummary } from "@/lib/products";
 import { rp } from "@/lib/visit";
+import { formatQty, packSize } from "@/lib/units";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/products")({
-  head: () => ({ meta: [{ title: "Daftar Produk — Sales Pouch" }, { name: "description", content: "Kelola daftar produk dan harga." }] }),
+  head: () => ({ meta: [{ title: "Daftar Produk — Sales Pouch" }, { name: "description", content: "Kelola produk, isi per pack, harga, dan stok." }, { property: "og:title", content: "Daftar Produk — Sales Pouch" }, { property: "og:description", content: "Kelola produk, isi per pack, harga, dan stok." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ProductsPage,
 });
 
@@ -24,17 +25,19 @@ function ProductsPage() {
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [cost, setCost] = useState("");
+  const [pack, setPack] = useState("1");
   const [q, setQ] = useState("");
   const refresh = () => qc.invalidateQueries({ queryKey: ["products"] });
 
   async function add() {
     const n = name.trim();
     if (!n || n.length > 80) { toast.error("Isi nama produk (maks 80 karakter)"); return; }
-    const { error } = await supabase.from("products").insert({ name: n, price: toNum(price), cost_price: toNum(cost), warehouse_stock: toNum(stock) });
+    if (!Number.isInteger(Number(pack)) || Number(pack) < 1) { toast.error("Isi jumlah pcs per pack minimal 1"); return; }
+    const { error } = await supabase.from("products").insert({ name: n, price: toNum(price), cost_price: toNum(cost), warehouse_stock: toNum(stock), pcs_per_pack: Number(pack) });
     if (error) { toast.error(error.code === "23505" ? "Produk sudah ada" : error.message); return; }
-    setName(""); setPrice(""); setStock(""); setCost(""); refresh();
+    setName(""); setPrice(""); setStock(""); setCost(""); setPack("1"); refresh();
   }
-  async function update(id: string, patch: { price?: number; price_grosir?: number; price_agen?: number; cost_price?: number; warehouse_stock?: number }) {
+  async function update(id: string, patch: { price?: number; price_grosir?: number; price_agen?: number; cost_price?: number; warehouse_stock?: number; pcs_per_pack?: number }) {
     const { error } = await supabase.from("products").update(patch).eq("id", id);
     if (error) toast.error(error.message); else refresh();
   }
@@ -51,7 +54,7 @@ function ProductsPage() {
     return { ...p, toko, retur, total: toko + p.warehouse_stock };
   });
   const list = rows.filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()));
-  const sum = rows.reduce((a, r) => ({ toko: a.toko + r.toko, gudang: a.gudang + r.warehouse_stock, retur: a.retur + r.retur, total: a.total + r.total, nilai: a.nilai + r.total * r.price, nilaiToko: a.nilaiToko + r.toko * r.price }), { toko: 0, gudang: 0, retur: 0, total: 0, nilai: 0, nilaiToko: 0 });
+  const sum = rows.reduce((a, r) => ({ toko: a.toko + r.toko, gudang: a.gudang + r.warehouse_stock, retur: a.retur + r.retur, total: a.total + r.total, nilai: a.nilai + r.total * r.price / packSize(r.pcs_per_pack), nilaiToko: a.nilaiToko + r.toko * r.price / packSize(r.pcs_per_pack) }), { toko: 0, gudang: 0, retur: 0, total: 0, nilai: 0, nilaiToko: 0 });
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
@@ -67,9 +70,10 @@ function ProductsPage() {
       <div className="mt-5 space-y-2 rounded-2xl border bg-card p-4">
         <Input placeholder="Nama produk" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
         <div className="grid grid-cols-2 gap-2">
-          <Input placeholder="Harga Modal / HPP (Rp)" inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} className="h-11" />
-          <Input placeholder="Harga Jual (Rp)" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" />
-          <Input placeholder="Stok gudang" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} className="h-11 col-span-2" />
+           <Input placeholder="HPP per pack (Rp)" inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} className="h-11" />
+           <Input placeholder="Harga jual per pack (Rp)" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" />
+           <Input placeholder="Isi per pack (pcs)" type="number" min={1} step={1} value={pack} onChange={(e) => setPack(e.target.value)} className="h-11" />
+           <Input placeholder="Stok gudang (pcs)" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} className="h-11" />
         </div>
         <Button onClick={add} className="h-12 w-full">Tambah Produk</Button>
       </div>
@@ -86,33 +90,39 @@ function ProductsPage() {
               <div className="truncate font-medium">{p.name}</div>
               <Button variant="ghost" size="icon" onClick={() => remove(p.id)} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button>
             </div>
-            <div className="mt-1 grid grid-cols-3 gap-2">
-              <label className="text-[11px] text-muted-foreground">HPP
+             <div className="mt-1 grid grid-cols-2 gap-2">
+               <label className="text-[11px] text-muted-foreground">Isi per pack (pcs)
+                 <Input key={"u" + p.pcs_per_pack} defaultValue={p.pcs_per_pack} type="number" min={1} step={1} className="h-10"
+                   onBlur={(e) => { const v = Number(e.target.value); if (Number.isInteger(v) && v >= 1 && v !== p.pcs_per_pack) void update(p.id, { pcs_per_pack: v }); else if (!Number.isInteger(v) || v < 1) e.target.value = String(p.pcs_per_pack); }} />
+               </label>
+               <div className="self-end pb-2 text-xs text-muted-foreground">Harga/pcs: <b className="text-foreground">{rp(p.price / packSize(p.pcs_per_pack))}</b></div>
+               <label className="text-[11px] text-muted-foreground">HPP/pack
                 <Input key={"c" + p.cost_price} defaultValue={p.cost_price || ""} inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.cost_price) void update(p.id, { cost_price: toNum(e.target.value) }); }} />
               </label>
-              <label className="text-[11px] text-muted-foreground">Harga eceran
+               <label className="text-[11px] text-muted-foreground">Eceran/pack
                 <Input key={"p" + p.price} defaultValue={p.price || ""} inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.price) void update(p.id, { price: toNum(e.target.value) }); }} />
               </label>
-              <label className="text-[11px] text-muted-foreground">Harga grosir
+               <label className="text-[11px] text-muted-foreground">Grosir/pack
                 <Input key={"g" + p.price_grosir} defaultValue={p.price_grosir || ""} placeholder="= eceran" inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.price_grosir) void update(p.id, { price_grosir: toNum(e.target.value) }); }} />
               </label>
-              <label className="text-[11px] text-muted-foreground">Harga agen
+               <label className="text-[11px] text-muted-foreground">Agen/pack
                 <Input key={"a" + p.price_agen} defaultValue={p.price_agen || ""} placeholder="= eceran" inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.price_agen) void update(p.id, { price_agen: toNum(e.target.value) }); }} />
               </label>
-              <label className="text-[11px] text-muted-foreground">Stok gudang
+               <label className="text-[11px] text-muted-foreground">Stok gudang (pcs)
                 <Input key={"s" + p.warehouse_stock} defaultValue={p.warehouse_stock || ""} inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.warehouse_stock) void update(p.id, { warehouse_stock: toNum(e.target.value) }); }} />
               </label>
             </div>
-            <div className="mt-2 grid grid-cols-4 gap-1 text-center font-mono text-xs">
+             <div className="mt-2 text-xs text-muted-foreground">Gudang: {formatQty(p.warehouse_stock, p.pcs_per_pack)} · Toko: {formatQty(p.toko, p.pcs_per_pack)}</div>
+             <div className="mt-2 grid grid-cols-4 gap-1 text-center font-mono text-xs">
               <Stat label="Di toko" v={p.toko} /><Stat label="Gudang" v={p.warehouse_stock} /><Stat label="Retur" v={p.retur} /><Stat label="Total" v={p.total} />
             </div>
-            <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Di toko: <b className="text-foreground">{rp(p.toko * p.price)}</b></span><span>Subtotal nilai: <b className="text-foreground">{rp(p.total * p.price)}</b></span></div>
-            <div className="mt-1 text-xs text-muted-foreground">Margin/pcs: <b className={p.price - p.cost_price < 0 ? "text-destructive" : "text-primary"}>{rp(p.price - p.cost_price)}</b></div>
+             <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Di toko: <b className="text-foreground">{rp(p.toko * p.price / packSize(p.pcs_per_pack))}</b></span><span>Subtotal nilai: <b className="text-foreground">{rp(p.total * p.price / packSize(p.pcs_per_pack))}</b></span></div>
+             <div className="mt-1 text-xs text-muted-foreground">Margin/pcs: <b className={p.price - p.cost_price < 0 ? "text-destructive" : "text-primary"}>{rp((p.price - p.cost_price) / packSize(p.pcs_per_pack))}</b></div>
           </div>
         ))}
       </div>

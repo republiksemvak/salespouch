@@ -13,3 +13,4 @@
 - Signed-in pages live under `src/routes/_authenticated/`; its layout also gates trial/license and business-name setup. Why: one place for access control.
 - Store photos go in a private bucket, shown via signed URLs. Why: workspace blocks public buckets.
 - License is `profiles.license_until`; users can only update `business_name` (column grant). Why: prevent self-extending licenses.
+- Product prices and HPP are per pack; inventory and transaction quantities are integer pcs, with `pcs_per_pack` snapshotted in transaction JSON. Why: partial-pack sales remain exact even if pack sizes change later.
