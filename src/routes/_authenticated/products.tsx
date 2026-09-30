@@ -206,6 +206,6 @@ function ResetPanel({ onDone }: { onDone: () => void }) {
   );
 }
 
-function Stat({ label, v }: { label: string; v: number }) {
+function Stat({ label, v }: { label: string; v: number | string }) {
   return <div><div className="text-[10px] uppercase text-muted-foreground">{label}</div><div className="font-semibold">{v}</div></div>;
 }
