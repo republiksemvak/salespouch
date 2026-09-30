@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProducts, useStockSummary } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
 import { rp } from "@/lib/visit";
-import { formatQty, packSize } from "@/lib/units";
+import { formatQty, packSize, toPieces } from "@/lib/units";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -17,6 +17,13 @@ export const Route = createFileRoute("/_authenticated/products")({
 });
 
 const toNum = (v: string) => Number(v.replace(/\D/g, "")) || 0;
+const whole = (v: string) => /^\d+$/.test(v) ? Number(v) : 0;
+
+function quantityAcrossProducts(rows: { pcs_per_pack: number; [key: string]: number | string }[], field: string) {
+  const pieces = rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
+  const sizes = new Set(rows.map((row) => packSize(row.pcs_per_pack)));
+  return sizes.size === 1 ? formatQty(pieces, rows[0]?.pcs_per_pack) : `${pieces} pcs`;
+}
 
 function ProductsPage() {
   const { data: account, isLoading: accountLoading } = useProfile();
@@ -31,9 +38,10 @@ function OwnerProductsPage() {
   const { data: summary } = useStockSummary();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("");
+  const [stockPack, setStockPack] = useState("");
+  const [stockPcs, setStockPcs] = useState("");
   const [cost, setCost] = useState("");
-  const [pack, setPack] = useState("1");
+  const [pack, setPack] = useState("");
   const [q, setQ] = useState("");
   const refresh = () => qc.invalidateQueries({ queryKey: ["products"] });
 
@@ -41,9 +49,10 @@ function OwnerProductsPage() {
     const n = name.trim();
     if (!n || n.length > 80) { toast.error("Isi nama produk (maks 80 karakter)"); return; }
     if (!Number.isInteger(Number(pack)) || Number(pack) < 1) { toast.error("Isi jumlah pcs per pack minimal 1"); return; }
-    const { error } = await supabase.from("products").insert({ name: n, price: toNum(price), cost_price: toNum(cost), warehouse_stock: toNum(stock), pcs_per_pack: Number(pack) });
+    if ((stockPack && !/^\d+$/.test(stockPack)) || (stockPcs && (!/^\d+$/.test(stockPcs) || Number(stockPcs) >= Number(pack)))) { toast.error("Sisa pcs harus lebih kecil dari isi per pack"); return; }
+    const { error } = await supabase.from("products").insert({ name: n, price: toNum(price), cost_price: toNum(cost), warehouse_stock: toPieces(whole(stockPack), whole(stockPcs), Number(pack)), pcs_per_pack: Number(pack) });
     if (error) { toast.error(error.code === "23505" ? "Produk sudah ada" : error.message); return; }
-    setName(""); setPrice(""); setStock(""); setCost(""); setPack("1"); refresh();
+    setName(""); setPrice(""); setStockPack(""); setStockPcs(""); setCost(""); setPack(""); refresh();
   }
   async function update(id: string, patch: { price?: number; price_grosir?: number; price_agen?: number; cost_price?: number; warehouse_stock?: number; pcs_per_pack?: number }) {
     const { error } = await supabase.from("products").update(patch).eq("id", id);
@@ -69,8 +78,8 @@ function OwnerProductsPage() {
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
       <h1 className="mt-4 text-2xl font-bold">Master Produk</h1>
 
-      <div className="mt-4 grid grid-cols-4 gap-2 rounded-2xl border bg-card p-3 text-center">
-        <Stat label="Di toko" v={sum.toko} /><Stat label="Gudang" v={sum.gudang} /><Stat label="Retur" v={sum.retur} /><Stat label="Total" v={sum.total} />
+       <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border bg-card p-3 text-center">
+         <Stat label="Di toko" v={quantityAcrossProducts(rows, "toko")} /><Stat label="Gudang" v={quantityAcrossProducts(rows, "warehouse_stock")} /><Stat label="Retur" v={quantityAcrossProducts(rows, "retur")} /><Stat label="Total" v={quantityAcrossProducts(rows, "total")} />
         <div className="col-span-4 rounded-xl bg-primary/10 p-2 text-sm">Uang di toko (belum ditagih): <b className="text-primary">{rp(sum.nilaiToko)}</b></div>
         <div className="col-span-4 border-t border-dashed pt-2 text-xs text-muted-foreground">Nilai stok (toko + gudang): <b className="text-foreground">{rp(sum.nilai)}</b></div>
       </div>
@@ -81,7 +90,8 @@ function OwnerProductsPage() {
            <Input placeholder="HPP per pack (Rp)" inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} className="h-11" />
            <Input placeholder="Harga jual per pack (Rp)" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" />
            <Input placeholder="Isi per pack (pcs)" type="number" min={1} step={1} value={pack} onChange={(e) => setPack(e.target.value)} className="h-11" />
-           <Input placeholder="Stok gudang (pcs)" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} className="h-11" />
+            <Input aria-label="Stok gudang (pack)" placeholder="Stok gudang (pack)" type="number" min={0} step={1} value={stockPack} onChange={(e) => setStockPack(e.target.value)} className="h-11" />
+            <Input aria-label="Sisa stok gudang (pcs)" placeholder="Sisa stok (pcs)" type="number" min={0} step={1} value={stockPcs} onChange={(e) => setStockPcs(e.target.value)} className="h-11" />
         </div>
         <Button onClick={add} className="h-12 w-full">Tambah Produk</Button>
       </div>
@@ -100,7 +110,7 @@ function OwnerProductsPage() {
             </div>
              <div className="mt-1 grid grid-cols-2 gap-2">
                <label className="text-[11px] text-muted-foreground">Isi per pack (pcs)
-                 <Input key={"u" + p.pcs_per_pack} defaultValue={p.pcs_per_pack} type="number" min={1} step={1} className="h-10"
+                  <Input key={"u" + p.pcs_per_pack} defaultValue={p.pcs_per_pack || ""} type="number" min={1} step={1} className="h-10"
                    onBlur={(e) => { const v = Number(e.target.value); if (Number.isInteger(v) && v >= 1 && v !== p.pcs_per_pack) void update(p.id, { pcs_per_pack: v }); else if (!Number.isInteger(v) || v < 1) e.target.value = String(p.pcs_per_pack); }} />
                </label>
                <div className="self-end pb-2 text-xs text-muted-foreground">Harga/pcs: <b className="text-foreground">{rp(p.price / packSize(p.pcs_per_pack))}</b></div>
@@ -120,14 +130,11 @@ function OwnerProductsPage() {
                 <Input key={"a" + p.price_agen} defaultValue={p.price_agen || ""} placeholder="= eceran" inputMode="numeric" className="h-10"
                   onBlur={(e) => { if (toNum(e.target.value) !== p.price_agen) void update(p.id, { price_agen: toNum(e.target.value) }); }} />
               </label>
-               <label className="text-[11px] text-muted-foreground">Stok gudang (pcs)
-                <Input key={"s" + p.warehouse_stock} defaultValue={p.warehouse_stock || ""} inputMode="numeric" className="h-10"
-                  onBlur={(e) => { if (toNum(e.target.value) !== p.warehouse_stock) void update(p.id, { warehouse_stock: toNum(e.target.value) }); }} />
-              </label>
+                <WarehouseStockEditor key={`${p.id}-${p.warehouse_stock}-${p.pcs_per_pack}`} stock={p.warehouse_stock} size={p.pcs_per_pack} onSave={(value) => update(p.id, { warehouse_stock: value })} />
             </div>
              <div className="mt-2 text-xs text-muted-foreground">Gudang: {formatQty(p.warehouse_stock, p.pcs_per_pack)} · Toko: {formatQty(p.toko, p.pcs_per_pack)}</div>
-             <div className="mt-2 grid grid-cols-4 gap-1 text-center font-mono text-xs">
-              <Stat label="Di toko" v={p.toko} /><Stat label="Gudang" v={p.warehouse_stock} /><Stat label="Retur" v={p.retur} /><Stat label="Total" v={p.total} />
+              <div className="mt-2 grid grid-cols-2 gap-2 text-center font-mono text-xs">
+               <Stat label="Di toko" v={formatQty(p.toko, p.pcs_per_pack)} /><Stat label="Gudang" v={formatQty(p.warehouse_stock, p.pcs_per_pack)} /><Stat label="Retur" v={formatQty(p.retur, p.pcs_per_pack)} /><Stat label="Total" v={formatQty(p.total, p.pcs_per_pack)} />
             </div>
              <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Di toko: <b className="text-foreground">{rp(p.toko * p.price / packSize(p.pcs_per_pack))}</b></span><span>Subtotal nilai: <b className="text-foreground">{rp(p.total * p.price / packSize(p.pcs_per_pack))}</b></span></div>
              <div className="mt-1 text-xs text-muted-foreground">Margin/pcs: <b className={p.price - p.cost_price < 0 ? "text-destructive" : "text-primary"}>{rp((p.price - p.cost_price) / packSize(p.pcs_per_pack))}</b></div>
@@ -137,6 +144,28 @@ function OwnerProductsPage() {
       <ResetPanel onDone={() => qc.invalidateQueries()} />
     </main>
   );
+}
+
+function WarehouseStockEditor({ stock, size, onSave }: { stock: number; size: number; onSave: (value: number) => void }) {
+  const perPack = packSize(size);
+  const [packs, setPacks] = useState(Math.floor(stock / perPack) || "");
+  const [pcs, setPcs] = useState((stock % perPack) || "");
+  const save = (packValue: string, pcsValue: string) => {
+    if ((packValue && !/^\d+$/.test(packValue)) || (pcsValue && (!/^\d+$/.test(pcsValue) || Number(pcsValue) >= perPack))) {
+      toast.error("Sisa pcs harus lebih kecil dari isi per pack");
+      return;
+    }
+    const value = toPieces(whole(packValue), whole(pcsValue), perPack);
+    if (value !== stock) onSave(value);
+  };
+  return <div className="col-span-2 grid grid-cols-2 gap-2" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) save(String(packs), String(pcs)); }}>
+    <label className="text-[11px] text-muted-foreground">Stok gudang (pack)
+      <Input aria-label="Stok gudang (pack)" type="number" min={0} step={1} value={packs} onChange={(e) => setPacks(e.target.value)} className="h-10" />
+    </label>
+    <label className="text-[11px] text-muted-foreground">Sisa stok (pcs)
+      <Input aria-label="Sisa stok gudang (pcs)" type="number" min={0} max={perPack - 1} step={1} value={pcs} onChange={(e) => setPcs(e.target.value)} className="h-10" />
+    </label>
+  </div>;
 }
 
 function ResetPanel({ onDone }: { onDone: () => void }) {
@@ -171,6 +200,6 @@ function ResetPanel({ onDone }: { onDone: () => void }) {
   );
 }
 
-function Stat({ label, v }: { label: string; v: number }) {
+function Stat({ label, v }: { label: string; v: number | string }) {
   return <div><div className="text-[10px] uppercase text-muted-foreground">{label}</div><div className="font-semibold">{v}</div></div>;
 }

@@ -356,8 +356,8 @@ function ItemEditor({ title, items, setItems, qtyLabel, products, tier }: { titl
               </div>
                {size === 1 ? <div className="mt-2"><Field label={`${qtyLabel} (pcs)`} value={it.qty} onChange={(v) => set(i, { qty: Math.floor(v) })} /></div> : (
                  <div className="mt-2 grid grid-cols-2 gap-2">
-                   <label className="text-[11px] text-muted-foreground">{qtyLabel} (pack)<Input aria-label={`${qtyLabel} ${it.name} pack`} type="number" min={0} step={1} value={Math.floor(it.qty / size)} onChange={(e) => { if (e.target.value === "" || /^\d+$/.test(e.target.value)) set(i, { qty: toPieces(whole(e.target.value), it.qty % size, size) }); }} className="h-11" /></label>
-                   <label className="text-[11px] text-muted-foreground">{qtyLabel} (pcs)<Input aria-label={`${qtyLabel} ${it.name} pcs`} type="number" min={0} max={size - 1} step={1} value={it.qty % size} onChange={(e) => { const value = e.target.value; if (value === "" || (!invalidRemainder(value, size) && /^\d+$/.test(value))) set(i, { qty: toPieces(Math.floor(it.qty / size), whole(value), size) }); }} className="h-11" /></label>
+                    <label className="text-[11px] text-muted-foreground">{qtyLabel} (pack)<Input aria-label={`${qtyLabel} ${it.name} pack`} type="number" min={0} step={1} value={Math.floor(it.qty / size) || ""} onChange={(e) => { if (e.target.value === "" || /^\d+$/.test(e.target.value)) set(i, { qty: toPieces(whole(e.target.value), it.qty % size, size) }); }} className="h-11" /></label>
+                    <label className="text-[11px] text-muted-foreground">{qtyLabel} (pcs)<Input aria-label={`${qtyLabel} ${it.name} pcs`} type="number" min={0} max={size - 1} step={1} value={it.qty % size || ""} onChange={(e) => { const value = e.target.value; if (value === "" || (!invalidRemainder(value, size) && /^\d+$/.test(value))) set(i, { qty: toPieces(Math.floor(it.qty / size), whole(value), size) }); }} className="h-11" /></label>
                  </div>
                )}
             </div>
