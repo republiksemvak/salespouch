@@ -4,3 +4,4 @@
 - [ ] Uji alur Owner dan Sales, termasuk akses yang ditolak — memerlukan sesi Owner/Sales aktif; izin masuk ke akun Owner ditolak dan akun uji yang tersedia sudah melewati trial.
 - [x] Tambahkan diskon nominal per nota kunjungan, tampilkan pada struk, dan hitung dalam laporan.
 - [x] Pindahkan pilihan Konsinyasi/Jual Langsung ke awal kunjungan; Jual Langsung melewati stok toko dan berlabel pada struk.
+- [x] Tampilkan dan input stok gudang dalam pack + sisa pcs; kosongkan nilai awal kolom jumlah produk.
