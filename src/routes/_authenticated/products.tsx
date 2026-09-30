@@ -164,12 +164,12 @@ function WarehouseStockEditor({ stock, size, onSave }: { stock: number; size: nu
     const value = toPieces(whole(packValue), whole(pcsValue), perPack);
     if (value !== stock) onSave(value);
   };
-  return <div className="col-span-2 grid grid-cols-2 gap-2">
+  return <div className="col-span-2 grid grid-cols-2 gap-2" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) save(String(packs), String(pcs)); }}>
     <label className="text-[11px] text-muted-foreground">Stok gudang (pack)
-      <Input aria-label="Stok gudang (pack)" type="number" min={0} step={1} value={packs} onChange={(e) => setPacks(e.target.value)} onBlur={(e) => save(e.target.value, String(pcs))} className="h-10" />
+      <Input aria-label="Stok gudang (pack)" type="number" min={0} step={1} value={packs} onChange={(e) => setPacks(e.target.value)} className="h-10" />
     </label>
     <label className="text-[11px] text-muted-foreground">Sisa stok (pcs)
-      <Input aria-label="Sisa stok gudang (pcs)" type="number" min={0} max={perPack - 1} step={1} value={pcs} onChange={(e) => setPcs(e.target.value)} onBlur={(e) => save(String(packs), e.target.value)} className="h-10" />
+      <Input aria-label="Sisa stok gudang (pcs)" type="number" min={0} max={perPack - 1} step={1} value={pcs} onChange={(e) => setPcs(e.target.value)} className="h-10" />
     </label>
   </div>;
 }
