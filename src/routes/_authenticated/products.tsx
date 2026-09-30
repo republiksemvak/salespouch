@@ -20,15 +20,9 @@ const toNum = (v: string) => Number(v.replace(/\D/g, "")) || 0;
 const whole = (v: string) => /^\d+$/.test(v) ? Number(v) : 0;
 
 function quantityAcrossProducts(rows: { pcs_per_pack: number; [key: string]: number | string }[], field: string) {
-  let packs = 0;
-  let pcs = 0;
-  for (const row of rows) {
-    const size = packSize(row.pcs_per_pack);
-    const count = Number(row[field]) || 0;
-    if (size === 1) pcs += count;
-    else { packs += Math.floor(count / size); pcs += count % size; }
-  }
-  return packs ? `${packs} pack${pcs ? ` + ${pcs} pcs` : ""}` : `${pcs} pcs`;
+  const pieces = rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
+  const sizes = new Set(rows.map((row) => packSize(row.pcs_per_pack)));
+  return sizes.size === 1 ? formatQty(pieces, rows[0]?.pcs_per_pack) : `${pieces} pcs`;
 }
 
 function ProductsPage() {
