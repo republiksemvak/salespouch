@@ -61,8 +61,8 @@ function ReceiptPage() {
     const L: string[] = [business.toUpperCase()];
     if (p?.profile?.business_address) L.push(p.profile.business_address);
     if (p?.profile?.business_phone) L.push(`Telp: ${p.profile.business_phone}`);
-    L.push(`No Nota : ${t!.receipt_number}`, `Toko    : ${store}`, `Sales   : ${t!.sales_name}`, `Tanggal : ${fmtDate(t!.visit_date)}`, "--------------------------------");
-    if (prev && prevTitip.length > 0) {
+    L.push(`No Nota : ${t!.receipt_number}`, `Jenis   : ${t!.transaction_type === "Direct Sale" ? "JUAL LANGSUNG" : "KONSINYASI"}`, `Toko    : ${store}`, `Sales   : ${t!.sales_name}`, `Tanggal : ${fmtDate(t!.visit_date)}`, "--------------------------------");
+    if (t!.transaction_type === "Consignment" && prev && prevTitip.length > 0) {
       L.push("TITIPAN SEBELUMNYA");
       prevTitip.forEach((n) => L.push(`  ${n.name}: ${formatQty(n.qty, n.pcs_per_pack)}`));
       L.push("--------------------------------");
@@ -103,12 +103,13 @@ function ReceiptPage() {
     if (p?.profile?.business_phone) L.push({ text: `Telp: ${p.profile.business_phone}`, center: true });
     L.push(
       { text: `No Nota : ${t!.receipt_number}` },
+      { text: `Jenis   : ${t!.transaction_type === "Direct Sale" ? "JUAL LANGSUNG" : "KONSINYASI"}`, bold: true },
       { text: `Toko    : ${store}` },
       { text: `Sales   : ${t!.sales_name}` },
       { text: `Tanggal : ${fmtDate(t!.visit_date)}` },
       { text: "--------------------------------" },
     );
-    if (prev && prevTitip.length > 0) {
+    if (t!.transaction_type === "Consignment" && prev && prevTitip.length > 0) {
       L.push({ text: "TITIPAN SEBELUMNYA", bold: true });
       prevTitip.forEach((n) => L.push({ text: `  ${n.name}: ${formatQty(n.qty, n.pcs_per_pack)}` }));
       L.push({ text: "--------------------------------" });
@@ -177,11 +178,12 @@ function ReceiptPage() {
         {p?.profile?.business_phone && <div className="text-center text-[11px]">Telp: {p.profile.business_phone}</div>}
         {hr}
         <Row k="No Nota" v={t.receipt_number} />
+        <Row k="Jenis" v={t.transaction_type === "Direct Sale" ? "JUAL LANGSUNG" : "KONSINYASI"} bold />
         <Row k="Toko" v={store} />
         <Row k="Sales" v={t.sales_name} />
         <Row k="Tanggal" v={fmtDate(t.visit_date)} />
         {hr}
-        {prev && prevTitip.length > 0 && (
+        {t.transaction_type === "Consignment" && prev && prevTitip.length > 0 && (
           <>
             <div className="font-semibold">TITIPAN SEBELUMNYA</div>
             {prevTitip.map((n, i) => <Row key={"t" + i} k={n.name} v={formatQty(n.qty, n.pcs_per_pack)} />)}
