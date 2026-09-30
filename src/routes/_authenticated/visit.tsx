@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, PackagePlus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadLastVisit, nextReceiptNumber, rp, type LineItem, type NewItem } from "@/lib/visit";
 import { useProducts, tierPrice, TIERS, type Product, type PriceTier } from "@/lib/products";
@@ -67,7 +67,7 @@ function VisitPage() {
 
   const history = useQuery({
     queryKey: ["last-visit", outletId],
-    enabled: started && !!outletId,
+    enabled: started && type === "Consignment" && !!outletId,
     queryFn: () => loadLastVisit(outletId),
   });
 
@@ -76,8 +76,8 @@ function VisitPage() {
     setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, pcs_per_pack: packSize(s.pcs_per_pack), sisaPack: "", sisaPcs: "" })));
   }, [history.data]);
 
-  const isFirst = started && history.isSuccess && history.data === null;
-  const previousDebt = history.data?.previousDebt ?? 0;
+  const isFirst = type === "Consignment" && started && history.isSuccess && history.data === null;
+  const previousDebt = type === "Consignment" ? history.data?.previousDebt ?? 0 : 0;
 
   const lineItems: LineItem[] = useMemo(() => {
     if (type === "Direct Sale")
@@ -123,6 +123,15 @@ function VisitPage() {
     setStarted(true);
   }
 
+  function selectVisitType(nextType: "Consignment" | "Direct Sale") {
+    setType(nextType);
+    setRows([]);
+    setNewItems([]);
+    setDirectItems([]);
+    setPaid("");
+    setDiscount("");
+  }
+
   async function submit() {
     const cleanNew = newItems.filter((i) => i.name.trim() && i.qty > 0).map((i) => ({ ...i, name: i.name.trim() }));
     const schema = z.object({ note: z.string().max(500), sales: z.string().trim().min(1).max(60) });
@@ -132,6 +141,10 @@ function VisitPage() {
     if (type === "Consignment" && lineItems.length === 0 && cleanNew.length === 0)
       { toast.error("Tambahkan barang titipan baru"); return; }
     if (type === "Consignment" && !validReturns()) return;
+    if (type === "Direct Sale" && directItems.some((item) => {
+      const product = products?.find((p) => p.name.toLowerCase() === item.name.toLowerCase());
+      return product && item.qty > product.warehouse_stock;
+    })) { toast.error("Jumlah jual langsung melebihi stok gudang"); return; }
     if (!Number.isFinite(discountAmount) || discountAmount > totalSales || !/^\d*$/.test(discount)) { toast.error("Diskon harus berupa nominal rupiah dan tidak melebihi penjualan nota ini"); return; }
     setBusy(true);
     try {
@@ -185,6 +198,21 @@ function VisitPage() {
             )}
           </div>
           <div className="space-y-2"><Label>Nama Sales</Label><Input value={salesName} maxLength={60} onChange={(e) => setSalesName(e.target.value)} className="h-12" /></div>
+          <div className="space-y-2">
+            <Label>Jenis Kunjungan</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Button type="button" variant={type === "Consignment" ? "default" : "outline"} onClick={() => selectVisitType("Consignment")} className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center">
+                <PackagePlus className="h-5 w-5" />
+                <span>Konsinyasi</span>
+                <span className="text-xs font-normal opacity-80">Titip Barang</span>
+              </Button>
+              <Button type="button" variant={type === "Direct Sale" ? "default" : "outline"} onClick={() => selectVisitType("Direct Sale")} className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center">
+                <ShoppingCart className="h-5 w-5" />
+                <span>Jual Langsung</span>
+                <span className="text-xs font-normal opacity-80">Direct Sale</span>
+              </Button>
+            </div>
+          </div>
           <Button onClick={start} className="h-14 w-full text-base">Lanjut</Button>
         </div>
       </main>
@@ -195,21 +223,16 @@ function VisitPage() {
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
       <button onClick={() => setStarted(false)} className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Ganti outlet</button>
       <div className="mt-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-        {history.isLoading ? "Memeriksa riwayat…" : isFirst ? "Kunjungan pertama" : "Kunjungan rutin"} · {salesName}
+        {type === "Direct Sale" ? "Jual Langsung" : history.isLoading ? "Memeriksa riwayat…" : isFirst ? "Kunjungan pertama" : "Kunjungan rutin"} · {salesName}
       </div>
       <h1 className="text-2xl font-bold">{outletName}</h1>
 
-      {history.isLoading ? <p className="mt-6 text-sm text-muted-foreground">Memuat…</p> : (
+      {type === "Consignment" && history.isLoading ? <p className="mt-6 text-sm text-muted-foreground">Memuat…</p> : (
         <>
-          {!isFirst && (
-            <div className="mt-4 grid grid-cols-2 rounded-xl border bg-card p-1 text-sm">
-              {(["Consignment", "Direct Sale"] as const).map((t) => (
-                <button key={t} onClick={() => setType(t)} className={`rounded-lg py-2 font-medium ${type === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
-                  {t === "Consignment" ? "Konsinyasi" : "Jual Langsung"}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="mt-4 flex items-center justify-between rounded-md border bg-card px-3 py-3 text-sm">
+            <span><b>{type === "Consignment" ? "Konsinyasi" : "Jual Langsung"}</b><span className="ml-1 text-muted-foreground">{type === "Consignment" ? "· Titip Barang" : "· Direct Sale"}</span></span>
+            <Button type="button" variant="link" onClick={() => setStarted(false)} className="h-auto p-0 text-xs">Ganti</Button>
+          </div>
 
           {!isFirst && type === "Consignment" && (
             <section className="mt-6">
@@ -260,9 +283,9 @@ function VisitPage() {
             {savedInput ? "✓ Input produk tersimpan" : "Simpan Input Produk"}
           </Button>
 
-          {!isFirst && (
+          {(type === "Direct Sale" || !isFirst) && (
             <section className="mt-6 space-y-2 rounded-2xl border bg-card p-4 font-mono text-sm">
-              <Line k="Utang sebelumnya" v={rp(previousDebt)} />
+              {type === "Consignment" && <Line k="Utang sebelumnya" v={rp(previousDebt)} />}
               <Line k="Total penjualan" v={rp(totalSales)} />
                <div className="pt-2">
                  <Label htmlFor="visit-discount" className="font-sans">Diskon nota (Rp)</Label>
@@ -278,7 +301,7 @@ function VisitPage() {
               <div className="border-t border-dashed pt-2"><Line k="Sisa utang" v={rp(remainingDebt)} bold /></div>
             </section>
           )}
-          {isFirst && (
+          {type === "Consignment" && isFirst && (
             <p className="mt-6 rounded-xl bg-secondary p-4 text-sm">Kunjungan pertama — tidak ada perhitungan. Total tagihan: <b>Rp 0</b></p>
           )}
 

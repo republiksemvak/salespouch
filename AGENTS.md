@@ -16,3 +16,4 @@
 - Product prices and HPP are per pack; inventory and transaction quantities are integer pcs, with `pcs_per_pack` snapshotted in transaction JSON. Why: partial-pack sales remain exact even if pack sizes change later.
 - Owner/Sales membership lives in `team_members`; business rows belong to the Owner, sales read a cost-free catalog, and only verified Owner server functions read HPP. Why: operational collaboration must not expose profit data.
 - Transaction discounts are stored as `discount_amount` per receipt, capped at that visit's sales and applied before previous debt. Why: old debts remain unchanged while the discounted sale and reports reconcile.
+- Direct Sale transactions use only `line_items`, never load or write outlet consignment stock, and deduct sold pcs directly from shared warehouse stock. Why: direct sales must remain separate from store deposits.
