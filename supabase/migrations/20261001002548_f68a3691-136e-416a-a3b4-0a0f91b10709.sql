@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.revise_transaction(uuid, jsonb, jsonb, numeric, numeric, text) FROM anon;
