@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Bluetooth, MessageCircle, Printer, Share2 } from "lucide-react";
+import { ArrowLeft, Bluetooth, FilePenLine, MessageCircle, Printer, Share2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -182,6 +182,7 @@ function ReceiptPage() {
         <Row k="Toko" v={store} />
         <Row k="Sales" v={t.sales_name} />
         <Row k="Tanggal" v={fmtDate(t.visit_date)} />
+        {t.revised_at && <Row k="Status" v="DIREVISI" bold />}
         {hr}
         {t.transaction_type === "Consignment" && prev && prevTitip.length > 0 && (
           <>
@@ -230,6 +231,7 @@ function ReceiptPage() {
       </article>
 
       <div className="mt-6 grid grid-cols-2 gap-3 print:hidden">
+        <Button asChild variant="outline" className="col-span-2 h-12"><Link to="/transactions/$id/edit" params={{ id }}><FilePenLine className="mr-1 h-4 w-4" />Edit Transaksi & Revisi Nota</Link></Button>
         <Button className="col-span-2 h-12" onClick={sendWa}><MessageCircle className="mr-1 h-4 w-4" />Kirim ke WhatsApp Toko</Button>
         {isBluetoothPrintSupported() && (
           <Button className="col-span-2 h-12" variant="secondary" disabled={busy === "bt"} onClick={printBluetooth}>
