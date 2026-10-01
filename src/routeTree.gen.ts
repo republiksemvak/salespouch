@@ -18,9 +18,11 @@ import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
+import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
 import { Route as AuthenticatedVisitRouteImport } from './routes/_authenticated/visit'
 import { Route as AuthenticatedOutletsNewRouteImport } from './routes/_authenticated/outlets.new'
 import { Route as AuthenticatedReceiptIdRouteImport } from './routes/_authenticated/receipt.$id'
+import { Route as AuthenticatedTransactionsIdEditRouteImport } from './routes/_authenticated/transactions.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -66,6 +68,12 @@ const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTransactionsRoute =
+  AuthenticatedTransactionsRouteImport.update({
+    id: '/transactions',
+    path: '/transactions',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedVisitRoute = AuthenticatedVisitRouteImport.update({
   id: '/visit',
   path: '/visit',
@@ -81,6 +89,12 @@ const AuthenticatedReceiptIdRoute = AuthenticatedReceiptIdRouteImport.update({
   path: '/receipt/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTransactionsIdEditRoute =
+  AuthenticatedTransactionsIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthenticatedTransactionsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -91,9 +105,11 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/transactions': typeof AuthenticatedTransactionsRouteWithChildren
   '/visit': typeof AuthenticatedVisitRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
+  '/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -104,9 +120,11 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/transactions': typeof AuthenticatedTransactionsRouteWithChildren
   '/visit': typeof AuthenticatedVisitRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
+  '/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -119,9 +137,11 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
+  '/_authenticated/transactions': typeof AuthenticatedTransactionsRouteWithChildren
   '/_authenticated/visit': typeof AuthenticatedVisitRoute
   '/_authenticated/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/_authenticated/receipt/$id': typeof AuthenticatedReceiptIdRoute
+  '/_authenticated/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -134,9 +154,11 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reports'
     | '/team'
+    | '/transactions'
     | '/visit'
     | '/outlets/new'
     | '/receipt/$id'
+    | '/transactions/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -147,9 +169,11 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reports'
     | '/team'
+    | '/transactions'
     | '/visit'
     | '/outlets/new'
     | '/receipt/$id'
+    | '/transactions/$id/edit'
   id:
     | '__root__'
     | '/'
@@ -161,9 +185,11 @@ export interface FileRouteTypes {
     | '/_authenticated/profile'
     | '/_authenticated/reports'
     | '/_authenticated/team'
+    | '/_authenticated/transactions'
     | '/_authenticated/visit'
     | '/_authenticated/outlets/new'
     | '/_authenticated/receipt/$id'
+    | '/_authenticated/transactions/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTeamRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/transactions': {
+      id: '/_authenticated/transactions'
+      path: '/transactions'
+      fullPath: '/transactions'
+      preLoaderRoute: typeof AuthenticatedTransactionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/visit': {
       id: '/_authenticated/visit'
       path: '/visit'
@@ -258,8 +291,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReceiptIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/transactions/$id/edit': {
+      id: '/_authenticated/transactions/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/transactions/$id/edit'
+      preLoaderRoute: typeof AuthenticatedTransactionsIdEditRouteImport
+      parentRoute: typeof AuthenticatedTransactionsRoute
+    }
   }
 }
+
+interface AuthenticatedTransactionsRouteChildren {
+  AuthenticatedTransactionsIdEditRoute: typeof AuthenticatedTransactionsIdEditRoute
+}
+
+const AuthenticatedTransactionsRouteChildren: AuthenticatedTransactionsRouteChildren =
+  {
+    AuthenticatedTransactionsIdEditRoute: AuthenticatedTransactionsIdEditRoute,
+  }
+
+const AuthenticatedTransactionsRouteWithChildren =
+  AuthenticatedTransactionsRoute._addFileChildren(
+    AuthenticatedTransactionsRouteChildren,
+  )
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
@@ -268,6 +322,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
+  AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRouteWithChildren
   AuthenticatedVisitRoute: typeof AuthenticatedVisitRoute
   AuthenticatedOutletsNewRoute: typeof AuthenticatedOutletsNewRoute
   AuthenticatedReceiptIdRoute: typeof AuthenticatedReceiptIdRoute
@@ -280,6 +335,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
+  AuthenticatedTransactionsRoute: AuthenticatedTransactionsRouteWithChildren,
   AuthenticatedVisitRoute: AuthenticatedVisitRoute,
   AuthenticatedOutletsNewRoute: AuthenticatedOutletsNewRoute,
   AuthenticatedReceiptIdRoute: AuthenticatedReceiptIdRoute,
