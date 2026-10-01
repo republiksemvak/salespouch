@@ -222,6 +222,7 @@ export type Database = {
           previous_debt: number
           receipt_number: string
           remaining_debt: number
+          revised_at: string | null
           sales_name: string
           total_due: number
           total_sales: number
@@ -241,6 +242,7 @@ export type Database = {
           previous_debt?: number
           receipt_number: string
           remaining_debt?: number
+          revised_at?: string | null
           sales_name: string
           total_due?: number
           total_sales?: number
@@ -260,6 +262,7 @@ export type Database = {
           previous_debt?: number
           receipt_number?: string
           remaining_debt?: number
+          revised_at?: string | null
           sales_name?: string
           total_due?: number
           total_sales?: number
@@ -341,6 +344,42 @@ export type Database = {
         Returns: boolean
       }
       is_business_owner: { Args: never; Returns: boolean }
+      revise_transaction: {
+        Args: {
+          _amount_paid: number
+          _custom_note: string
+          _discount_amount: number
+          _line_items: Json
+          _new_consignment_items: Json
+          _transaction_id: string
+        }
+        Returns: {
+          amount_paid: number
+          created_at: string
+          custom_note: string | null
+          discount_amount: number
+          id: string
+          line_items: Json
+          new_consignment_items: Json
+          outlet_id: string
+          previous_debt: number
+          receipt_number: string
+          remaining_debt: number
+          revised_at: string | null
+          sales_name: string
+          total_due: number
+          total_sales: number
+          transaction_type: string
+          user_id: string
+          visit_date: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "user"
