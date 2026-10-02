@@ -23,6 +23,7 @@ import { Route as AuthenticatedVisitRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedOutletsNewRouteImport } from './routes/_authenticated/outlets.new'
 import { Route as AuthenticatedReceiptIdRouteImport } from './routes/_authenticated/receipt.$id'
 import { Route as AuthenticatedTransactionsIndexRouteImport } from './routes/_authenticated/transactions.index'
+import { Route as AuthenticatedOutletsIdEditRouteImport } from './routes/_authenticated/outlets.$id.edit'
 import { Route as AuthenticatedTransactionsIdEditRouteImport } from './routes/_authenticated/transactions.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -96,6 +97,12 @@ const AuthenticatedTransactionsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedTransactionsRoute,
   } as any)
+const AuthenticatedOutletsIdEditRoute =
+  AuthenticatedOutletsIdEditRouteImport.update({
+    id: '/outlets/$id/edit',
+    path: '/outlets/$id/edit',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedTransactionsIdEditRoute =
   AuthenticatedTransactionsIdEditRouteImport.update({
     id: '/$id/edit',
@@ -117,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
   '/transactions/': typeof AuthenticatedTransactionsIndexRoute
+  '/outlets/$id/edit': typeof AuthenticatedOutletsIdEditRoute
   '/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -132,6 +140,7 @@ export interface FileRoutesByTo {
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
   '/transactions': typeof AuthenticatedTransactionsIndexRoute
+  '/outlets/$id/edit': typeof AuthenticatedOutletsIdEditRoute
   '/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRoutesById {
@@ -150,6 +159,7 @@ export interface FileRoutesById {
   '/_authenticated/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/_authenticated/receipt/$id': typeof AuthenticatedReceiptIdRoute
   '/_authenticated/transactions/': typeof AuthenticatedTransactionsIndexRoute
+  '/_authenticated/outlets/$id/edit': typeof AuthenticatedOutletsIdEditRoute
   '/_authenticated/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRouteTypes {
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/outlets/new'
     | '/receipt/$id'
     | '/transactions/'
+    | '/outlets/$id/edit'
     | '/transactions/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/outlets/new'
     | '/receipt/$id'
     | '/transactions'
+    | '/outlets/$id/edit'
     | '/transactions/$id/edit'
   id:
     | '__root__'
@@ -200,6 +212,7 @@ export interface FileRouteTypes {
     | '/_authenticated/outlets/new'
     | '/_authenticated/receipt/$id'
     | '/_authenticated/transactions/'
+    | '/_authenticated/outlets/$id/edit'
     | '/_authenticated/transactions/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -309,6 +322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTransactionsIndexRouteImport
       parentRoute: typeof AuthenticatedTransactionsRoute
     }
+    '/_authenticated/outlets/$id/edit': {
+      id: '/_authenticated/outlets/$id/edit'
+      path: '/outlets/$id/edit'
+      fullPath: '/outlets/$id/edit'
+      preLoaderRoute: typeof AuthenticatedOutletsIdEditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/transactions/$id/edit': {
       id: '/_authenticated/transactions/$id/edit'
       path: '/$id/edit'
@@ -346,6 +366,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedVisitRoute: typeof AuthenticatedVisitRoute
   AuthenticatedOutletsNewRoute: typeof AuthenticatedOutletsNewRoute
   AuthenticatedReceiptIdRoute: typeof AuthenticatedReceiptIdRoute
+  AuthenticatedOutletsIdEditRoute: typeof AuthenticatedOutletsIdEditRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -359,6 +380,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedVisitRoute: AuthenticatedVisitRoute,
   AuthenticatedOutletsNewRoute: AuthenticatedOutletsNewRoute,
   AuthenticatedReceiptIdRoute: AuthenticatedReceiptIdRoute,
+  AuthenticatedOutletsIdEditRoute: AuthenticatedOutletsIdEditRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
