@@ -9,6 +9,7 @@ import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/outlets/new")({
   head: () => ({ meta: [{ title: "Tambah Outlet — Sales Pouch" }, { name: "description", content: "Tambah outlet baru." }, { property: "og:title", content: "Tambah Outlet — Sales Pouch" }, { property: "og:description", content: "Tambah outlet baru." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -21,7 +22,10 @@ function NewOutlet() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [map, setMap] = useState("");
+  const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [routeNotes, setRouteNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -43,7 +47,9 @@ function NewOutlet() {
       if (!account) throw new Error("Akun belum siap.");
       const store_photo = file ? await uploadStorePhoto(file) : null;
       const { error } = await supabase.from("outlets").insert({
-        user_id: account.ownerId, name: name.trim(), map_location: map.trim() || null, owner_phone: phone.trim() || null, store_photo,
+        user_id: account.ownerId, name: name.trim(), owner_name: ownerName.trim() || null,
+        owner_phone: phone.trim() || null, address: address.trim() || null,
+        map_location: map.trim() || null, route_notes: routeNotes.trim() || null, store_photo,
       });
       if (error) throw error;
       toast.success("Outlet ditambahkan");
@@ -64,7 +70,9 @@ function NewOutlet() {
           <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
         <div className="space-y-2"><Label>Nama Outlet *</Label><Input required value={name} onChange={(e) => setName(e.target.value)} className="h-12" /></div>
+        <div className="space-y-2"><Label>Nama Pemilik</Label><Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="h-12" /></div>
         <div className="space-y-2"><Label>No. HP Pemilik</Label><Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xx" className="h-12" /></div>
+        <div className="space-y-2"><Label>Alamat Toko</Label><Textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={3} /></div>
         <div className="space-y-2">
           <Label>Lokasi (link Google Maps)</Label>
           <div className="flex gap-2">
@@ -74,6 +82,7 @@ function NewOutlet() {
             </Button>
           </div>
         </div>
+        <div className="space-y-2"><Label>Catatan Rute</Label><Textarea value={routeNotes} onChange={(e) => setRouteNotes(e.target.value)} placeholder="Patokan atau petunjuk menuju toko" rows={4} /></div>
         <Button disabled={busy || !name.trim()} className="h-14 w-full text-base">{busy ? "Menyimpan…" : "Simpan Outlet"}</Button>
       </form>
     </main>
