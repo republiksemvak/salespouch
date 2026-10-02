@@ -6,3 +6,4 @@
 - [x] Pindahkan pilihan Konsinyasi/Jual Langsung ke awal kunjungan; Jual Langsung melewati stok toko dan berlabel pada struk.
 - [x] Tampilkan dan input stok gudang dalam pack + sisa pcs; kosongkan nilai awal kolom jumlah produk.
 - [x] Tambahkan edit transaksi dan revisi nota dengan rollback stok serta penyesuaian utang otomatis.
+- [x] Pisahkan daftar transaksi menjadi rute indeks agar halaman revisi nota dapat dirender.
