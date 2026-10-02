@@ -18,3 +18,4 @@
 - Transaction discounts are stored as `discount_amount` per receipt, capped at that visit's sales and applied before previous debt. Why: old debts remain unchanged while the discounted sale and reports reconcile.
 - Direct Sale transactions use only `line_items`, never load or write outlet consignment stock, and deduct sold pcs directly from shared warehouse stock. Why: direct sales must remain separate from store deposits.
 - Transaction revisions run through one database function that reverses old stock, applies revised stock, and cascades consignment debt forward; outlet, date, and transaction type remain immutable. Why: revisions must not leave stock or debt partially updated.
+- The transactions section uses an Outlet-only parent route and a separate index leaf for its list. Why: nested transaction edit pages must render through the parent route.
