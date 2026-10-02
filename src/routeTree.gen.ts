@@ -22,6 +22,7 @@ import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authent
 import { Route as AuthenticatedVisitRouteImport } from './routes/_authenticated/visit'
 import { Route as AuthenticatedOutletsNewRouteImport } from './routes/_authenticated/outlets.new'
 import { Route as AuthenticatedReceiptIdRouteImport } from './routes/_authenticated/receipt.$id'
+import { Route as AuthenticatedTransactionsIndexRouteImport } from './routes/_authenticated/transactions.index'
 import { Route as AuthenticatedTransactionsIdEditRouteImport } from './routes/_authenticated/transactions.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -89,6 +90,12 @@ const AuthenticatedReceiptIdRoute = AuthenticatedReceiptIdRouteImport.update({
   path: '/receipt/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTransactionsIndexRoute =
+  AuthenticatedTransactionsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedTransactionsRoute,
+  } as any)
 const AuthenticatedTransactionsIdEditRoute =
   AuthenticatedTransactionsIdEditRouteImport.update({
     id: '/$id/edit',
@@ -109,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/visit': typeof AuthenticatedVisitRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
+  '/transactions/': typeof AuthenticatedTransactionsIndexRoute
   '/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -120,10 +128,10 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/team': typeof AuthenticatedTeamRoute
-  '/transactions': typeof AuthenticatedTransactionsRouteWithChildren
   '/visit': typeof AuthenticatedVisitRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
+  '/transactions': typeof AuthenticatedTransactionsIndexRoute
   '/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRoutesById {
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/_authenticated/visit': typeof AuthenticatedVisitRoute
   '/_authenticated/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/_authenticated/receipt/$id': typeof AuthenticatedReceiptIdRoute
+  '/_authenticated/transactions/': typeof AuthenticatedTransactionsIndexRoute
   '/_authenticated/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRouteTypes {
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/visit'
     | '/outlets/new'
     | '/receipt/$id'
+    | '/transactions/'
     | '/transactions/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -169,10 +179,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reports'
     | '/team'
-    | '/transactions'
     | '/visit'
     | '/outlets/new'
     | '/receipt/$id'
+    | '/transactions'
     | '/transactions/$id/edit'
   id:
     | '__root__'
@@ -189,6 +199,7 @@ export interface FileRouteTypes {
     | '/_authenticated/visit'
     | '/_authenticated/outlets/new'
     | '/_authenticated/receipt/$id'
+    | '/_authenticated/transactions/'
     | '/_authenticated/transactions/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -291,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReceiptIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/transactions/': {
+      id: '/_authenticated/transactions/'
+      path: '/'
+      fullPath: '/transactions/'
+      preLoaderRoute: typeof AuthenticatedTransactionsIndexRouteImport
+      parentRoute: typeof AuthenticatedTransactionsRoute
+    }
     '/_authenticated/transactions/$id/edit': {
       id: '/_authenticated/transactions/$id/edit'
       path: '/$id/edit'
@@ -302,11 +320,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedTransactionsRouteChildren {
+  AuthenticatedTransactionsIndexRoute: typeof AuthenticatedTransactionsIndexRoute
   AuthenticatedTransactionsIdEditRoute: typeof AuthenticatedTransactionsIdEditRoute
 }
 
 const AuthenticatedTransactionsRouteChildren: AuthenticatedTransactionsRouteChildren =
   {
+    AuthenticatedTransactionsIndexRoute: AuthenticatedTransactionsIndexRoute,
     AuthenticatedTransactionsIdEditRoute: AuthenticatedTransactionsIdEditRoute,
   }
 
