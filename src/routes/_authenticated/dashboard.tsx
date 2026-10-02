@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -83,7 +83,10 @@ function Dashboard() {
                 </a>
               )}
             </div>
-            <Button asChild size="sm" className="self-center"><Link to="/visit" search={{ outlet: o.id }}>Kunjungi</Link></Button>
+            <div className="flex shrink-0 flex-col gap-1 self-center">
+              <Button asChild size="sm"><Link to="/visit" search={{ outlet: o.id }}>Kunjungi</Link></Button>
+              {p?.role === "owner" && <Button asChild size="icon" variant="ghost" className="self-end" aria-label={`Edit ${o.name}`}><Link to="/outlets/$id/edit" params={{ id: o.id }}><Pencil className="h-4 w-4" /></Link></Button>}
+            </div>
           </div>
         ))}
       </div>

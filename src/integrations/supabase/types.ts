@@ -43,29 +43,38 @@ export type Database = {
       }
       outlets: {
         Row: {
+          address: string | null
           created_at: string
           id: string
           map_location: string | null
           name: string
+          owner_name: string | null
           owner_phone: string | null
+          route_notes: string | null
           store_photo: string | null
           user_id: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
           id?: string
           map_location?: string | null
           name: string
+          owner_name?: string | null
           owner_phone?: string | null
+          route_notes?: string | null
           store_photo?: string | null
           user_id?: string
         }
         Update: {
+          address?: string | null
           created_at?: string
           id?: string
           map_location?: string | null
           name?: string
+          owner_name?: string | null
           owner_phone?: string | null
+          route_notes?: string | null
           store_photo?: string | null
           user_id?: string
         }
