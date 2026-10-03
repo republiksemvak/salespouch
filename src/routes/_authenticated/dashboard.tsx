@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, LockKeyhole, UserRoundCog, ChevronDown, UsersRound, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -15,14 +15,18 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
+const db = supabase as any;
+
 function Dashboard() {
   const { data: p } = useProfile();
   const { data: isAdmin } = useIsAdmin();
+  const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [teamOpen, setTeamOpen] = useState(false);
   const [outletOpen, setOutletOpen] = useState(false);
   const search = q.trim();
   const status = p?.profile ? accessStatus(p.profile, p.email) : null;
+  const uid = p?.user?.id;
 
   const { data: outletResult, isLoading } = useQuery({
     queryKey: ["outlets", search],
@@ -32,6 +36,20 @@ function Dashboard() {
       const { data, error, count } = await query; if (error) throw error; return { data: data ?? [], count: count ?? 0 };
     }, staleTime: 30_000,
   });
+  const { data: unreadSupport = 0 } = useQuery({
+    queryKey: ["support-unread", uid],
+    enabled: !!uid,
+    queryFn: async () => {
+      const { count, error } = await db.from("support_messages").select("id", { count: "exact", head: true }).neq("sender_id", uid).is("read_at", null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  useEffect(() => {
+    if (!uid) return;
+    const ch = supabase.channel(`support-badge-${uid}`).on("postgres_changes", { event: "*", schema: "public", table: "support_messages" }, () => qc.invalidateQueries({ queryKey: ["support-unread", uid] })).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [uid, qc]);
   const outlets = outletResult?.data ?? [];
   const outletCount = outletResult?.count ?? 0;
   const isOwner = p?.role === "owner";
@@ -56,7 +74,7 @@ function Dashboard() {
         <div className="mt-2"><Button type="button" variant="outline" className="h-11 w-full justify-between" onClick={() => setOutletOpen((open) => !open)} aria-expanded={outletOpen}><span className="flex items-center"><Store className="mr-1 h-4 w-4" />Manajemen Outlet</span><ChevronDown className={`h-4 w-4 transition-transform ${outletOpen ? "rotate-180" : ""}`} /></Button></div>
         {outletOpen && <section className="mt-2 rounded-2xl border bg-card p-3"><div className="flex items-center gap-2 px-1"><UsersRound className="h-4 w-4 text-muted-foreground" /><div><h2 className="text-sm font-semibold">Manajemen Outlet</h2><p className="text-xs text-muted-foreground">Kelola outlet, jadwal, route, dan penugasan Sales.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2"><Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/outlets"><span>Semua Outlet</span><Store className="h-4 w-4 text-muted-foreground" /></Link></Button>{outletFeatures.map(previewButton)}<Button type="button" variant="outline" disabled className="h-11 justify-between px-3 opacity-70"><span>Penugasan Sales</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button></div></section>}
       </>}
-      <Button asChild variant="outline" className="mt-4 h-11 w-full"><Link to="/support"><MessageCircle className="mr-1 h-4 w-4" />Support</Link></Button>
+      <Button asChild variant="outline" className="relative mt-4 h-11 w-full"><Link to="/support"><MessageCircle className="mr-1 h-4 w-4" />Support{unreadSupport > 0 && <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">{unreadSupport > 99 ? "99+" : unreadSupport}</span>}</Link></Button>
       <Button asChild variant="outline" className="mt-2 h-11 w-full"><Link to="/transactions"><History className="mr-1 h-4 w-4" />Riwayat Transaksi</Link></Button>
       <div className="mt-8 flex items-center justify-between gap-3"><h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Outlet ({outletCount})</h2>{outletCount > 50 && <span className="text-[11px] text-muted-foreground">50 terbaru</span>}</div>
       <div className="relative mt-3"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Cari toko…" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 pl-9" /></div>
