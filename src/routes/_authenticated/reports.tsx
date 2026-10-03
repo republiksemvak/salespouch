@@ -5,6 +5,7 @@ import { ArrowLeft, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
+import { aggregateProductSales } from "@/lib/product-sales";
 import { rp, type LineItem } from "@/lib/visit";
 import { packSize } from "@/lib/units";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ function OwnerReportsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transactions")
-         .select("receipt_number,visit_date,sales_name,transaction_type,line_items,total_sales,discount_amount,amount_paid,remaining_debt,outlets(name)")
+        .select("receipt_number,visit_date,sales_name,transaction_type,line_items,total_sales,discount_amount,amount_paid,remaining_debt,outlets(name)")
         .gte("visit_date", from + "T00:00:00").lte("visit_date", to + "T23:59:59")
         .order("visit_date");
       if (error) throw error;
@@ -44,26 +45,29 @@ function OwnerReportsPage() {
   });
 
   const r = useMemo(() => {
-     const cost = new Map((products ?? []).map((p) => [k(p.name), { price: p.cost_price, size: p.pcs_per_pack }]));
-    const perProduct = new Map<string, { name: string; qty: number; omset: number; hpp: number }>();
+    const cost = new Map((products ?? []).map((p) => [k(p.name), { price: p.cost_price, size: p.pcs_per_pack }]));
+    const hppByProduct = new Map<string, number>();
     const rows = (txs ?? []).map((t) => {
       let hpp = 0;
-       const gross = Number(t.total_sales) || 0;
-       const discount = Number(t.discount_amount) || 0;
-       for (const li of (t.line_items as LineItem[]) ?? []) {
-        const q = Number(li.sold) || 0; if (!q) continue;
-         const productCost = cost.get(k(li.name));
-         const c = (productCost?.price ?? 0) * q / packSize(li.pcs_per_pack ?? productCost?.size);
-         const om = Number(li.subtotal) || Math.round(q * Number(li.price) / packSize(li.pcs_per_pack));
+      const gross = Number(t.total_sales) || 0;
+      const discount = Number(t.discount_amount) || 0;
+      for (const li of (t.line_items as LineItem[]) ?? []) {
+        const q = Number(li.sold) || 0;
+        if (!q) continue;
+        const productCost = cost.get(k(li.name));
+        const c = (productCost?.price ?? 0) * q / packSize(li.pcs_per_pack ?? productCost?.size);
         hpp += c;
-        const e = perProduct.get(k(li.name)) ?? { name: li.name, qty: 0, omset: 0, hpp: 0 };
-         e.qty += q; e.omset += gross ? om * (gross - discount) / gross : 0; e.hpp += c; perProduct.set(k(li.name), e);
+        hppByProduct.set(k(li.name), (hppByProduct.get(k(li.name)) ?? 0) + c);
       }
-       const omset = gross - discount;
-       return { nota: t.receipt_number, tanggal: t.visit_date.slice(0, 10), toko: (t.outlets as { name: string } | null)?.name ?? "-", sales: t.sales_name, jenis: t.transaction_type, bruto: gross, diskon: discount, omset, hpp, profit: omset - hpp, dibayar: Number(t.amount_paid), sisa: Number(t.remaining_debt) };
+      const omset = gross - discount;
+      return { nota: t.receipt_number, tanggal: t.visit_date.slice(0, 10), toko: (t.outlets as { name: string } | null)?.name ?? "-", sales: t.sales_name, jenis: t.transaction_type, bruto: gross, diskon: discount, omset, hpp, profit: omset - hpp, dibayar: Number(t.amount_paid), sisa: Number(t.remaining_debt) };
     });
     const tot = rows.reduce((a, x) => ({ omset: a.omset + x.omset, hpp: a.hpp + x.hpp, profit: a.profit + x.profit, dibayar: a.dibayar + x.dibayar }), { omset: 0, hpp: 0, profit: 0, dibayar: 0 });
-    return { rows, tot, products: [...perProduct.values()].sort((a, b) => b.omset - a.omset) };
+    const productSales = aggregateProductSales(txs ?? []);
+    const reportProducts = productSales
+      .map((p) => ({ ...p, hpp: hppByProduct.get(k(p.name)) ?? 0 }))
+      .sort((a, b) => b.omset - a.omset);
+    return { rows, tot, products: reportProducts };
   }, [txs, products]);
 
   async function download() {
@@ -71,12 +75,12 @@ function OwnerReportsPage() {
     const wb = XLSX.utils.book_new();
     const n1 = r.rows.length + 1;
     const s1 = XLSX.utils.aoa_to_sheet([
-       ["Tanggal", "No Nota", "Toko", "Sales", "Jenis", "Penjualan", "Diskon Nota", "Omset Bersih", "HPP", "Profit", "Dibayar", "Sisa Hutang"],
-       ...r.rows.map((x) => [x.tanggal, x.nota, x.toko, x.sales, x.jenis, x.bruto, x.diskon, x.omset, x.hpp, x.profit, x.dibayar, x.sisa]),
-       ["TOTAL", "", "", "", "", ...["F", "G", "H", "I", "J", "K", "L"].map((col) => ({ f: `SUM(${col}2:${col}${n1})` }))],
+      ["Tanggal", "No Nota", "Toko", "Sales", "Jenis", "Penjualan", "Diskon Nota", "Omset Bersih", "HPP", "Profit", "Dibayar", "Sisa Hutang"],
+      ...r.rows.map((x) => [x.tanggal, x.nota, x.toko, x.sales, x.jenis, x.bruto, x.diskon, x.omset, x.hpp, x.profit, x.dibayar, x.sisa]),
+      ["TOTAL", "", "", "", "", ...["F", "G", "H", "I", "J", "K", "L"].map((col) => ({ f: `SUM(${col}2:${col}${n1})` }))],
     ]);
-     r.rows.forEach((x, i) => { s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: x.omset }; s1[`J${i + 2}`] = { t: "n", f: `H${i + 2}-I${i + 2}`, v: x.profit }; });
-     s1["!cols"] = [12, 18, 20, 14, 12, 14, 14, 14, 14, 14, 14, 14].map((wch) => ({ wch }));
+    r.rows.forEach((x, i) => { s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: x.omset }; s1[`J${i + 2}`] = { t: "n", f: `H${i + 2}-I${i + 2}`, v: x.profit }; });
+    s1["!cols"] = [12, 18, 20, 14, 12, 14, 14, 14, 14, 14, 14, 14].map((wch) => ({ wch }));
     XLSX.utils.book_append_sheet(wb, s1, "Transaksi");
     const n2 = r.products.length + 1;
     const s2 = XLSX.utils.aoa_to_sheet([
@@ -99,7 +103,7 @@ function OwnerReportsPage() {
         <label className="text-xs text-muted-foreground">Sampai<Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-11" /></label>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border bg-card p-4">
-         <Box label="Omset Bersih" v={rp(r.tot.omset)} /><Box label="HPP" v={rp(r.tot.hpp)} />
+        <Box label="Omset Bersih" v={rp(r.tot.omset)} /><Box label="HPP" v={rp(r.tot.hpp)} />
         <Box label="Profit" v={rp(r.tot.profit)} strong /><Box label="Margin" v={margin.toFixed(1) + "%"} />
         <div className="col-span-2 border-t border-dashed pt-2 text-xs text-muted-foreground">Uang diterima: <b className="text-foreground">{rp(r.tot.dibayar)}</b> · {r.rows.length} transaksi</div>
       </div>
