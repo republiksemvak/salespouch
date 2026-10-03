@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { accessStatus } from "@/lib/access";
-import { signedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -23,10 +22,14 @@ function Dashboard() {
   const { data: outlets, isLoading } = useQuery({
     queryKey: ["outlets"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("outlets").select("*").order("created_at", { ascending: false });
+      // Daftar depan hanya membutuhkan data teks. Foto toko sengaja tidak diambil di sini
+      // agar halaman dashboard tetap ringan; foto hanya dimuat di Edit Profil Toko.
+      const { data, error } = await supabase
+        .from("outlets")
+        .select("id,name,owner_phone,map_location,created_at")
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      const urls = await signedPhotoUrls(data.map((o) => o.store_photo).filter(Boolean) as string[]);
-      return data.map((o) => ({ ...o, photoUrl: o.store_photo ? urls[o.store_photo] : undefined }));
+      return data;
     },
   });
 
@@ -70,8 +73,8 @@ function Dashboard() {
         )}
         {outlets?.filter((o) => o.name.toLowerCase().includes(q.trim().toLowerCase())).map((o) => (
           <div key={o.id} className="flex gap-3 rounded-2xl border bg-card p-3">
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
-              {o.photoUrl ? <img src={o.photoUrl} alt={o.name} className="h-full w-full object-cover" /> : <Store className="m-5 h-6 w-6 text-muted-foreground" />}
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-muted">
+              <Store className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate font-semibold">{o.name}</div>
