@@ -26,8 +26,7 @@ export const Route = createFileRoute("/_authenticated")({
 function Gate() {
   const { data: isAdmin, isLoading: adminLoading, error: adminError } = useIsAdmin();
 
-  // Do not load the business profile for Super Admin. This prevents a missing
-  // profiles row from blocking the admin account before the main app loads.
+  // Super Admin never needs a business profile to enter the application.
   if (adminLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
   if (isAdmin) return <Outlet />;
   if (adminError) return <div className="p-10 text-center text-destructive">Gagal memeriksa akses akun. Silakan muat ulang.</div>;
@@ -44,9 +43,14 @@ function OwnerGate() {
   const status = accessStatus(profileData.profile, profileData.email);
   if (!status.allowed) return <Blocked />;
 
-  const incomplete = !profileData.profile.business_name || !profileData.profile.business_category || !profileData.profile.business_model || !profileData.profile.main_product;
-  if (profileData.role === "owner" && incomplete) return <Setup profile={profileData.profile} />;
+  // Only a new Owner with no business name is sent to the business setup form.
+  // Existing Owners keep the normal app flow, even if the newer optional
+  // business-research fields have not been filled yet.
+  if (profileData.role === "owner" && !profileData.profile.business_name) {
+    return <Setup profile={profileData.profile} />;
+  }
 
+  // Sales/employees always continue directly to the normal application.
   return <Outlet />;
 }
 
@@ -111,7 +115,7 @@ function Setup({ profile }: { profile: { business_name: string | null; business_
         <div className="space-y-2"><Label>Nama Usaha</Label><Input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="cth. CV Kripik Mantap" className="h-12" /></div>
         <div className="space-y-2"><Label>Jenis Usaha</Label><select required value={category} onChange={(e) => setCategory(e.target.value)} className="h-12 w-full rounded-md border bg-background px-3 text-sm"><option value="">Pilih jenis usaha…</option>{businessCategories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
         <div className="space-y-2"><Label>Model Penjualan Utama</Label><select required value={model} onChange={(e) => setModel(e.target.value)} className="h-12 w-full rounded-md border bg-background px-3 text-sm"><option value="">Pilih model penjualan…</option>{businessModels.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-        <div className="space-y-2"><Label>Produk Utama yang Dijual</Label><Input required maxLength={100} value={product} onChange={(e) => setProduct(e.target.value)} placeholder="cth. Keripik pisang, minuman, kosmetik" className="h-12" /></div>
+        <div className="space-y-2"><Label>Produk Utama yang Dijual</Label><Input required maxLength={100} value={product} onChange={(e) => setProduct(e.target.value)} placeholder="cth. Keripik pisang, minuman, kosmetik" /></div>
         <Button disabled={busy || !name.trim() || !category || !model || !product.trim()} className="h-12 w-full">{busy ? "Menyimpan…" : "Simpan & Lanjut"}</Button>
       </form>
     </main>
