@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, profileQueryKey } from "@/hooks/use-profile";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { accessStatus, ADMIN_TELEGRAM, ADMIN_WHATSAPP } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,13 +24,20 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function Gate() {
-  const { data, isLoading, error } = useProfile();
-  if (isLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
-  if (error || !data?.profile) return <div className="p-10 text-center text-destructive">Profil tidak ditemukan.</div>;
-  const status = accessStatus(data.profile, data.email);
+  const { data: profileData, isLoading: profileLoading, error: profileError } = useProfile();
+  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
+
+  if (profileLoading || adminLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
+
+  // Super Admin must never be blocked by business-profile onboarding.
+  // Admin access is determined by user_roles, not by the profiles row.
+  if (isAdmin) return <Outlet />;
+
+  if (profileError || !profileData?.profile) return <div className="p-10 text-center text-destructive">Profil tidak ditemukan.</div>;
+  const status = accessStatus(profileData.profile, profileData.email);
   if (!status.allowed) return <Blocked />;
-  const incomplete = !data.profile.business_name || !data.profile.business_category || !data.profile.business_model || !data.profile.main_product;
-  if (data.role === "owner" && incomplete) return <Setup profile={data.profile} />;
+  const incomplete = !profileData.profile.business_name || !profileData.profile.business_category || !profileData.profile.business_model || !profileData.profile.main_product;
+  if (profileData.role === "owner" && incomplete) return <Setup profile={profileData.profile} />;
   return <Outlet />;
 }
 
