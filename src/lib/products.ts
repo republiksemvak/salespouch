@@ -22,6 +22,7 @@ export function useProducts() {
   return useQuery({
     queryKey: ["products", account?.ownerId, account?.role],
     enabled: !!account,
+    staleTime: 60_000,
     queryFn: async () => {
       const data = account?.role === "owner" ? await fetchOwner() : await (async () => {
         const { data, error } = await supabase.from("sales_catalog").select("id,name,price,price_grosir,price_agen,warehouse_stock,pcs_per_pack").order("name");
@@ -39,6 +40,7 @@ const key = (n: string) => n.trim().toLowerCase();
 export function useStockSummary() {
   return useQuery({
     queryKey: ["stock-summary"],
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transactions")
@@ -63,4 +65,3 @@ export function useStockSummary() {
     },
   });
 }
-
