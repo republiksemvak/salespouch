@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronDown, ChevronUp, Search, Trash2, Plus, X, Pencil } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Search, Trash2, Plus, X, Pencil, TrendingUp } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts, useStockSummary } from "@/lib/products";
@@ -46,6 +46,21 @@ function OwnerProductsPage() {
   const qc = useQueryClient();
   const { data: products, isLoading } = useProducts();
   const { data: summary } = useStockSummary();
+  const { data: insightRows } = useQuery({
+    queryKey: ["product-insight-30d"],
+    queryFn: async () => {
+      const from = new Date();
+      from.setDate(from.getDate() - 30);
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("visit_date,line_items")
+        .gte("visit_date", from.toISOString())
+        .order("visit_date", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 60_000,
+  });
 
   const [newOpen, setNewOpen] = useState(false);
   const [name, setName] = useState("");
@@ -62,6 +77,7 @@ function OwnerProductsPage() {
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["products"] });
     void qc.invalidateQueries({ queryKey: ["stock-summary"] });
+    void qc.invalidateQueries({ queryKey: ["product-insight-30d"] });
   };
 
   async function add() {
@@ -123,6 +139,25 @@ function OwnerProductsPage() {
   const criticalCount = rows.filter((p) => p.warehouse_stock <= packSize(p.pcs_per_pack)).length;
   const editingProduct = rows.find((p) => p.id === editingId) ?? null;
 
+  const insightMap = new Map<string, { name: string; qty: number; omset: number }>();
+  for (const tx of insightRows ?? []) {
+    for (const item of (tx.line_items as Array<{ name?: string; sold?: number; price?: number; subtotal?: number; pcs_per_pack?: number }> | null) ?? []) {
+      const itemName = String(item.name ?? "").trim();
+      const qty = Number(item.sold) || 0;
+      if (!itemName || qty <= 0) continue;
+      const size = packSize(item.pcs_per_pack);
+      const omset = Number(item.subtotal) || Math.round(qty * (Number(item.price) || 0) / size);
+      const key = k(itemName);
+      const current = insightMap.get(key) ?? { name: itemName, qty: 0, omset: 0 };
+      current.qty += qty;
+      current.omset += omset;
+      insightMap.set(key, current);
+    }
+  }
+  const insightProducts = [...insightMap.values()];
+  const topSelling = [...insightProducts].sort((a, b) => b.qty - a.qty).slice(0, 5);
+  const topRevenue = [...insightProducts].sort((a, b) => b.omset - a.omset).slice(0, 5);
+
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-5">
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground">
@@ -139,16 +174,16 @@ function OwnerProductsPage() {
         </Button>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-2xl border bg-card">
-        <div className="grid grid-cols-2 divide-x divide-y">
-          <SummaryBox label="Total SKU" value={`${rows.length}`} />
-          <SummaryBox label="Kritis / Habis" value={`${criticalCount}`} danger={criticalCount > 0} />
-          <SummaryBox label="Nilai Gudang" value={rp(sum.nilaiGudang)} />
-          <SummaryBox label="Nilai Toko" value={rp(sum.nilaiToko)} />
-        </div>
+      <div className="mt-4 flex items-center justify-between rounded-xl border bg-card px-3 py-2.5 text-[10px]">
+        <MiniSummary label="SKU" value={`${rows.length}`} />
+        <MiniSummary label="Kritis" value={`${criticalCount}`} danger={criticalCount > 0} />
+        <MiniSummary label="Gudang" value={rp(sum.nilaiGudang)} />
+        <MiniSummary label="Toko" value={rp(sum.nilaiToko)} />
       </div>
 
-      <div className="relative mt-5">
+      <ProductInsights topSelling={topSelling} topRevenue={topRevenue} />
+
+      <div className="relative mt-4">
         <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Cari produk…" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 rounded-xl pl-9" />
       </div>
@@ -225,6 +260,49 @@ function OwnerProductsPage() {
   );
 }
 
+function ProductInsights({ topSelling, topRevenue }: { topSelling: { name: string; qty: number; omset: number }[]; topRevenue: { name: string; qty: number; omset: number }[] }) {
+  const maxQty = topSelling[0]?.qty || 1;
+  const maxRevenue = topRevenue[0]?.omset || 1;
+  return (
+    <section className="mt-4 overflow-hidden rounded-2xl border bg-card">
+      <div className="flex items-center justify-between border-b px-3.5 py-3">
+        <div>
+          <div className="text-sm font-bold">Insight Produk</div>
+          <div className="text-[10px] text-muted-foreground">Penjualan 30 hari terakhir</div>
+        </div>
+        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="grid grid-cols-2 divide-x">
+        <InsightList title="Terlaris" rows={topSelling} max={maxQty} value={(r) => `${r.qty} pcs`} />
+        <InsightList title="Omset Terbesar" rows={topRevenue} max={maxRevenue} value={(r) => rp(r.omset)} revenue />
+      </div>
+      {!topSelling.length && <div className="px-3.5 py-4 text-center text-[11px] text-muted-foreground">Belum ada penjualan 30 hari terakhir.</div>}
+    </section>
+  );
+}
+
+function InsightList({ title, rows, max, value, revenue }: { title: string; rows: { name: string; qty: number; omset: number }[]; max: number; value: (r: { name: string; qty: number; omset: number }) => string; revenue?: boolean }) {
+  return (
+    <div className="min-w-0 p-3">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+      <div className="space-y-2.5">
+        {rows.length === 0 && <div className="text-[10px] text-muted-foreground">Belum ada data</div>}
+        {rows.map((r, i) => (
+          <div key={r.name} className="min-w-0">
+            <div className="flex items-center justify-between gap-1 text-[10px]">
+              <span className="min-w-0 truncate font-medium">{i + 1}. {r.name}</span>
+              <span className="shrink-0 font-semibold">{value(r)}</span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className={revenue ? "h-full rounded-full bg-primary" : "h-full rounded-full bg-primary/70"} style={{ width: `${Math.max(8, (revenue ? r.omset : r.qty) / max * 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ProductCard({ product, onEdit, onDelete }: { product: any; onEdit: () => void; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const perPack = packSize(product.pcs_per_pack);
@@ -236,28 +314,15 @@ function ProductCard({ product, onEdit, onDelete }: { product: any; onEdit: () =
 
   return (
     <div className="overflow-hidden rounded-2xl border bg-card">
-      <button
-        type="button"
-        className="flex w-full items-center gap-3 p-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/40"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-      >
+      <button type="button" className="flex w-full items-center gap-3 p-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/40" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <div className="min-w-0 truncate text-[15px] font-bold">{product.name}</div>
-            {(isOut || isCritical) && (
-              <span className={isOut ? "shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[9px] font-bold text-destructive" : "shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-600"}>
-                {isOut ? "HABIS" : "KRITIS"}
-              </span>
-            )}
+            {(isOut || isCritical) && <span className={isOut ? "shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[9px] font-bold text-destructive" : "shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-600"}>{isOut ? "HABIS" : "KRITIS"}</span>}
           </div>
           <div className="mt-1 text-[10px] text-muted-foreground">SKU · {product.id.slice(0, 8).toUpperCase()}</div>
           <div className="mt-2 flex items-center gap-3 text-[11px]">
-            <span>Gudang <b>{formatQty(warehousePcs, perPack)}</b></span>
-            <span className="text-muted-foreground">•</span>
-            <span>Toko <b>{formatQty(storePcs, perPack)}</b></span>
-            <span className="text-muted-foreground">•</span>
-            <span>Total <b>{formatQty(totalPcs, perPack)}</b></span>
+            <span>Gudang <b>{formatQty(warehousePcs, perPack)}</b></span><span className="text-muted-foreground">•</span><span>Toko <b>{formatQty(storePcs, perPack)}</b></span><span className="text-muted-foreground">•</span><span>Total <b>{formatQty(totalPcs, perPack)}</b></span>
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -270,45 +335,15 @@ function ProductCard({ product, onEdit, onDelete }: { product: any; onEdit: () =
       {expanded && (
         <div className="border-t bg-muted/10 px-3.5 pb-3.5 pt-3">
           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <PriceText label="Eceran" value={product.price} />
-            <PriceText label="Grosir" value={product.price_grosir || product.price} />
-            <PriceText label="Agen" value={product.price_agen || product.price} />
-            <PriceText label="HPP" value={product.cost_price} />
+            <PriceText label="Eceran" value={product.price} /><PriceText label="Grosir" value={product.price_grosir || product.price} /><PriceText label="Agen" value={product.price_agen || product.price} /><PriceText label="HPP" value={product.cost_price} />
           </div>
-
           <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3">
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Kemasan</div>
-              <div className="mt-0.5 text-sm font-semibold">1 pack = {perPack} pcs</div>
-            </div>
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Harga / pcs</div>
-              <div className="mt-0.5 text-sm font-semibold">{rp((product.price || 0) / perPack)}</div>
-            </div>
+            <div><div className="text-[10px] uppercase tracking-wide text-muted-foreground">Kemasan</div><div className="mt-0.5 text-sm font-semibold">1 pack = {perPack} pcs</div></div>
+            <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-muted-foreground">Harga / pcs</div><div className="mt-0.5 text-sm font-semibold">{rp((product.price || 0) / perPack)}</div></div>
           </div>
-
-          <div className="mt-3 rounded-xl bg-muted/40 p-3">
-            <div className="grid grid-cols-3 gap-2">
-              <StockBox label="Gudang" value={formatQty(warehousePcs, perPack)} />
-              <StockBox label="Toko" value={formatQty(storePcs, perPack)} />
-              <StockBox label="Total" value={formatQty(totalPcs, perPack)} />
-            </div>
-          </div>
-
-          <div className="mt-3 space-y-1 text-xs">
-            <div className="flex items-center justify-between"><span className="text-muted-foreground">Nilai di toko</span><b>{rp(storePcs * ((product.price || 0) / perPack))}</b></div>
-            <div className="flex items-center justify-between"><span className="text-muted-foreground">Nilai stok total</span><b>{rp(totalPcs * ((product.price || 0) / perPack))}</b></div>
-          </div>
-
-          <div className="mt-3 flex items-center border-t pt-2">
-            <Button variant="ghost" onClick={onEdit} className="h-10 flex-1 text-sm">
-              <Pencil className="mr-1.5 h-4 w-4" /> Atur Stok & Harga
-            </Button>
-            <div className="h-6 w-px bg-border" />
-            <Button variant="ghost" onClick={onDelete} className="h-10 w-10 text-muted-foreground hover:text-destructive" aria-label="Hapus produk">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          <div className="mt-3 rounded-xl bg-muted/40 p-3"><div className="grid grid-cols-3 gap-2"><StockBox label="Gudang" value={formatQty(warehousePcs, perPack)} /><StockBox label="Toko" value={formatQty(storePcs, perPack)} /><StockBox label="Total" value={formatQty(totalPcs, perPack)} /></div></div>
+          <div className="mt-3 space-y-1 text-xs"><div className="flex items-center justify-between"><span className="text-muted-foreground">Nilai di toko</span><b>{rp(storePcs * ((product.price || 0) / perPack))}</b></div><div className="flex items-center justify-between"><span className="text-muted-foreground">Nilai stok total</span><b>{rp(totalPcs * ((product.price || 0) / perPack))}</b></div></div>
+          <div className="mt-3 flex items-center border-t pt-2"><Button variant="ghost" onClick={onEdit} className="h-10 flex-1 text-sm"><Pencil className="mr-1.5 h-4 w-4" /> Atur Stok & Harga</Button><div className="h-6 w-px bg-border" /><Button variant="ghost" onClick={onDelete} className="h-10 w-10 text-muted-foreground hover:text-destructive" aria-label="Hapus produk"><Trash2 className="h-4 w-4" /></Button></div>
         </div>
       )}
     </div>
@@ -340,56 +375,25 @@ function EditProductModal({ product, onClose, onSave }: { product: any; onClose:
     <Modal title="Atur Stok & Harga" onClose={onClose}>
       <div className="mb-4 rounded-xl bg-muted/40 p-3"><div className="text-sm font-bold">{product.name}</div><div className="mt-1 text-xs text-muted-foreground">Ubah harga, kemasan, atau stok gudang.</div></div>
       <div className="space-y-4">
-        <div>
-          <div className="mb-3 text-sm font-semibold">Harga Produk</div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="HPP / pack"><Input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} className="h-11" /></Field>
-            <Field label="Eceran / pack"><Input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" /></Field>
-            <Field label="Grosir / pack"><Input inputMode="numeric" value={priceGrosir} onChange={(e) => setPriceGrosir(e.target.value)} className="h-11" /></Field>
-            <Field label="Agen / pack"><Input inputMode="numeric" value={priceAgen} onChange={(e) => setPriceAgen(e.target.value)} className="h-11" /></Field>
-          </div>
-        </div>
-        <div className="border-t pt-4">
-          <div className="mb-3 text-sm font-semibold">Kemasan</div>
-          <Field label="Isi per pack"><Input type="number" min={1} step={1} value={pack} onChange={(e) => setPack(e.target.value)} className="h-11" /></Field>
-        </div>
-        <div className="border-t pt-4">
-          <div className="mb-3 text-sm font-semibold">Stok Gudang</div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Pack"><Input type="number" min={0} step={1} value={stockPack} onChange={(e) => setStockPack(e.target.value)} className="h-11" /></Field>
-            <Field label="Sisa pcs"><Input type="number" min={0} max={perPack - 1} step={1} value={stockPcs} onChange={(e) => setStockPcs(e.target.value)} className="h-11" /></Field>
-          </div>
-          <div className="mt-2 text-[11px] text-muted-foreground">Total stok: <b className="text-foreground">{formatQty(toPieces(whole(stockPack), whole(stockPcs), perPack), perPack)}</b></div>
-        </div>
-        <div className="flex gap-2 border-t pt-4">
-          <Button variant="outline" onClick={onClose} className="h-11 flex-1 rounded-xl">Batal</Button>
-          <Button onClick={() => void save()} className="h-11 flex-1 rounded-xl">Simpan Perubahan</Button>
-        </div>
+        <div><div className="mb-3 text-sm font-semibold">Harga Produk</div><div className="grid grid-cols-2 gap-3"><Field label="HPP / pack"><Input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} className="h-11" /></Field><Field label="Eceran / pack"><Input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11" /></Field><Field label="Grosir / pack"><Input inputMode="numeric" value={priceGrosir} onChange={(e) => setPriceGrosir(e.target.value)} className="h-11" /></Field><Field label="Agen / pack"><Input inputMode="numeric" value={priceAgen} onChange={(e) => setPriceAgen(e.target.value)} className="h-11" /></Field></div></div>
+        <div className="border-t pt-4"><div className="mb-3 text-sm font-semibold">Kemasan</div><Field label="Isi per pack"><Input type="number" min={1} step={1} value={pack} onChange={(e) => setPack(e.target.value)} className="h-11" /></Field></div>
+        <div className="border-t pt-4"><div className="mb-3 text-sm font-semibold">Stok Gudang</div><div className="grid grid-cols-2 gap-3"><Field label="Pack"><Input type="number" min={0} step={1} value={stockPack} onChange={(e) => setStockPack(e.target.value)} className="h-11" /></Field><Field label="Sisa pcs"><Input type="number" min={0} max={perPack - 1} step={1} value={stockPcs} onChange={(e) => setStockPcs(e.target.value)} className="h-11" /></Field></div><div className="mt-2 text-[11px] text-muted-foreground">Total stok: <b className="text-foreground">{formatQty(toPieces(whole(stockPack), whole(stockPcs), perPack), perPack)}</b></div></div>
+        <div className="flex gap-2 border-t pt-4"><Button variant="outline" onClick={onClose} className="h-11 flex-1 rounded-xl">Batal</Button><Button onClick={() => void save()} className="h-11 flex-1 rounded-xl">Simpan Perubahan</Button></div>
       </div>
     </Modal>
   );
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-background p-5 shadow-2xl sm:rounded-3xl">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{title}</h2>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full" aria-label="Tutup"><X className="h-5 w-5" /></Button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
+  return <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-background p-5 shadow-2xl sm:rounded-3xl"><div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-bold">{title}</h2><Button variant="ghost" size="icon" onClick={onClose} className="rounded-full" aria-label="Tutup"><X className="h-5 w-5" /></Button></div>{children}</div></div>;
 }
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return <label className="block"><div className="mb-1.5 text-xs font-medium text-muted-foreground">{label}{required && <span className="ml-0.5 text-destructive">*</span>}</div>{children}</label>;
 }
 
-function SummaryBox({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
-  return <div className="p-4"><div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</div><div className={danger ? "mt-1 text-lg font-bold text-destructive" : "mt-1 text-lg font-bold"}>{value}</div></div>;
+function MiniSummary({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+  return <div className="min-w-0 text-center"><div className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</div><div className={danger ? "mt-0.5 truncate text-[11px] font-bold text-destructive" : "mt-0.5 truncate text-[11px] font-bold"}>{value}</div></div>;
 }
 
 function PriceText({ label, value }: { label: string; value: number }) {
@@ -423,17 +427,7 @@ function ResetPanel({ onDone }: { onDone: () => void }) {
     onDone();
   }
 
-  return (
-    <div className="mt-10 space-y-2 rounded-2xl border border-destructive/40 p-4">
-      <div className="font-semibold text-destructive">Reset Data</div>
-      <p className="text-xs text-muted-foreground">Butuh password akun Anda.</p>
-      <Input type="password" placeholder="Password akun" value={pw} onChange={(e) => setPw(e.target.value)} className="h-11" />
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="destructive" disabled={busy} onClick={() => void run("outlets")}>Reset Data Toko</Button>
-        <Button variant="destructive" disabled={busy} onClick={() => void run("stock")}>Reset Stok Gudang</Button>
-      </div>
-    </div>
-  );
+  return <div className="mt-10 space-y-2 rounded-2xl border border-destructive/40 p-4"><div className="font-semibold text-destructive">Reset Data</div><p className="text-xs text-muted-foreground">Butuh password akun Anda.</p><Input type="password" placeholder="Password akun" value={pw} onChange={(e) => setPw(e.target.value)} className="h-11" /><div className="grid grid-cols-2 gap-2"><Button variant="destructive" disabled={busy} onClick={() => void run("outlets")}>Reset Data Toko</Button><Button variant="destructive" disabled={busy} onClick={() => void run("stock")}>Reset Stok Gudang</Button></div></div>;
 }
 
 function Stat({ label, v }: { label: string; v: number | string }) {
