@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MapPin, Pencil, Phone, Search, Store, LockKeyhole } from "lucide-react";
@@ -95,15 +95,16 @@ function AllOutlets() {
               {outlet.owner_phone && <a href={`tel:${outlet.owner_phone}`} className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Phone className="h-3 w-3" />{outlet.owner_phone}</a>}
               {outlet.map_location && <a href={outlet.map_location.startsWith("http") ? outlet.map_location : `https://maps.google.com/?q=${encodeURIComponent(outlet.map_location)}`} target="_blank" rel="noreferrer" className="mt-0.5 flex items-center gap-1 text-[11px] text-accent underline"><MapPin className="h-3 w-3" />Buka peta</a>}
             </div>
-            <Link
-              to="/outlets/$id/edit"
-              params={{ id: outlet.id }}
+            <Button
+              type="button"
+              variant="outline"
               aria-label={`Edit ${outlet.name}`}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-input bg-background px-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-9 shrink-0 gap-1.5 px-2.5 text-sm"
+              onClick={() => navigate({ to: "/outlets/$id/edit", params: { id: outlet.id } })}
             >
               <Pencil className="h-4 w-4" />
               Edit
-            </Link>
+            </Button>
           </div>
         ))}
       </div>
