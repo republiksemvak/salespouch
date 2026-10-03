@@ -145,6 +145,11 @@
   }
 }
 
+/* Hide the Lovable editor badge on published apps. */
+#lovable-badge {
+  display: none !important;
+}
+
 /* Comfortable reading size for compact Master Produk and Laporan Keuangan pages. */
 main.max-w-md .text-\[10px\] { font-size: 0.6875rem; }
 main.max-w-md .text-\[11px\] { font-size: 0.75rem; }
