@@ -18,20 +18,34 @@ function Dashboard() {
   const { data: p } = useProfile();
   const { data: isAdmin } = useIsAdmin();
   const [q, setQ] = useState("");
+  const search = q.trim();
   const status = p?.profile ? accessStatus(p.profile, p.email) : null;
-  const { data: outlets, isLoading } = useQuery({
-    queryKey: ["outlets"],
+
+  const { data: outletResult, isLoading } = useQuery({
+    queryKey: ["outlets", search],
     queryFn: async () => {
-      // Daftar depan hanya membutuhkan data teks. Foto toko sengaja tidak diambil di sini
-      // agar halaman dashboard tetap ringan; foto hanya dimuat di Edit Profil Toko.
-      const { data, error } = await supabase
+      // Dashboard hanya mengambil kolom yang benar-benar ditampilkan.
+      // Foto toko tetap tidak dimuat di daftar agar halaman ringan.
+      let query = supabase
         .from("outlets")
-        .select("id,name,owner_phone,map_location,created_at")
-        .order("created_at", { ascending: false });
+        .select("id,name,owner_phone,map_location,created_at", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(0, 49);
+
+      if (search) {
+        const safeSearch = search.replace(/[%_]/g, (char) => `\\${char}`);
+        query = query.ilike("name", `%${safeSearch}%`);
+      }
+
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data;
+      return { data: data ?? [], count: count ?? 0 };
     },
+    staleTime: 30_000,
   });
+
+  const outlets = outletResult?.data ?? [];
+  const outletCount = outletResult?.count ?? 0;
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-28 pt-6">
@@ -58,20 +72,27 @@ function Dashboard() {
       </div>}
       <Button asChild variant="outline" className="mt-2 h-11 w-full"><Link to="/transactions"><History className="mr-1 h-4 w-4" />Riwayat Transaksi</Link></Button>
 
-      <h2 className="mt-8 font-mono text-xs uppercase tracking-widest text-muted-foreground">Outlet ({outlets?.length ?? 0})</h2>
+      <div className="mt-8 flex items-center justify-between gap-3">
+        <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          Outlet ({outletCount})
+        </h2>
+        {outletCount > 50 && <span className="text-[11px] text-muted-foreground">50 terbaru</span>}
+      </div>
+
       <div className="relative mt-3">
         <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Cari toko…" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 pl-9" />
       </div>
+
       <div className="mt-3 space-y-3">
         {isLoading && <p className="text-sm text-muted-foreground">Memuat…</p>}
-        {outlets?.length === 0 && (
+        {!isLoading && outlets.length === 0 && (
           <div className="rounded-2xl border border-dashed p-8 text-center">
             <Store className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-3 text-sm text-muted-foreground">Belum ada outlet. Tambahkan outlet pertama Anda.</p>
+            <p className="mt-3 text-sm text-muted-foreground">{search ? "Outlet tidak ditemukan." : "Belum ada outlet. Tambahkan outlet pertama Anda."}</p>
           </div>
         )}
-        {outlets?.filter((o) => o.name.toLowerCase().includes(q.trim().toLowerCase())).map((o) => (
+        {outlets.map((o) => (
           <div key={o.id} className="flex gap-3 rounded-2xl border bg-card p-3">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-muted">
               <Store className="h-6 w-6 text-muted-foreground" />
