@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, Pencil, LockKeyhole, UserRoundCog, ChevronDown, UsersRound } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, LockKeyhole, UserRoundCog, ChevronDown, UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -108,9 +108,7 @@ function Dashboard() {
               <p className="text-xs text-muted-foreground">Kelola Sales dan kebutuhan tim.</p>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {teamFeatures.map(previewButton)}
-          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">{teamFeatures.map(previewButton)}</div>
         </section>}
 
         <div className="mt-2">
@@ -148,20 +146,20 @@ function Dashboard() {
         <Input placeholder="Cari toko…" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 pl-9" />
       </div>
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-3 space-y-2">
         {isLoading && <p className="text-sm text-muted-foreground">Memuat…</p>}
         {!isLoading && outlets.length === 0 && (
           <div className="rounded-2xl border border-dashed p-8 text-center"><Store className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 text-sm text-muted-foreground">{search ? "Outlet tidak ditemukan." : "Belum ada outlet. Tambahkan outlet pertama Anda."}</p></div>
         )}
         {outlets.map((o) => (
-          <div key={o.id} className="flex gap-3 rounded-2xl border bg-card p-3">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-muted"><Store className="h-6 w-6 text-muted-foreground" /></div>
+          <div key={o.id} className="flex items-center gap-2 rounded-xl border bg-card p-2">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted"><Store className="h-5 w-5 text-muted-foreground" /></div>
             <div className="min-w-0 flex-1">
-              <div className="truncate font-semibold">{o.name}</div>
-              {o.owner_phone && <a href={`tel:${o.owner_phone}`} className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Phone className="h-3 w-3" />{o.owner_phone}</a>}
-              {o.map_location && <a href={o.map_location.startsWith("http") ? o.map_location : `https://maps.google.com/?q=${encodeURIComponent(o.map_location)}`} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-xs text-accent underline"><MapPin className="h-3 w-3" />Buka peta</a>}
+              <div className="truncate text-sm font-semibold">{o.name}</div>
+              {o.owner_phone && <a href={`tel:${o.owner_phone}`} className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Phone className="h-3 w-3" />{o.owner_phone}</a>}
+              {o.map_location && <a href={o.map_location.startsWith("http") ? o.map_location : `https://maps.google.com/?q=${encodeURIComponent(o.map_location)}`} target="_blank" rel="noreferrer" className="mt-0.5 flex items-center gap-1 text-[11px] text-accent underline"><MapPin className="h-3 w-3" />Peta</a>}
             </div>
-            <div className="flex shrink-0 flex-col gap-1 self-center"><Button asChild size="sm"><Link to="/visit" search={{ outlet: o.id }}>Kunjungi</Link></Button>{isOwner && <Button asChild size="icon" variant="ghost" className="self-end" aria-label={`Edit ${o.name}`}><Link to="/outlets/$id/edit" params={{ id: o.id }}><Pencil className="h-4 w-4" /></Link></Button>}</div>
+            <Button asChild size="sm" className="h-8 shrink-0 px-2"><Link to="/visit" search={{ outlet: o.id }}>Kunjungi</Link></Button>
           </div>
         ))}
       </div>
