@@ -129,7 +129,7 @@ function Dashboard() {
             </div>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/dashboard"><span>Semua Outlet</span><Store className="h-4 w-4 text-muted-foreground" /></Link></Button>
+            <Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/outlets"><span>Semua Outlet</span><Store className="h-4 w-4 text-muted-foreground" /></Link></Button>
             {outletFeatures.map(previewButton)}
             <Button type="button" variant="outline" disabled className="h-11 justify-between px-3 opacity-70"><span>Penugasan Sales</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button>
           </div>
@@ -139,9 +139,7 @@ function Dashboard() {
       <Button asChild variant="outline" className="mt-4 h-11 w-full"><Link to="/transactions"><History className="mr-1 h-4 w-4" />Riwayat Transaksi</Link></Button>
 
       <div className="mt-8 flex items-center justify-between gap-3">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-          Outlet ({outletCount})
-        </h2>
+        <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Outlet ({outletCount})</h2>
         {outletCount > 50 && <span className="text-[11px] text-muted-foreground">50 terbaru</span>}
       </div>
 
@@ -153,30 +151,17 @@ function Dashboard() {
       <div className="mt-3 space-y-3">
         {isLoading && <p className="text-sm text-muted-foreground">Memuat…</p>}
         {!isLoading && outlets.length === 0 && (
-          <div className="rounded-2xl border border-dashed p-8 text-center">
-            <Store className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-3 text-sm text-muted-foreground">{search ? "Outlet tidak ditemukan." : "Belum ada outlet. Tambahkan outlet pertama Anda."}</p>
-          </div>
+          <div className="rounded-2xl border border-dashed p-8 text-center"><Store className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 text-sm text-muted-foreground">{search ? "Outlet tidak ditemukan." : "Belum ada outlet. Tambahkan outlet pertama Anda."}</p></div>
         )}
         {outlets.map((o) => (
           <div key={o.id} className="flex gap-3 rounded-2xl border bg-card p-3">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-muted">
-              <Store className="h-6 w-6 text-muted-foreground" />
-            </div>
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-muted"><Store className="h-6 w-6 text-muted-foreground" /></div>
             <div className="min-w-0 flex-1">
               <div className="truncate font-semibold">{o.name}</div>
               {o.owner_phone && <a href={`tel:${o.owner_phone}`} className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Phone className="h-3 w-3" />{o.owner_phone}</a>}
-              {o.map_location && (
-                <a href={o.map_location.startsWith("http") ? o.map_location : `https://maps.google.com/?q=${encodeURIComponent(o.map_location)}`}
-                  target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-xs text-accent underline">
-                  <MapPin className="h-3 w-3" />Buka peta
-                </a>
-              )}
+              {o.map_location && <a href={o.map_location.startsWith("http") ? o.map_location : `https://maps.google.com/?q=${encodeURIComponent(o.map_location)}`} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-xs text-accent underline"><MapPin className="h-3 w-3" />Buka peta</a>}
             </div>
-            <div className="flex shrink-0 flex-col gap-1 self-center">
-              <Button asChild size="sm"><Link to="/visit" search={{ outlet: o.id }}>Kunjungi</Link></Button>
-              {isOwner && <Button asChild size="icon" variant="ghost" className="self-end" aria-label={`Edit ${o.name}`}><Link to="/outlets/$id/edit" params={{ id: o.id }}><Pencil className="h-4 w-4" /></Link></Button>}
-            </div>
+            <div className="flex shrink-0 flex-col gap-1 self-center"><Button asChild size="sm"><Link to="/visit" search={{ outlet: o.id }}>Kunjungi</Link></Button>{isOwner && <Button asChild size="icon" variant="ghost" className="self-end" aria-label={`Edit ${o.name}`}><Link to="/outlets/$id/edit" params={{ id: o.id }}><Pencil className="h-4 w-4" /></Link></Button>}</div>
           </div>
         ))}
       </div>
