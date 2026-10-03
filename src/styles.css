@@ -144,3 +144,17 @@
     color: var(--color-foreground);
   }
 }
+
+/* Comfortable reading size for compact Master Produk and Laporan Keuangan pages. */
+main.max-w-md .text-\[10px\] { font-size: 0.6875rem; }
+main.max-w-md .text-\[11px\] { font-size: 0.75rem; }
+
+/* Keep the product insight note short and easy to scan. */
+main.max-w-md .border-t.px-3\.5.py-2\.5.text-\[10px\] {
+  font-size: 0;
+}
+main.max-w-md .border-t.px-3\.5.py-2\.5.text-\[10px\] b { display: none; }
+main.max-w-md .border-t.px-3\.5.py-2\.5.text-\[10px\]::after {
+  content: "Terlaris = pcs terjual. Omset = setelah diskon. Insight = 30 hari.";
+  font-size: 0.6875rem;
+}
