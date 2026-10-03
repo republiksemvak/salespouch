@@ -84,7 +84,13 @@ function Dashboard() {
       )}
 
       {isOwner && <>
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        {isAdmin && (
+          <Button asChild className="mt-4 h-12 w-full">
+            <Link to="/admin"><ShieldCheck className="mr-2 h-5 w-5" />Dashboard Super Admin</Link>
+          </Button>
+        )}
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <Button asChild variant="outline" className="h-11"><Link to="/products"><Package className="mr-1 h-4 w-4" />Master Produk</Link></Button>
           <Button asChild variant="outline" className="h-11"><Link to="/profile"><UserCog className="mr-1 h-4 w-4" />Profil Usaha</Link></Button>
           <Button asChild variant="outline" className="col-span-2 h-11"><Link to="/reports"><Package className="mr-1 h-4 w-4" />Laporan Keuangan</Link></Button>
@@ -92,7 +98,6 @@ function Dashboard() {
             <span className="flex items-center"><Users className="mr-1 h-4 w-4" />Manajemen Tim</span>
             <ChevronDown className={`h-4 w-4 transition-transform ${teamOpen ? "rotate-180" : ""}`} />
           </Button>
-          {isAdmin && <Button asChild className="col-span-2 h-11"><Link to="/admin"><ShieldCheck className="mr-1 h-4 w-4" />Dashboard Super Admin</Link></Button>}
         </div>
 
         {teamOpen && <section className="mt-2 rounded-2xl border bg-card p-3">
