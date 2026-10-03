@@ -5,6 +5,7 @@ import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, profileQueryKey } from "@/hooks/use-profile";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,9 +37,10 @@ export const Route = createFileRoute("/_authenticated/profile")({
 
 function ProfilePage() {
   const { data: account, isLoading } = useProfile();
-  if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
-  if (account?.role !== "owner")
-    return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat mengubah profil usaha.</div>;
+  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
+  if (isLoading || adminLoading) return <div className="p-10 text-center">Memuat…</div>;
+  if (!isAdmin && account?.role !== "owner")
+    return <div className="p-10 text-center text-destructive">Hanya Owner atau Super Admin yang dapat mengubah profil usaha.</div>;
   return <OwnerProfilePage />;
 }
 
