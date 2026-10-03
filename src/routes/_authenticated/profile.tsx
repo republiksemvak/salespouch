@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, profileQueryKey } from "@/hooks/use-profile";
@@ -9,6 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import type { StockScheme } from "@/lib/access";
 
 export const Route = createFileRoute("/_authenticated/profile")({
@@ -41,6 +50,10 @@ function OwnerProfilePage() {
   const [phone, setPhone] = useState("");
   const [stockScheme, setStockScheme] = useState<StockScheme>("clean_pull");
   const [busy, setBusy] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   useEffect(() => {
     if (!p?.profile) return;
@@ -79,6 +92,31 @@ function OwnerProfilePage() {
     }
     toast.success("Profil usaha disimpan");
     qc.invalidateQueries({ queryKey: profileQueryKey });
+  }
+
+  async function resetPassword() {
+    if (newPassword.length < 6) {
+      toast.error("Password minimal 6 karakter");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Konfirmasi password tidak sama");
+      return;
+    }
+
+    setPasswordBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordBusy(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordOpen(false);
+    toast.success("Password berhasil diubah");
   }
 
   return (
@@ -154,6 +192,67 @@ function OwnerProfilePage() {
           </Button>
         </form>
       )}
+
+      <div className="mt-6 rounded-2xl border bg-card p-4">
+        <div className="flex items-start gap-3">
+          <div className="rounded-xl bg-muted p-2">
+            <LockKeyhole className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">Password</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Ganti password akun Anda tanpa mengubah data usaha.
+            </p>
+            <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
+              <DialogTrigger asChild>
+                <Button type="button" variant="outline" className="mt-3 w-full">
+                  Reset Password
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Reset Password</DialogTitle>
+                  <DialogDescription>
+                    Masukkan password baru untuk akun Anda. Minimal 6 karakter.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label>Password Baru</Label>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Minimal 6 karakter"
+                      className="h-12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Konfirmasi Password</Label>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Ulangi password baru"
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setPasswordOpen(false)} disabled={passwordBusy}>
+                    Batal
+                  </Button>
+                  <Button type="button" onClick={resetPassword} disabled={passwordBusy}>
+                    {passwordBusy ? "Menyimpan…" : "Simpan Password"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
