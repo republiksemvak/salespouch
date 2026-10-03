@@ -95,8 +95,16 @@ function AllOutlets() {
               {outlet.owner_phone && <a href={`tel:${outlet.owner_phone}`} className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Phone className="h-3 w-3" />{outlet.owner_phone}</a>}
               {outlet.map_location && <a href={outlet.map_location.startsWith("http") ? outlet.map_location : `https://maps.google.com/?q=${encodeURIComponent(outlet.map_location)}`} target="_blank" rel="noreferrer" className="mt-0.5 flex items-center gap-1 text-[11px] text-accent underline"><MapPin className="h-3 w-3" />Buka peta</a>}
             </div>
-            <Button asChild size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={`Edit ${outlet.name}`}>
-              <Link to="/outlets/$id/edit" params={{ id: outlet.id }}><Pencil className="h-4 w-4" /></Link>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-9 shrink-0 px-2.5"
+              aria-label={`Edit ${outlet.name}`}
+              onClick={() => navigate({ to: "/outlets/$id/edit", params: { id: outlet.id } })}
+            >
+              <Pencil className="mr-1.5 h-4 w-4" />
+              Edit
             </Button>
           </div>
         ))}
