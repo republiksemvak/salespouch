@@ -37,6 +37,7 @@ function ReceiptPage() {
       const { data, error } = await supabase.from("transactions")
         .select("receipt_number,visit_date,line_items,new_consignment_items,amount_paid,remaining_debt")
         .eq("outlet_id", t!.outlet_id).neq("id", id)
+         .eq("transaction_type", "Consignment")
         .or(`visit_date.lt.${t!.visit_date},and(visit_date.eq.${t!.visit_date},created_at.lt.${t!.created_at})`)
         .order("visit_date", { ascending: false }).order("created_at", { ascending: false }).limit(1);
       if (error) throw error;

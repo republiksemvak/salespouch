@@ -20,6 +20,7 @@ export async function loadLastVisit(outletId: string) {
     .from("transactions")
     .select("line_items,new_consignment_items,remaining_debt")
     .eq("outlet_id", outletId)
+    .eq("transaction_type", "Consignment")
     .order("visit_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(1);
