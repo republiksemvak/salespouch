@@ -1,2 +1,0 @@
-GitHub write connection test — Sales Pouch.
-If this file exists, write access is working.
