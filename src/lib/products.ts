@@ -36,7 +36,7 @@ export function useProducts() {
 
 const key = (n: string) => n.trim().toLowerCase();
 
-/** Per product (by name): stock sitting at stores (latest visit per outlet) and total returned. */
+/** Per product: stock at stores from the latest visit, or opening stock before the first consignment visit. */
 export function useStockSummary() {
   return useQuery({
     queryKey: ["stock-summary"],
@@ -44,10 +44,12 @@ export function useStockSummary() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transactions")
-        .select("outlet_id,line_items,new_consignment_items,visit_date,created_at")
+        .select("outlet_id,line_items,new_consignment_items,visit_date,created_at,transaction_type")
+        .eq("transaction_type", "Consignment")
         .order("visit_date", { ascending: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
+
       const atStore = new Map<string, number>();
       const returned = new Map<string, number>();
       const seen = new Set<string>();
@@ -61,6 +63,24 @@ export function useStockSummary() {
         for (const ni of (t.new_consignment_items as NewItem[]) ?? [])
           atStore.set(key(ni.name), (atStore.get(key(ni.name)) ?? 0) + (Number(ni.qty) || 0));
       }
+
+      const { data: opening, error: openingError } = await (supabase as any)
+        .from("outlet_opening_stock")
+        .select("outlet_id,product_id,quantity,products:product_id(name)")
+        .gt("quantity", 0);
+      if (openingError) throw openingError;
+
+      for (const row of (opening ?? []) as Array<{
+        outlet_id: string;
+        product_id: string;
+        quantity: number;
+        products?: { name?: string } | null;
+      }>) {
+        if (seen.has(row.outlet_id) || !row.products?.name) continue;
+        const name = key(row.products.name);
+        atStore.set(name, (atStore.get(name) ?? 0) + (Number(row.quantity) || 0));
+      }
+
       return { atStore, returned };
     },
   });
