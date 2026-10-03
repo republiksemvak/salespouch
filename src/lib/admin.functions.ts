@@ -12,13 +12,24 @@ export const getAdminUsers = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: profiles, error: profileError }, { data: members, error: memberError }] = await Promise.all([
+    const [{ data: profiles, error: profileError }, { data: members, error: memberError }, { data: adminRoles, error: roleError }] = await Promise.all([
       supabaseAdmin.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabaseAdmin.from("team_members").select("user_id,owner_id,created_at,profiles!team_members_user_id_fkey(user_email,username,display_name)").order("created_at", { ascending: false }),
+      supabaseAdmin.from("team_members").select("user_id,owner_id"),
+      supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin"),
     ]);
     if (profileError) throw new Error(profileError.message);
     if (memberError) throw new Error(memberError.message);
-    return { owners: profiles ?? [], sales: members ?? [] };
+    if (roleError) throw new Error(roleError.message);
+
+    const salesIds = new Set((members ?? []).map((m: { user_id: string }) => m.user_id));
+    const adminIds = new Set((adminRoles ?? []).map((r: { user_id: string }) => r.user_id));
+    const owners = (profiles ?? []).filter((p: { id: string }) => !salesIds.has(p.id) && !adminIds.has(p.id));
+    const salesCountByOwner: Record<string, number> = {};
+    for (const member of members ?? []) {
+      salesCountByOwner[member.owner_id] = (salesCountByOwner[member.owner_id] ?? 0) + 1;
+    }
+
+    return { owners, salesCountByOwner };
   });
 
 async function resolveAuthUserId(supabaseAdmin: any, profileUserId: string) {
