@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/visit")({
 
 const num = (v: string) => Math.max(0, Number(v.replace(/[^\d.]/g, "")) || 0);
 
-type Row = { name: string; price: number; prev_stock: number; pcs_per_pack: number; sisaPack: string; sisaPcs: string };
+type Row = { name: string; price: number; prev_stock: number; pcs_per_pack: number; shelfPack: string; shelfPcs: string; returnPack: string; returnPcs: string };
 const whole = (value: string) => /^\d+$/.test(value) ? Number(value) : 0;
 const invalidRemainder = (value: string, size: number) => value !== "" && (!/^\d+$/.test(value) || Number(value) >= size);
 
@@ -44,6 +44,7 @@ function VisitPage() {
   const [outletQ, setOutletQ] = useState("");
   const { data: products } = useProducts();
   const { data: account } = useProfile();
+  const stockScheme = account?.profile?.stock_scheme === "accumulation" ? "accumulation" : "clean_pull";
   const [tier, setTier] = useState<PriceTier>("eceran");
   function changeTier(t: PriceTier) {
     setTier(t);
@@ -73,7 +74,7 @@ function VisitPage() {
 
   useEffect(() => {
     if (!history.data) return;
-    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, pcs_per_pack: packSize(s.pcs_per_pack), sisaPack: "", sisaPcs: "" })));
+    setRows(history.data.stock.map((s) => ({ name: s.name, price: s.price, prev_stock: s.qty, pcs_per_pack: packSize(s.pcs_per_pack), shelfPack: "", shelfPcs: "", returnPack: "", returnPcs: "" })));
   }, [history.data]);
 
   const isFirst = type === "Consignment" && started && history.isSuccess && history.data === null;
@@ -85,13 +86,13 @@ function VisitPage() {
         name: d.name.trim(), price: d.price, pcs_per_pack: packSize(d.pcs_per_pack), prev_stock: 0, sold: d.qty, returned: 0, remaining: 0, subtotal: proportionalPrice(d.qty, d.price, packSize(d.pcs_per_pack)),
       }));
     return rows.map((r) => {
-      const entered = r.sisaPack !== "" || r.sisaPcs !== "";
-      const sisa = toPieces(whole(r.sisaPack), whole(r.sisaPcs), r.pcs_per_pack);
-      const sold = entered ? Math.max(0, r.prev_stock - sisa) : 0;
-      // Leftover stock is pulled back to the warehouse as a return; nothing stays at the store.
-      return { name: r.name, price: r.price, pcs_per_pack: r.pcs_per_pack, prev_stock: r.prev_stock, sold, returned: entered ? sisa : 0, remaining: 0, subtotal: proportionalPrice(sold, r.price, r.pcs_per_pack) };
+      const shelf = stockScheme === "accumulation" ? toPieces(whole(r.shelfPack), whole(r.shelfPcs), r.pcs_per_pack) : 0;
+      const returned = toPieces(whole(r.returnPack), whole(r.returnPcs), r.pcs_per_pack);
+      const entered = r.returnPack !== "" || r.returnPcs !== "" || (stockScheme === "accumulation" && (r.shelfPack !== "" || r.shelfPcs !== ""));
+      const sold = entered ? Math.max(0, r.prev_stock - shelf - returned) : 0;
+      return { name: r.name, price: r.price, pcs_per_pack: r.pcs_per_pack, prev_stock: r.prev_stock, sold, returned, remaining: shelf, subtotal: proportionalPrice(sold, r.price, r.pcs_per_pack) };
     });
-  }, [rows, directItems, type]);
+  }, [rows, directItems, type, stockScheme]);
 
   const [savedInput, setSavedInput] = useState(false);
   useEffect(() => { setSavedInput(false); }, [rows, newItems, directItems, type]);
@@ -108,9 +109,10 @@ function VisitPage() {
   const remainingDebt = Math.max(0, totalDue - amountPaid);
 
   function validReturns() {
-    if (rows.some((r) => r.sisaPack === "" && r.sisaPcs === "")) { toast.error("Isi sisa di toko untuk semua produk"); return false; }
-    if (rows.some((r) => (r.sisaPack !== "" && !/^\d+$/.test(r.sisaPack)) || invalidRemainder(r.sisaPcs, r.pcs_per_pack) || toPieces(whole(r.sisaPack), whole(r.sisaPcs), r.pcs_per_pack) > r.prev_stock)) {
-      toast.error("Sisa harus berupa pcs utuh, kurang dari isi pack, dan tidak melebihi titipan"); return false;
+    if (rows.some((r) => r.returnPack === "" && r.returnPcs === "")) { toast.error("Isi retur fisik untuk semua produk, termasuk 0 bila tidak ada"); return false; }
+    if (stockScheme === "accumulation" && rows.some((r) => r.shelfPack === "" && r.shelfPcs === "")) { toast.error("Isi sisa di rak untuk semua produk, termasuk 0 bila habis"); return false; }
+    if (rows.some((r) => (r.returnPack !== "" && !/^\d+$/.test(r.returnPack)) || invalidRemainder(r.returnPcs, r.pcs_per_pack) || (r.shelfPack !== "" && !/^\d+$/.test(r.shelfPack)) || invalidRemainder(r.shelfPcs, r.pcs_per_pack) || toPieces(whole(r.returnPack), whole(r.returnPcs), r.pcs_per_pack) + (stockScheme === "accumulation" ? toPieces(whole(r.shelfPack), whole(r.shelfPcs), r.pcs_per_pack) : 0) > r.prev_stock)) {
+      toast.error("Sisa rak dan retur fisik harus valid serta tidak melebihi titipan sebelumnya"); return false;
     }
     return true;
   }
@@ -152,6 +154,7 @@ function VisitPage() {
       if (!account) throw new Error("Akun belum siap.");
       const { data, error } = await supabase.from("transactions").insert({
         user_id: account.ownerId, receipt_number, outlet_id: outletId, sales_name: salesName.trim(), transaction_type: type,
+         stock_scheme: stockScheme,
          line_items: lineItems, total_sales: totalSales, discount_amount: discountAmount, previous_debt: previousDebt, total_due: totalDue,
         amount_paid: amountPaid, remaining_debt: remainingDebt,
         new_consignment_items: type === "Consignment" ? cleanNew : [],
@@ -226,6 +229,7 @@ function VisitPage() {
         {type === "Direct Sale" ? "Jual Langsung" : history.isLoading ? "Memeriksa riwayat…" : isFirst ? "Kunjungan pertama" : "Kunjungan rutin"} · {salesName}
       </div>
       <h1 className="text-2xl font-bold">{outletName}</h1>
+       {type === "Consignment" && <p className="mt-2 text-sm text-muted-foreground">Skema stok: <b className="text-foreground">{stockScheme === "accumulation" ? "Akumulasi" : "Tarik Bersih"}</b></p>}
 
       {type === "Consignment" && history.isLoading ? <p className="mt-6 text-sm text-muted-foreground">Memuat…</p> : (
         <>
@@ -246,15 +250,20 @@ function VisitPage() {
                     <div key={i} className="rounded-2xl border bg-card p-4">
                        <div className="flex justify-between gap-2"><b>{r.name}</b><span className="text-sm text-muted-foreground">Titip: {formatQty(r.prev_stock, r.pcs_per_pack)}</span></div>
                        <div className="mt-3"><Field label="Harga per pack" value={r.price} onChange={(v) => set({ price: v })} /></div>
-                       <div className="mt-3 grid grid-cols-2 gap-2">
-                         <label className="block"><span className="text-[11px] text-muted-foreground">Sisa / retur (pack)</span><Input aria-label={`Sisa ${r.name} pack`} type="number" min={0} step={1} value={r.sisaPack} placeholder="0" onChange={(e) => set({ sisaPack: e.target.value })} className="h-11" /></label>
-                         <label className="block"><span className="text-[11px] text-muted-foreground">Sisa / retur (pcs)</span><Input aria-label={`Sisa ${r.name} pcs`} type="number" min={0} max={r.pcs_per_pack - 1} step={1} value={r.sisaPcs} placeholder="0" onChange={(e) => set({ sisaPcs: e.target.value })} className="h-11" /></label>
-                       </div>
+                        {stockScheme === "accumulation" && <><div className="mt-3 text-xs font-medium">Sisa stok di rak</div><div className="mt-1 grid grid-cols-2 gap-2">
+                          <label className="block"><span className="text-[11px] text-muted-foreground">Sisa rak (pack)</span><Input aria-label={`Sisa rak ${r.name} pack`} type="number" min={0} step={1} value={r.shelfPack} placeholder="0" onChange={(e) => set({ shelfPack: e.target.value })} className="h-11" /></label>
+                          <label className="block"><span className="text-[11px] text-muted-foreground">Sisa rak (pcs)</span><Input aria-label={`Sisa rak ${r.name} pcs`} type="number" min={0} max={r.pcs_per_pack - 1} step={1} value={r.shelfPcs} placeholder="0" onChange={(e) => set({ shelfPcs: e.target.value })} className="h-11" /></label>
+                        </div></>}
+                        <div className="mt-3 text-xs font-medium">Retur fisik ke gudang</div><div className="mt-1 grid grid-cols-2 gap-2">
+                          <label className="block"><span className="text-[11px] text-muted-foreground">Retur fisik (pack)</span><Input aria-label={`Retur fisik ${r.name} pack`} type="number" min={0} step={1} value={r.returnPack} placeholder="0" onChange={(e) => set({ returnPack: e.target.value })} className="h-11" /></label>
+                          <label className="block"><span className="text-[11px] text-muted-foreground">Retur fisik (pcs)</span><Input aria-label={`Retur fisik ${r.name} pcs`} type="number" min={0} max={r.pcs_per_pack - 1} step={1} value={r.returnPcs} placeholder="0" onChange={(e) => set({ returnPcs: e.target.value })} className="h-11" /></label>
+                        </div>
                       <div className="mt-3 flex justify-between font-mono text-xs">
                          <span>Terjual: <b>{formatQty(li?.sold ?? 0, r.pcs_per_pack)}</b></span>
                          <span>{rp(r.price / r.pcs_per_pack)}/pcs = <b>{rp(li?.subtotal ?? 0)}</b></span>
                       </div>
-                       <div className="mt-1 font-mono text-xs text-muted-foreground">Retur ke gudang: <b>{formatQty(li?.returned ?? 0, r.pcs_per_pack)}</b></div>
+                        {stockScheme === "accumulation" && <div className="mt-1 font-mono text-xs text-muted-foreground">Sisa di rak: <b>{formatQty(li?.remaining ?? 0, r.pcs_per_pack)}</b></div>}
+                        <div className="mt-1 font-mono text-xs text-muted-foreground">Retur fisik ke gudang: <b>{formatQty(li?.returned ?? 0, r.pcs_per_pack)}</b></div>
                     </div>
                   );
                 })}
