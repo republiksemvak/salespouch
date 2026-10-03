@@ -61,7 +61,9 @@ function ReceiptPage() {
     const L: string[] = [business.toUpperCase()];
     if (p?.profile?.business_address) L.push(p.profile.business_address);
     if (p?.profile?.business_phone) L.push(`Telp: ${p.profile.business_phone}`);
-    L.push(`No Nota : ${t!.receipt_number}`, `Jenis   : ${t!.transaction_type === "Direct Sale" ? "JUAL LANGSUNG" : "KONSINYASI"}`, `Toko    : ${store}`, `Sales   : ${t!.sales_name}`, `Tanggal : ${fmtDate(t!.visit_date)}`, "--------------------------------");
+    L.push(`No Nota : ${t!.receipt_number}`, `Jenis   : ${t!.transaction_type === "Direct Sale" ? "JUAL LANGSUNG" : "KONSINYASI"}`);
+    if (t!.transaction_type === "Consignment") L.push(`Skema   : ${t!.stock_scheme === "accumulation" ? "AKUMULASI" : "TARIK BERSIH"}`);
+    L.push(`Toko    : ${store}`, `Sales   : ${t!.sales_name}`, `Tanggal : ${fmtDate(t!.visit_date)}`, "--------------------------------");
     if (t!.transaction_type === "Consignment" && prev && prevTitip.length > 0) {
       L.push("TITIPAN SEBELUMNYA");
       prevTitip.forEach((n) => L.push(`  ${n.name}: ${formatQty(n.qty, n.pcs_per_pack)}`));
@@ -71,7 +73,8 @@ function ReceiptPage() {
       L.push(i.name);
       if (t!.transaction_type === "Consignment") L.push(`  Titip Sebelumnya: ${formatQty(i.prev_stock, i.pcs_per_pack)}`);
       L.push(`  Terjual ${formatQty(i.sold, i.pcs_per_pack)} x ${rp(i.price / packSize(i.pcs_per_pack))}/pcs = ${rp(i.subtotal)}`);
-      if (t!.transaction_type === "Consignment") L.push(`  Retur/sisa: ${formatQty(i.returned, i.pcs_per_pack)}`);
+       if (t!.transaction_type === "Consignment" && t!.stock_scheme === "accumulation") L.push(`  Sisa di rak: ${formatQty(i.remaining, i.pcs_per_pack)}`);
+       if (t!.transaction_type === "Consignment") L.push(`  Retur fisik: ${formatQty(i.returned, i.pcs_per_pack)}`);
     });
     L.push("--------------------------------");
     if (prevDebt > 0) {
@@ -104,6 +107,7 @@ function ReceiptPage() {
     L.push(
       { text: `No Nota : ${t!.receipt_number}` },
       { text: `Jenis   : ${t!.transaction_type === "Direct Sale" ? "JUAL LANGSUNG" : "KONSINYASI"}`, bold: true },
+       ...(t!.transaction_type === "Consignment" ? [{ text: `Skema   : ${t!.stock_scheme === "accumulation" ? "AKUMULASI" : "TARIK BERSIH"}`, bold: true }] : []),
       { text: `Toko    : ${store}` },
       { text: `Sales   : ${t!.sales_name}` },
       { text: `Tanggal : ${fmtDate(t!.visit_date)}` },
@@ -118,7 +122,8 @@ function ReceiptPage() {
       L.push({ text: i.name, bold: true });
       if (t!.transaction_type === "Consignment") L.push({ text: `  Titip Sebelumnya: ${formatQty(i.prev_stock, i.pcs_per_pack)}` });
       L.push({ text: `  Terjual ${formatQty(i.sold, i.pcs_per_pack)} x ${rp(i.price / packSize(i.pcs_per_pack))}/pcs = ${rp(i.subtotal)}` });
-      if (t!.transaction_type === "Consignment") L.push({ text: `  Retur/sisa: ${formatQty(i.returned, i.pcs_per_pack)}` });
+       if (t!.transaction_type === "Consignment" && t!.stock_scheme === "accumulation") L.push({ text: `  Sisa di rak: ${formatQty(i.remaining, i.pcs_per_pack)}` });
+       if (t!.transaction_type === "Consignment") L.push({ text: `  Retur fisik: ${formatQty(i.returned, i.pcs_per_pack)}` });
     });
     L.push({ text: "--------------------------------" });
     if (prevDebt > 0) {
@@ -179,6 +184,7 @@ function ReceiptPage() {
         {hr}
         <Row k="No Nota" v={t.receipt_number} />
         <Row k="Jenis" v={t.transaction_type === "Direct Sale" ? "JUAL LANGSUNG" : "KONSINYASI"} bold />
+         {t.transaction_type === "Consignment" && <Row k="Skema" v={t.stock_scheme === "accumulation" ? "AKUMULASI" : "TARIK BERSIH"} bold />}
         <Row k="Toko" v={store} />
         <Row k="Sales" v={t.sales_name} />
         <Row k="Tanggal" v={fmtDate(t.visit_date)} />
@@ -198,7 +204,8 @@ function ReceiptPage() {
             <div className="font-semibold">{i.name}</div>
             {t.transaction_type === "Consignment" && <Row k="Titip Sebelumnya" v={formatQty(i.prev_stock, i.pcs_per_pack)} />}
             <Row k={`Terjual ${formatQty(i.sold, i.pcs_per_pack)} × ${rp(i.price / packSize(i.pcs_per_pack))}/pcs`} v={rp(i.subtotal)} />
-            {t.transaction_type === "Consignment" && <Row k="Retur/sisa" v={formatQty(i.returned, i.pcs_per_pack)} />}
+             {t.transaction_type === "Consignment" && t.stock_scheme === "accumulation" && <Row k="Sisa di rak" v={formatQty(i.remaining, i.pcs_per_pack)} />}
+             {t.transaction_type === "Consignment" && <Row k="Retur fisik" v={formatQty(i.returned, i.pcs_per_pack)} />}
           </div>
         ))}
         {hr}
