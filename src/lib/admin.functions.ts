@@ -1,10 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isSuperAdminEmail } from "@/lib/access";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
-  const { data, error } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
-  if (error || !data) throw new Error("Hanya super admin");
+  const { data, error } = await ctx.supabase.auth.getUser();
+  if (error || !data.user || data.user.id !== ctx.userId || !isSuperAdminEmail(data.user.email)) {
+    throw new Error("Hanya super admin");
+  }
 }
 
 export const getAdminUsers = createServerFn({ method: "GET" })
