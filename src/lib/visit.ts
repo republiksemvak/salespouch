@@ -24,12 +24,10 @@ export const rp = (n: number) =>
 /**
  * Mengambil stok yang masih berada di outlet dari kunjungan terakhir.
  *
- * AKUMULASI:
- * Stok minggu berikutnya =
- * Sisa di rak minggu ini + stok baru yang dititipkan minggu ini.
- *
- * TARIK BERSIH:
- * Tidak membawa stok lama ke minggu berikutnya.
+ * Jika outlet belum pernah punya kunjungan konsinyasi, gunakan stok
+ * pembukaan yang dimasukkan Owner sebagai snapshot stok fisik awal.
+ * Setelah kunjungan konsinyasi pertama, perilaku stok lama tetap berjalan
+ * seperti sebelumnya.
  */
 export async function loadLastVisit(outletId: string) {
   const { data, error } = await supabase
@@ -47,7 +45,30 @@ export async function loadLastVisit(outletId: string) {
 
   const last = data?.[0];
 
-  if (!last) return null;
+  if (!last) {
+    const { data: opening, error: openingError } = await (supabase as any)
+      .from("outlet_opening_stock")
+      .select("product_id,quantity,products:product_id(name,price,pcs_per_pack)")
+      .eq("outlet_id", outletId)
+      .gt("quantity", 0);
+
+    if (openingError) throw openingError;
+
+    const stock = ((opening ?? []) as Array<{
+      product_id: string;
+      quantity: number;
+      products?: { name?: string; price?: number; pcs_per_pack?: number } | null;
+    }>)
+      .filter((row) => row.products?.name)
+      .map((row) => ({
+        name: row.products?.name ?? "",
+        price: Number(row.products?.price) || 0,
+        qty: Number(row.quantity) || 0,
+        pcs_per_pack: Number(row.products?.pcs_per_pack) || 1,
+      }));
+
+    return { stock, previousDebt: 0 };
+  }
 
   const stock = new Map<
     string,
@@ -83,7 +104,6 @@ export async function loadLastVisit(outletId: string) {
    * ke kunjungan berikutnya.
    */
   if (last.stock_scheme === "accumulation") {
-    // Sisa stok yang masih berada di rak toko.
     for (const item of (last.line_items as LineItem[]) ?? []) {
       add(
         item.name,
@@ -93,7 +113,6 @@ export async function loadLastVisit(outletId: string) {
       );
     }
 
-    // Stok baru yang dibawa sales pada kunjungan sebelumnya.
     for (const item of (last.new_consignment_items as NewItem[]) ?? []) {
       add(
         item.name,
