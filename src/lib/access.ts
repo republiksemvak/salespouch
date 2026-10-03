@@ -3,6 +3,8 @@ export const TRIAL_MS = 24 * 60 * 60 * 1000;
 export const ADMIN_TELEGRAM = "https://t.me/salespouch";
 export const ADMIN_WHATSAPP = "https://wa.me/6285783797770";
 
+export type StockScheme = "accumulation" | "clean_pull";
+
 export type Profile = {
   id: string;
   business_name: string | null;
@@ -10,6 +12,7 @@ export type Profile = {
   business_phone: string | null;
   user_email: string | null;
   license_until: string | null;
+  stock_scheme: StockScheme;
   created_at: string;
 };
 
