@@ -34,3 +34,40 @@ export const setUserLicense = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { license_until: until };
   });
+
+export const resetUserPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      userId: z.string().uuid(),
+      password: z.string().min(6, "Password minimal 6 karakter").max(72),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    if (data.userId === context.userId) throw new Error("Gunakan Profil Usaha untuk mengubah password akun admin.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: role } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId).eq("role", "admin").maybeSingle();
+    if (role) throw new Error("Password akun super admin tidak dapat diubah dari sini.");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { password: data.password });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    if (data.userId === context.userId) throw new Error("Super admin tidak dapat menghapus akunnya sendiri.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: role } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId).eq("role", "admin").maybeSingle();
+    if (role) throw new Error("Akun super admin tidak dapat dihapus dari sini.");
+
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (authError) throw new Error(authError.message);
+
+    const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
+    if (profileError) throw new Error(profileError.message);
+    return { ok: true };
+  });
