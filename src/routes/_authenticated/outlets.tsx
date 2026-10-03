@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, MapPin, Phone, Search, Store, LockKeyhole } from "lucide-react";
+import { ArrowLeft, MapPin, Pencil, Phone, Search, Store, LockKeyhole } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +74,7 @@ function AllOutlets() {
 
       <p className="mt-2 text-[11px] text-muted-foreground">Filter jadwal hari dan Sales akan aktif setelah struktur penugasan outlet tersedia.</p>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 space-y-2">
         {isLoading && <p className="text-sm text-muted-foreground">Memuat outlet…</p>}
         {!isLoading && outlets.length === 0 && (
           <div className="rounded-2xl border border-dashed p-8 text-center">
@@ -83,18 +83,21 @@ function AllOutlets() {
           </div>
         )}
         {outlets.map((outlet) => (
-          <div key={outlet.id} className="flex gap-3 rounded-2xl border bg-card p-3">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted">
-              <Store className="h-6 w-6 text-muted-foreground" />
+          <div key={outlet.id} className="flex items-center gap-2 rounded-xl border bg-card p-2">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+              <Store className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate font-semibold">{outlet.name}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground">
+              <div className="truncate text-sm font-semibold">{outlet.name}</div>
+              <div className="mt-0.5 text-[10px] text-muted-foreground">
                 Terdaftar {new Date(outlet.created_at).toLocaleDateString("id-ID", { dateStyle: "medium" })}
               </div>
-              {outlet.owner_phone && <a href={`tel:${outlet.owner_phone}`} className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Phone className="h-3 w-3" />{outlet.owner_phone}</a>}
-              {outlet.map_location && <a href={outlet.map_location.startsWith("http") ? outlet.map_location : `https://maps.google.com/?q=${encodeURIComponent(outlet.map_location)}`} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 text-xs text-accent underline"><MapPin className="h-3 w-3" />Buka peta</a>}
+              {outlet.owner_phone && <a href={`tel:${outlet.owner_phone}`} className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Phone className="h-3 w-3" />{outlet.owner_phone}</a>}
+              {outlet.map_location && <a href={outlet.map_location.startsWith("http") ? outlet.map_location : `https://maps.google.com/?q=${encodeURIComponent(outlet.map_location)}`} target="_blank" rel="noreferrer" className="mt-0.5 flex items-center gap-1 text-[11px] text-accent underline"><MapPin className="h-3 w-3" />Buka peta</a>}
             </div>
+            <Button asChild size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={`Edit ${outlet.name}`}>
+              <Link to="/outlets/$id/edit" params={{ id: outlet.id }}><Pencil className="h-4 w-4" /></Link>
+            </Button>
           </div>
         ))}
       </div>
