@@ -14,215 +14,54 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Super Admin — Sales Pouch" }, { name: "description", content: "Kelola pengguna, lisensi, paket dan promo." }, { property: "og:title", content: "Super Admin — Sales Pouch" }, { property: "og:description", content: "Kelola pengguna, lisensi, paket dan promo." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Super Admin — Sales Pouch" }, { name: "description", content: "Kelola akun User Utama, lisensi, paket dan promo." }] }),
   component: AdminPage,
 });
 
 const fmt = (d: Date | string) => new Date(d).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
 const statusLabel: Record<string, string> = { bypass: "Bebas akses", license: "Lisensi aktif", trial: "Trial", expired: "Kedaluwarsa" };
-
-type AdminSales = {
-  user_id: string;
-  owner_id: string;
-  created_at: string;
-  profiles: { user_email: string | null; username: string | null; display_name: string | null } | null;
-};
+type Package = { id: string; name: string; days: number; price: number; active: boolean };
+type Promo = { id: string; code: string; description: string | null; discount_percent: number; bonus_days: number; valid_until: string | null; active: boolean };
 
 function AdminPage() {
   const { data: isAdmin, isLoading } = useIsAdmin();
   if (isLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
   if (!isAdmin) return <div className="p-10 text-center text-destructive">Halaman ini khusus super admin.</div>;
-  return (
-    <main className="mx-auto min-h-screen max-w-3xl px-5 pb-16 pt-6">
-      <Link to="/dashboard" className="flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
-      <h1 className="mt-2 text-2xl font-bold">Dashboard Super Admin</h1>
-      <Tabs defaultValue="users" className="mt-5">
-        <TabsList className="grid w-full grid-cols-3"><TabsTrigger value="users">Pengguna</TabsTrigger><TabsTrigger value="packages">Paket</TabsTrigger><TabsTrigger value="promos">Promo</TabsTrigger></TabsList>
-        <TabsContent value="users"><Users /></TabsContent>
-        <TabsContent value="packages"><Packages /></TabsContent>
-        <TabsContent value="promos"><Promos /></TabsContent>
-      </Tabs>
-    </main>
-  );
+  return <main className="mx-auto min-h-screen max-w-3xl px-5 pb-16 pt-6"><Link to="/dashboard" className="flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link><h1 className="mt-2 text-2xl font-bold">Dashboard Super Admin</h1><Tabs defaultValue="users" className="mt-5"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="users">Pengguna</TabsTrigger><TabsTrigger value="packages">Paket</TabsTrigger><TabsTrigger value="promos">Promo</TabsTrigger></TabsList><TabsContent value="users"><Users /></TabsContent><TabsContent value="packages"><Packages /></TabsContent><TabsContent value="promos"><Promos /></TabsContent></Tabs></main>;
 }
 
 function Users() {
-  const qc = useQueryClient();
-  const getUsers = useServerFn(getAdminUsers);
-  const setLicense = useServerFn(setUserLicense);
-  const resetPassword = useServerFn(resetUserPassword);
-  const removeUser = useServerFn(deleteUser);
-  const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<string>("all");
+  const qc = useQueryClient(); const getUsers = useServerFn(getAdminUsers); const setLicense = useServerFn(setUserLicense); const resetPassword = useServerFn(resetUserPassword); const removeUser = useServerFn(deleteUser);
+  const [q, setQ] = useState(""); const [filter, setFilter] = useState("all");
   const { data } = useQuery({ queryKey: ["admin-users"], queryFn: () => getUsers({}) });
-  const { data: pkgs } = useQuery({
-    queryKey: ["admin-packages"],
-    queryFn: async () => (await supabase.from("license_packages").select("*").order("days")).data ?? [],
-  });
-
-  async function apply(userId: string, input: { mode: "add" | "set" | "revoke"; days?: number; until?: string }) {
-    try {
-      await setLicense({ data: { userId, ...input } });
-      toast.success("Lisensi diperbarui");
-      qc.invalidateQueries({ queryKey: ["admin-users"] });
-    } catch (e) { toast.error((e as Error).message); }
-  }
-  async function resetUser(userId: string, password: string) {
-    try {
-      await resetPassword({ data: { userId, password } });
-      toast.success("Password user berhasil direset");
-    } catch (e) { toast.error((e as Error).message); throw e; }
-  }
-  async function remove(userId: string) {
-    try {
-      await removeUser({ data: { userId } });
-      toast.success("User berhasil dihapus");
-      qc.invalidateQueries({ queryKey: ["admin-users"] });
-    } catch (e) { toast.error((e as Error).message); }
-  }
-
-  const owners = ((data?.owners ?? []) as Profile[]).filter((u) => !((data?.sales ?? []) as AdminSales[]).some((s) => s.user_id === u.id));
-  const sales = (data?.sales ?? []) as AdminSales[];
-  const needle = q.trim().toLowerCase();
-  const ownerRows = owners.map((u) => ({ u, s: accessStatus(u) }))
-    .filter(({ u, s }) => (filter === "all" || s.reason === filter) && `${u.user_email ?? ""} ${u.business_name ?? ""}`.toLowerCase().includes(needle));
-  const salesRows = sales.filter((s) => {
-    if (!needle) return true;
-    const owner = owners.find((u) => u.id === s.owner_id);
-    return `${s.profiles?.display_name ?? ""} ${s.profiles?.username ?? ""} ${s.profiles?.user_email ?? ""} ${owner?.business_name ?? ""}`.toLowerCase().includes(needle);
-  });
+  const { data: pkgs } = useQuery({ queryKey: ["admin-packages"], queryFn: async () => (await supabase.from("license_packages").select("*").order("days")).data ?? [] });
+  async function apply(userId: string, input: { mode: "add" | "set" | "revoke"; days?: number; until?: string }) { try { await setLicense({ data: { userId, ...input } }); toast.success("Lisensi diperbarui"); qc.invalidateQueries({ queryKey: ["admin-users"] }); } catch (e) { toast.error((e as Error).message); } }
+  async function resetUser(userId: string, password: string) { try { await resetPassword({ data: { userId, password } }); toast.success("Password user berhasil direset"); } catch (e) { toast.error((e as Error).message); throw e; } }
+  async function remove(userId: string) { try { await removeUser({ data: { userId } }); toast.success("User berhasil dihapus"); qc.invalidateQueries({ queryKey: ["admin-users"] }); } catch (e) { toast.error((e as Error).message); } }
+  const owners = (data?.owners ?? []) as Profile[]; const salesCountByOwner = (data?.salesCountByOwner ?? {}) as Record<string, number>; const needle = q.trim().toLowerCase();
+  const ownerRows = owners.map((u) => ({ u, s: accessStatus(u), salesCount: salesCountByOwner[u.id] ?? 0 })).filter(({ u, s }) => (filter === "all" || s.reason === filter) && `${u.user_email ?? ""} ${u.business_name ?? ""} ${u.business_category ?? ""} ${u.main_product ?? ""}`.toLowerCase().includes(needle));
   const count = (r: string) => owners.filter((u) => accessStatus(u).reason === r).length;
-
-  return (
-    <div className="mt-4 space-y-5">
-      <div className="grid grid-cols-4 gap-2 text-center text-xs">
-        {["trial", "license", "expired", "bypass"].map((r) => (
-          <button key={r} onClick={() => setFilter(filter === r ? "all" : r)} className={`rounded-xl border p-2 ${filter === r ? "border-primary bg-primary/10" : "bg-card"}`}>
-            <div className="text-lg font-bold">{count(r)}</div>{statusLabel[r]}
-          </button>
-        ))}
-      </div>
-      <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari bisnis, email, atau nama Sales…" className="h-11 pl-9" /></div>
-
-      <section>
-        <div className="mb-2 flex items-end justify-between gap-2">
-          <div><h2 className="text-lg font-bold">User Utama / Bisnis</h2><p className="text-xs text-muted-foreground">Akun pemilik bisnis dan lisensinya.</p></div>
-          <span className="text-xs text-muted-foreground">{ownerRows.length} bisnis</span>
-        </div>
-        <div className="space-y-3">
-          {ownerRows.map(({ u, s }) => <UserRow key={u.id} u={u} s={s} pkgs={pkgs ?? []} apply={apply} resetPassword={resetUser} deleteUser={remove} />)}
-          {!ownerRows.length && <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">Tidak ada User Utama yang cocok.</div>}
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-2 flex items-end justify-between gap-2">
-          <div><h2 className="text-lg font-bold">Sales / Karyawan</h2><p className="text-xs text-muted-foreground">Dikelompokkan berdasarkan User Utama. Sales bukan akun bisnis terpisah.</p></div>
-          <span className="text-xs text-muted-foreground">{salesRows.length} Sales</span>
-        </div>
-        <div className="space-y-3">
-          {Array.from(new Set(salesRows.map((s) => s.owner_id))).map((ownerId) => {
-            const owner = owners.find((u) => u.id === ownerId);
-            const team = salesRows.filter((s) => s.owner_id === ownerId);
-            return (
-              <div key={ownerId} className="rounded-2xl border bg-card p-4">
-                <div className="mb-3 border-b pb-3">
-                  <div className="font-semibold">{owner?.business_name || "(nama usaha belum diisi)"}</div>
-                  <div className="text-xs text-muted-foreground">{owner?.user_email ?? "User Utama tidak ditemukan"} · {team.length} Sales</div>
-                </div>
-                <div className="space-y-2">
-                  {team.map((member) => <SalesRow key={member.user_id} member={member} resetPassword={resetUser} deleteUser={remove} />)}
-                </div>
-              </div>
-            );
-          })}
-          {!salesRows.length && <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">Belum ada Sales / Karyawan yang cocok.</div>}
-        </div>
-      </section>
-    </div>
-  );
+  return <div className="mt-4 space-y-5"><div className="grid grid-cols-4 gap-2 text-center text-xs">{["trial", "license", "expired", "bypass"].map((r) => <button key={r} onClick={() => setFilter(filter === r ? "all" : r)} className={`rounded-xl border p-2 ${filter === r ? "border-primary bg-primary/10" : "bg-card"}`}><div className="text-lg font-bold">{count(r)}</div>{statusLabel[r]}</button>)}</div><div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari bisnis, email, jenis usaha, atau produk…" className="h-11 pl-9" /></div><section><div className="mb-2 flex items-end justify-between gap-2"><div><h2 className="text-lg font-bold">User Utama / Bisnis</h2><p className="text-xs text-muted-foreground">Super Admin hanya melihat akun pemilik bisnis dan jumlah Sales.</p></div><span className="text-xs text-muted-foreground">{ownerRows.length} bisnis</span></div><div className="space-y-3">{ownerRows.map(({ u, s, salesCount }) => <UserRow key={u.id} u={u} s={s} salesCount={salesCount} pkgs={pkgs ?? []} apply={apply} resetPassword={resetUser} deleteUser={remove} />)}{!ownerRows.length && <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">Tidak ada User Utama yang cocok.</div>}</div></section></div>;
 }
 
-function UserRow({ u, s, pkgs, apply, resetPassword, deleteUser }: {
-  u: Profile;
-  s: ReturnType<typeof accessStatus>;
-  pkgs: { id: string; name: string; days: number }[];
-  apply: (id: string, i: { mode: "add" | "set" | "revoke"; days?: number; until?: string }) => Promise<void>;
-  resetPassword: (id: string, password: string) => Promise<void>;
-  deleteUser: (id: string) => Promise<void>;
-}) {
-  const [pkg, setPkg] = useState("");
-  const [date, setDate] = useState("");
-  const [passwordOpen, setPasswordOpen] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [passwordBusy, setPasswordBusy] = useState(false);
+function UserRow({ u, s, salesCount, pkgs, apply, resetPassword, deleteUser }: { u: Profile; s: ReturnType<typeof accessStatus>; salesCount: number; pkgs: { id: string; name: string; days: number }[]; apply: (id: string, i: { mode: "add" | "set" | "revoke"; days?: number; until?: string }) => Promise<void>; resetPassword: (id: string, password: string) => Promise<void>; deleteUser: (id: string) => Promise<void> }) {
+  const [pkg, setPkg] = useState(""); const [date, setDate] = useState(""); const [passwordOpen, setPasswordOpen] = useState(false); const [newPassword, setNewPassword] = useState(""); const [passwordBusy, setPasswordBusy] = useState(false);
   const badge = s.reason === "expired" ? "bg-destructive/15 text-destructive" : s.reason === "trial" ? "bg-accent/20" : "bg-primary/15 text-primary";
-  async function savePassword() {
-    if (newPassword.length < 6) { toast.error("Password minimal 6 karakter"); return; }
-    setPasswordBusy(true);
-    try { await resetPassword(u.id, newPassword); setNewPassword(""); setPasswordOpen(false); } catch {} finally { setPasswordBusy(false); }
-  }
-  async function confirmDelete() {
-    if (!confirm(`Hapus user ${u.user_email ?? "ini"}? Semua data usaha user akan ikut terhapus dan tidak dapat dikembalikan.`)) return;
-    await deleteUser(u.id);
-  }
-  return (
-    <div className="rounded-2xl border bg-card p-4 text-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0"><div className="truncate font-semibold">{u.business_name || "(belum isi nama usaha)"}</div><div className="truncate text-xs text-muted-foreground">{u.user_email}</div><div className="mt-1 text-xs text-muted-foreground">Daftar {fmt(u.created_at)}</div></div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badge}`}>{statusLabel[s.reason]}</span>
-      </div>
-      <div className="mt-2 text-xs">{s.reason === "trial" && s.trialEndsAt && <>Trial sampai <b>{fmt(s.trialEndsAt)}</b></>}{u.license_until && <>Lisensi sampai <b>{fmt(u.license_until)}</b></>}</div>
-      {s.reason !== "bypass" && <div className="mt-3 flex flex-wrap gap-2">
-        <select value={pkg} onChange={(e) => setPkg(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm"><option value="">Pilih paket…</option>{pkgs.map((p) => <option key={p.id} value={p.days}>{p.name} (+{p.days} hari)</option>)}</select>
-        <Button size="sm" disabled={!pkg} onClick={() => apply(u.id, { mode: "add", days: Number(pkg) })}>Tambah</Button>
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 w-40" />
-        <Button size="sm" variant="outline" disabled={!date} onClick={() => apply(u.id, { mode: "set", until: `${date}T23:59:59` })}>Set tanggal</Button>
-        {u.license_until && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => confirm("Cabut lisensi?") && apply(u.id, { mode: "revoke" })}>Cabut</Button>}
-      </div>}
-      <div className="mt-3 flex flex-wrap gap-2 border-t pt-3"><Button size="sm" variant="outline" onClick={() => setPasswordOpen(true)}><KeyRound className="mr-1.5 h-4 w-4" />Reset Password</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={confirmDelete}><Trash2 className="mr-1.5 h-4 w-4" />Hapus User</Button></div>
-      <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Reset Password User</DialogTitle><DialogDescription>Buat password baru untuk <b>{u.user_email}</b>. Minimal 6 karakter.</DialogDescription></DialogHeader><div className="py-2"><Input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Password baru" className="h-12" autoFocus /></div><DialogFooter><Button type="button" variant="outline" onClick={() => setPasswordOpen(false)} disabled={passwordBusy}>Batal</Button><Button type="button" onClick={savePassword} disabled={passwordBusy}>{passwordBusy ? "Menyimpan…" : "Simpan Password"}</Button></DialogFooter></DialogContent></Dialog>
-    </div>
-  );
-}
-
-function SalesRow({ member, resetPassword, deleteUser }: { member: AdminSales; resetPassword: (id: string, password: string) => Promise<void>; deleteUser: (id: string) => Promise<void> }) {
-  const [passwordOpen, setPasswordOpen] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const name = member.profiles?.display_name || member.profiles?.username || "Sales";
-  async function savePassword() {
-    if (newPassword.length < 6) { toast.error("Password minimal 6 karakter"); return; }
-    setBusy(true);
-    try { await resetPassword(member.user_id, newPassword); setNewPassword(""); setPasswordOpen(false); } catch {} finally { setBusy(false); }
-  }
-  async function confirmDelete() {
-    if (!confirm(`Hapus Sales ${name}? Akun dan data user ini akan ikut terhapus.`)) return;
-    await deleteUser(member.user_id);
-  }
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border px-3 py-3">
-      <div className="min-w-0"><div className="truncate font-medium">{name}</div><div className="truncate text-xs text-muted-foreground">{member.profiles?.user_email} · {member.profiles?.username ? `@${member.profiles.username}` : "Sales"}</div></div>
-      <div className="flex shrink-0 gap-1"><Button size="icon" variant="outline" title="Reset Password" onClick={() => setPasswordOpen(true)}><KeyRound className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="text-destructive" title="Hapus Sales" onClick={confirmDelete}><Trash2 className="h-4 w-4" /></Button></div>
-      <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Reset Password Sales</DialogTitle><DialogDescription>Buat password baru untuk <b>{name}</b>. Minimal 6 karakter.</DialogDescription></DialogHeader><div className="py-2"><Input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Password baru" className="h-12" autoFocus /></div><DialogFooter><Button variant="outline" onClick={() => setPasswordOpen(false)} disabled={busy}>Batal</Button><Button onClick={savePassword} disabled={busy}>{busy ? "Menyimpan…" : "Simpan Password"}</Button></DialogFooter></DialogContent></Dialog>
-    </div>
-  );
+  async function savePassword() { if (newPassword.length < 6) { toast.error("Password minimal 6 karakter"); return; } setPasswordBusy(true); try { await resetPassword(u.id, newPassword); setNewPassword(""); setPasswordOpen(false); } catch {} finally { setPasswordBusy(false); } }
+  async function confirmDelete() { if (!confirm(`Hapus user ${u.user_email ?? "ini"}? Semua data usaha user akan ikut terhapus dan tidak dapat dikembalikan.`)) return; await deleteUser(u.id); }
+  return <div className="rounded-2xl border bg-card p-4 text-sm"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="truncate font-semibold">{u.business_name || "(belum isi nama usaha)"}</div><div className="truncate text-xs text-muted-foreground">{u.user_email}</div><div className="mt-1 text-xs text-muted-foreground">{u.business_category || "Jenis usaha belum diisi"} · {u.business_model || "Model belum diisi"} · {u.main_product || "Produk belum diisi"}</div></div><span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badge}`}>{statusLabel[s.reason]}</span></div><div className="mt-3 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-primary/10 px-3 py-1 font-semibold">{salesCount} Sales</span><span className="rounded-full bg-muted px-3 py-1">Daftar {fmt(u.created_at)}</span></div><div className="mt-2 text-xs">{s.reason === "trial" && s.trialEndsAt && <>Trial sampai <b>{fmt(s.trialEndsAt)}</b></>}{u.license_until && <>Lisensi sampai <b>{fmt(u.license_until)}</b></>}</div>{s.reason !== "bypass" && <div className="mt-3 flex flex-wrap gap-2"><select value={pkg} onChange={(e) => setPkg(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm"><option value="">Pilih paket…</option>{pkgs.map((p) => <option key={p.id} value={p.days}>{p.name} (+{p.days} hari)</option>)}</select><Button size="sm" disabled={!pkg} onClick={() => apply(u.id, { mode: "add", days: Number(pkg) })}>Tambah</Button><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 w-40" /><Button size="sm" variant="outline" disabled={!date} onClick={() => apply(u.id, { mode: "set", until: `${date}T23:59:59` })}>Set tanggal</Button>{u.license_until && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => confirm("Cabut lisensi?") && apply(u.id, { mode: "revoke" })}>Cabut</Button>}</div>}<div className="mt-3 flex flex-wrap gap-2 border-t pt-3"><Button size="sm" variant="outline" onClick={() => setPasswordOpen(true)}><KeyRound className="mr-1.5 h-4 w-4" />Reset Password</Button><Button size="sm" variant="ghost" className="text-destructive" onClick={confirmDelete}><Trash2 className="mr-1.5 h-4 w-4" />Hapus User</Button></div><Dialog open={passwordOpen} onOpenChange={setPasswordOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Reset Password User</DialogTitle><DialogDescription>Buat password baru untuk <b>{u.user_email}</b>. Minimal 6 karakter.</DialogDescription></DialogHeader><div className="py-2"><Input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Password baru" className="h-12" autoFocus /></div><DialogFooter><Button type="button" variant="outline" onClick={() => setPasswordOpen(false)} disabled={passwordBusy}>Batal</Button><Button type="button" onClick={savePassword} disabled={passwordBusy}>{passwordBusy ? "Menyimpan…" : "Simpan Password"}</Button></DialogFooter></DialogContent></Dialog></div>;
 }
 
 function Packages() {
-  const qc = useQueryClient();
-  const [f, setF] = useState({ name: "", days: "", price: "" });
-  const { data } = useQuery({ queryKey: ["admin-packages"], queryFn: async () => (await supabase.from("license_packages").select("*").order("days")).data ?? [] });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-packages"] });
-  async function add(e: React.FormEvent) { e.preventDefault(); const { error } = await supabase.from("license_packages").insert({ name: f.name.trim(), days: Number(f.days), price: Number(f.price) || 0 }); if (error) { toast.error(error.message); return; } setF({ name: "", days: "", price: "" }); refresh(); }
-  return <div className="mt-4 space-y-3"><form onSubmit={add} className="grid grid-cols-[1fr_80px_110px_auto] gap-2"><Input required placeholder="Nama paket" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /><Input required type="number" min={1} placeholder="Hari" value={f.days} onChange={(e) => setF({ ...f, days: e.target.value })} /><Input type="number" min={0} placeholder="Harga" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /><Button>Tambah</Button></form>{data?.map((p) => <div key={p.id} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3 text-sm"><div><b>{p.name}</b> · {p.days} hari · Rp {Number(p.price).toLocaleString("id-ID")}{!p.active && <span className="ml-2 text-xs text-muted-foreground">(nonaktif)</span>}</div><div className="flex gap-1"><Button size="sm" variant="outline" onClick={async () => { await supabase.from("license_packages").update({ active: !p.active }).eq("id", p.id); refresh(); }}>{p.active ? "Nonaktifkan" : "Aktifkan"}</Button><Button size="icon" variant="ghost" onClick={async () => { if (confirm("Hapus paket?")) { await supabase.from("license_packages").delete().eq("id", p.id); refresh(); } }}><Trash2 className="h-4 w-4" /></Button></div></div>)}</div>;
+  const qc = useQueryClient(); const [f, setF] = useState({ name: "", days: "", price: "" }); const { data } = useQuery({ queryKey: ["admin-packages"], queryFn: async () => (await supabase.from("license_packages").select("*").order("days")).data ?? [] }); const refresh = () => qc.invalidateQueries({ queryKey: ["admin-packages"] });
+  async function add(e: React.FormEvent) { e.preventDefault(); const { error } = await supabase.from("license_packages").insert({ name: f.name.trim(), days: Number(f.days), price: Number(f.price) || 0 }); if (error) toast.error(error.message); else { setF({ name: "", days: "", price: "" }); refresh(); } }
+  async function remove(id: string) { if (!confirm("Hapus paket ini?")) return; const { error } = await supabase.from("license_packages").delete().eq("id", id); if (error) toast.error(error.message); else refresh(); }
+  return <div className="mt-4 space-y-4"><form onSubmit={add} className="grid gap-2 rounded-2xl border bg-card p-4"><Input required placeholder="Nama paket" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /><Input required type="number" min="1" placeholder="Jumlah hari" value={f.days} onChange={(e) => setF({ ...f, days: e.target.value })} /><Input type="number" min="0" placeholder="Harga" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /><Button>Tambah Paket</Button></form><div className="space-y-2">{(data as Package[]).map((p) => <div key={p.id} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3"><div><div className="font-semibold">{p.name}</div><div className="text-xs text-muted-foreground">{p.days} hari · Rp {Number(p.price).toLocaleString("id-ID")}</div></div><Button size="sm" variant="ghost" className="text-destructive" onClick={() => remove(p.id)}>Hapus</Button></div>)}</div></div>;
 }
 
 function Promos() {
-  const qc = useQueryClient();
-  const [f, setF] = useState({ code: "", description: "", discount: "", bonus: "", until: "" });
-  const { data } = useQuery({ queryKey: ["admin-promos"], queryFn: async () => (await supabase.from("promos").select("*").order("created_at", { ascending: false })).data ?? [] });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-promos"] });
-  async function add(e: React.FormEvent) { e.preventDefault(); const { error } = await supabase.from("promos").insert({ code: f.code.trim().toUpperCase(), description: f.description.trim() || null, discount_percent: Number(f.discount) || 0, bonus_days: Number(f.bonus) || 0, valid_until: f.until ? new Date(`${f.until}T23:59:59`).toISOString() : null }); if (error) { toast.error(error.message); return; } setF({ code: "", description: "", discount: "", bonus: "", until: "" }); refresh(); }
-  return <div className="mt-4 space-y-3"><form onSubmit={add} className="grid grid-cols-2 gap-2"><Input required placeholder="Kode promo" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /><Input placeholder="Keterangan" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /><Input type="number" min={0} max={100} placeholder="Diskon %" value={f.discount} onChange={(e) => setF({ ...f, discount: e.target.value })} /><Input type="number" min={0} placeholder="Bonus hari" value={f.bonus} onChange={(e) => setF({ ...f, bonus: e.target.value })} /><Input type="date" value={f.until} onChange={(e) => setF({ ...f, until: e.target.value })} /><Button>Tambah Promo</Button></form>{data?.map((p) => <div key={p.id} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3 text-sm"><div><b className="font-mono">{p.code}</b> · {p.discount_percent}% · +{p.bonus_days} hari<div className="text-xs text-muted-foreground">{p.description} {p.valid_until ? `· s/d ${fmt(p.valid_until)}` : "· tanpa batas"}{!p.active && " · nonaktif"}</div></div><div className="flex gap-1"><Button size="sm" variant="outline" onClick={async () => { await supabase.from("promos").update({ active: !p.active }).eq("id", p.id); refresh(); }}>{p.active ? "Nonaktifkan" : "Aktifkan"}</Button><Button size="icon" variant="ghost" onClick={async () => { if (confirm("Hapus promo?")) { await supabase.from("promos").delete().eq("id", p.id); refresh(); } }}><Trash2 className="h-4 w-4" /></Button></div></div>)}</div>;
+  const qc = useQueryClient(); const [f, setF] = useState({ code: "", description: "", discount_percent: "", bonus_days: "", valid_until: "" }); const { data } = useQuery({ queryKey: ["admin-promos"], queryFn: async () => (await supabase.from("promos").select("*").order("created_at", { ascending: false })).data ?? [] }); const refresh = () => qc.invalidateQueries({ queryKey: ["admin-promos"] });
+  async function add(e: React.FormEvent) { e.preventDefault(); const { error } = await supabase.from("promos").insert({ code: f.code.trim().toUpperCase(), description: f.description.trim() || null, discount_percent: Number(f.discount_percent) || 0, bonus_days: Number(f.bonus_days) || 0, valid_until: f.valid_until ? `${f.valid_until}T23:59:59` : null }); if (error) toast.error(error.message); else { setF({ code: "", description: "", discount_percent: "", bonus_days: "", valid_until: "" }); refresh(); } }
+  async function remove(id: string) { if (!confirm("Hapus promo ini?")) return; const { error } = await supabase.from("promos").delete().eq("id", id); if (error) toast.error(error.message); else refresh(); }
+  return <div className="mt-4 space-y-4"><form onSubmit={add} className="grid gap-2 rounded-2xl border bg-card p-4"><Input required placeholder="Kode promo" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /><Input placeholder="Deskripsi" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /><Input type="number" min="0" max="100" placeholder="Diskon %" value={f.discount_percent} onChange={(e) => setF({ ...f, discount_percent: e.target.value })} /><Input type="number" min="0" placeholder="Bonus hari" value={f.bonus_days} onChange={(e) => setF({ ...f, bonus_days: e.target.value })} /><Input type="date" value={f.valid_until} onChange={(e) => setF({ ...f, valid_until: e.target.value })} /><Button>Tambah Promo</Button></form><div className="space-y-2">{(data as Promo[]).map((p) => <div key={p.id} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3"><div><div className="font-semibold font-mono">{p.code}</div><div className="text-xs text-muted-foreground">{p.discount_percent}% · +{p.bonus_days} hari{p.valid_until ? ` · sampai ${fmt(p.valid_until)}` : ""}</div></div><Button size="sm" variant="ghost" className="text-destructive" onClick={() => remove(p.id)}>Hapus</Button></div>)}</div></div>;
 }
