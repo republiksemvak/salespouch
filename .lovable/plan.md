@@ -1,16 +1,19 @@
-# Edit Profil Toko
+# Skema Stok Toko
 
 ## Yang akan dibangun
-- Tambahkan data pemilik toko, alamat, dan catatan rute pada setiap outlet; nama dan nomor telepon tetap memakai data outlet yang sudah ada.
-- Buat halaman edit toko khusus Owner dengan isian nama toko, nama pemilik, nomor telepon, alamat, lokasi peta, catatan rute, dan foto toko.
-- Tambahkan tombol edit pada setiap toko di halaman utama, hanya terlihat bagi Owner.
-- Lengkapi formulir tambah toko agar data baru juga dapat dicatat sejak awal.
+- Tambahkan pilihan Owner di Profil Usaha: **Akumulasi** atau **Tarik Bersih**. Data lama tetap memakai Tarik Bersih agar perilaku saat ini tidak berubah.
+- Pada kunjungan konsinyasi, pisahkan input **Sisa di rak** dan **Retur fisik ke gudang** untuk setiap produk.
+- Skema Akumulasi menghitung `terjual = stok awal − sisa di rak − retur fisik`, lalu stok toko berikutnya menjadi `sisa di rak + titip baru`.
+- Skema Tarik Bersih menghitung `terjual = stok awal − retur fisik`, tidak menyisakan stok lama di toko, lalu stok toko berikutnya hanya `titip baru`.
+- Tampilkan skema aktif serta rincian sisa rak, retur fisik, dan terjual secara tegas pada form, nota layar, PNG, WhatsApp, dan cetak thermal.
 
 ## Detail teknis
-- Tambahkan kolom `owner_name`, `address`, dan `route_notes` ke data outlet tanpa mengubah data lama.
-- Simpan perubahan melalui aturan akses yang sudah membatasi edit outlet kepada Owner.
-- Perbarui daftar toko setelah penyimpanan dan kembali ke halaman utama.
+- Simpan skema pilihan pada profil usaha dan snapshot skema pada setiap transaksi agar nota lama serta revisinya tidak berubah saat Owner mengganti pengaturan.
+- Tetap gunakan kolom JSON yang ada: `remaining` khusus sisa rak dan `returned` khusus retur fisik.
+- Sesuaikan pemuatan stok toko, ringkasan Master Produk, mutasi stok gudang, serta fungsi revisi transaksi agar hanya retur fisik yang masuk kembali ke gudang.
+- Terapkan validasi atomik bahwa `terjual + sisa rak + retur fisik = stok awal` dan stok gudang tidak boleh negatif.
 
 ## Pemeriksaan
-- Pastikan Owner dapat membuka, mengubah, dan menyimpan profil toko.
-- Pastikan tombol edit tidak tampil untuk Sales.
+- Uji kedua skema pada kunjungan pertama dan rutin, termasuk kombinasi pack + pcs.
+- Uji perubahan skema hanya memengaruhi transaksi baru, sedangkan revisi memakai skema transaksi asal.
+- Uji nota dan Master Produk membedakan sisa rak dari retur fisik.
