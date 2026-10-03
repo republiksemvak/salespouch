@@ -45,6 +45,10 @@ function AllOutlets() {
   const outlets = data?.outlets ?? [];
   const count = data?.count ?? 0;
 
+  function openEdit(id: string) {
+    window.location.assign(`/outlets/${encodeURIComponent(id)}/edit`);
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-8 pt-6">
       <header>
@@ -100,7 +104,7 @@ function AllOutlets() {
               variant="outline"
               aria-label={`Edit ${outlet.name}`}
               className="h-9 shrink-0 gap-1.5 px-2.5 text-sm"
-              onClick={() => navigate({ to: "/outlets/$id/edit", params: { id: outlet.id } })}
+              onClick={() => openEdit(outlet.id)}
             >
               <Pencil className="h-4 w-4" />
               Edit
