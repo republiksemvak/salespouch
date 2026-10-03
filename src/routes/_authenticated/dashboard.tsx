@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, Pencil, LockKeyhole, UserRoundCog } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, Pencil, LockKeyhole, UserRoundCog, ChevronDown, UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -19,6 +19,8 @@ function Dashboard() {
   const { data: p } = useProfile();
   const { data: isAdmin } = useIsAdmin();
   const [q, setQ] = useState("");
+  const [teamOpen, setTeamOpen] = useState(false);
+  const [outletOpen, setOutletOpen] = useState(false);
   const search = q.trim();
   const status = p?.profile ? accessStatus(p.profile, p.email) : null;
 
@@ -86,33 +88,47 @@ function Dashboard() {
           <Button asChild variant="outline" className="h-11"><Link to="/products"><Package className="mr-1 h-4 w-4" />Master Produk</Link></Button>
           <Button asChild variant="outline" className="h-11"><Link to="/profile"><UserCog className="mr-1 h-4 w-4" />Profil Usaha</Link></Button>
           <Button asChild variant="outline" className="col-span-2 h-11"><Link to="/reports"><Package className="mr-1 h-4 w-4" />Laporan Keuangan</Link></Button>
-          <Button asChild variant="outline" className="col-span-2 h-11"><Link to="/team"><Users className="mr-1 h-4 w-4" />Manajemen Tim</Link></Button>
+          <Button type="button" variant="outline" className="col-span-2 h-11 justify-between" onClick={() => setTeamOpen((open) => !open)} aria-expanded={teamOpen}>
+            <span className="flex items-center"><Users className="mr-1 h-4 w-4" />Manajemen Tim</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${teamOpen ? "rotate-180" : ""}`} />
+          </Button>
           {isAdmin && <Button asChild className="col-span-2 h-11"><Link to="/admin"><ShieldCheck className="mr-1 h-4 w-4" />Dashboard Super Admin</Link></Button>}
         </div>
 
-        <section className="mt-4 rounded-2xl border bg-card p-3">
+        {teamOpen && <section className="mt-2 rounded-2xl border bg-card p-3">
           <div className="flex items-center gap-2 px-1">
             <UserRoundCog className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Manajemen Tim</h2>
+            <div>
+              <h2 className="text-sm font-semibold">Manajemen Tim</h2>
+              <p className="text-xs text-muted-foreground">Kelola Sales dan kebutuhan tim.</p>
+            </div>
           </div>
-          <p className="px-1 pt-1 text-xs text-muted-foreground">Kelola Sales dan kebutuhan tim secara bertahap.</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {teamFeatures.map(previewButton)}
           </div>
-        </section>
+        </section>}
 
-        <section className="mt-3 rounded-2xl border bg-card p-3">
+        <div className="mt-2">
+          <Button type="button" variant="outline" className="h-11 w-full justify-between" onClick={() => setOutletOpen((open) => !open)} aria-expanded={outletOpen}>
+            <span className="flex items-center"><Store className="mr-1 h-4 w-4" />Manajemen Outlet</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${outletOpen ? "rotate-180" : ""}`} />
+          </Button>
+        </div>
+
+        {outletOpen && <section className="mt-2 rounded-2xl border bg-card p-3">
           <div className="flex items-center gap-2 px-1">
-            <Store className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Manajemen Outlet</h2>
+            <UsersRound className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <h2 className="text-sm font-semibold">Manajemen Outlet</h2>
+              <p className="text-xs text-muted-foreground">Kelola outlet, jadwal, route, dan penugasan Sales.</p>
+            </div>
           </div>
-          <p className="px-1 pt-1 text-xs text-muted-foreground">Semua outlet, jadwal kunjungan, dan route.</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/dashboard"><span>Semua Outlet</span><Store className="h-4 w-4 text-muted-foreground" /></Link></Button>
             {outletFeatures.map(previewButton)}
             <Button type="button" variant="outline" disabled className="h-11 justify-between px-3 opacity-70"><span>Penugasan Sales</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button>
           </div>
-        </section>
+        </section>}
       </>}
 
       <Button asChild variant="outline" className="mt-4 h-11 w-full"><Link to="/transactions"><History className="mr-1 h-4 w-4" />Riwayat Transaksi</Link></Button>
