@@ -23,7 +23,7 @@ export type AccessStatus =
   | { allowed: false; reason: "expired" };
 
 export function accessStatus(profile: Profile, email?: string | null): AccessStatus {
-  if (email && (email === "candraprinting@gmail.com" || email === "ganlapor@gmail.com")) {
+  if (email && (email.toLowerCase() === "candraprinting@gmail.com" || email.toLowerCase() === "genemodcc@gmail.com")) {
     return { allowed: true, reason: "admin" };
   }
   if (profile.license_until && new Date(profile.license_until) > new Date()) {
