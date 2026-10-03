@@ -118,12 +118,23 @@ function OpeningStockPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Store className="h-5 w-5" /></div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Stok Pembukaan</h1>
-            <p className="text-xs text-muted-foreground">Untuk stok yang sudah beredar sebelum Sales Pouch dipakai.</p>
+            <p className="text-xs text-muted-foreground">Untuk usaha yang sudah berjalan dan sudah memiliki stok sebelum memakai Sales Pouch.</p>
           </div>
         </div>
       </header>
 
-      <section className="mt-5 rounded-2xl border bg-card p-4">
+      <section className="mt-3 rounded-2xl border bg-card p-4">
+        <div className="text-sm font-semibold">Sudah punya stok sebelum memakai Sales Pouch?</div>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Masukkan jumlah stok yang benar-benar tersedia saat ini sebagai <b>titik awal pencatatan</b>. Tidak perlu membuat transaksi lama atau transaksi fiktif.
+        </p>
+        <div className="mt-3 rounded-xl bg-muted/60 p-3 text-[11px] leading-relaxed">
+          <div><b>Usaha baru:</b> stok awal cukup dimasukkan saat menambahkan produk.</div>
+          <div className="mt-1"><b>Usaha sudah berjalan:</b> gunakan Stok Pembukaan untuk mencatat stok yang sudah ada di outlet sebelum Sales Pouch digunakan.</div>
+        </div>
+      </section>
+
+      <section className="mt-3 rounded-2xl border bg-card p-4">
         <div className="text-sm font-semibold">1. Pilih Outlet</div>
         <select
           value={outletId}
@@ -183,7 +194,7 @@ function OpeningStockPage() {
       )}
 
       <p className="mt-4 text-center text-[10px] leading-relaxed text-muted-foreground">
-        Setelah outlet melakukan kunjungan konsinyasi pertama, stok pembukaan ini tidak lagi dihitung sebagai stok berjalan. Sistem kembali memakai hasil kunjungan seperti biasa.
+        Stok pembukaan adalah titik awal pencatatan, bukan transaksi penjualan. Setelah pencatatan outlet mulai berjalan, sistem melanjutkan perhitungan berdasarkan kunjungan dan transaksi.
       </p>
     </main>
   );
