@@ -394,29 +394,52 @@ function StockBox({ label, value }: { label: string; value: string }) {
 }
 
 function ResetPanel({ onDone }: { onDone: () => void }) {
-  const [pw, setPw] = useState("");
+  const [confirming, setConfirming] = useState<"outlets" | "stock" | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function run(kind: "outlets" | "stock") {
-    const label = kind === "outlets" ? "SEMUA data toko beserta riwayat transaksi" : "stok gudang semua produk menjadi 0";
-    if (!pw) return void toast.error("Masukkan password akun");
-    if (!confirm(`Yakin reset ${label}?\n\nTidak bisa dibatalkan.`)) return;
     setBusy(true);
-    const { data: u } = await supabase.auth.getUser();
-    const email = u.user?.email;
-    const { error: authErr } = email ? await supabase.auth.signInWithPassword({ email, password: pw }) : { error: new Error("x") };
-    if (authErr) { setBusy(false); return void toast.error("Password salah"); }
     const { error } = kind === "outlets"
       ? await supabase.from("outlets").delete().not("id", "is", null)
       : await supabase.from("products").update({ warehouse_stock: 0 }).not("id", "is", null);
     setBusy(false);
     if (error) return void toast.error(error.message);
-    setPw("");
+    setConfirming(null);
     toast.success("Reset berhasil");
     onDone();
   }
 
-  return <div className="mt-10 space-y-2 rounded-2xl border border-destructive/40 p-4"><div className="font-semibold text-destructive">Reset Data</div><p className="text-xs text-muted-foreground">Butuh password akun Anda.</p><Input type="password" placeholder="Password akun" value={pw} onChange={(e) => setPw(e.target.value)} className="h-11" /><div className="grid grid-cols-2 gap-2"><Button variant="destructive" disabled={busy} onClick={() => void run("outlets")}>Reset Data Toko</Button><Button variant="destructive" disabled={busy} onClick={() => void run("stock")}>Reset Stok Gudang</Button></div></div>;
+  const isOutlets = confirming === "outlets";
+
+  return <>
+    <div className="mt-10 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+      <div className="font-semibold text-destructive">Reset Data</div>
+      <p className="mt-1 text-xs text-muted-foreground">Gunakan hanya jika Anda benar-benar ingin mengosongkan data.</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button variant="destructive" disabled={busy} onClick={() => setConfirming("outlets")}>Reset Data Toko</Button>
+        <Button variant="destructive" disabled={busy} onClick={() => setConfirming("stock")}>Reset Stok Gudang</Button>
+      </div>
+    </div>
+
+    {confirming && (
+      <Modal title={isOutlets ? "Reset Data Toko" : "Reset Stok Gudang"} onClose={() => !busy && setConfirming(null)}>
+        <div className="space-y-4">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+            <div className="font-semibold text-destructive">⚠️ Tindakan ini tidak dapat dibatalkan</div>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              {isOutlets
+                ? "Semua data toko beserta riwayat transaksi akan dihapus."
+                : "Stok gudang semua produk akan diubah menjadi 0. Data produk dan harga tetap ada."}
+            </p>
+          </div>
+          <div className="flex gap-2 border-t pt-4">
+            <Button variant="outline" disabled={busy} onClick={() => setConfirming(null)} className="h-11 flex-1 rounded-xl">Batal</Button>
+            <Button variant="destructive" disabled={busy} onClick={() => void run(confirming)} className="h-11 flex-1 rounded-xl">{busy ? "Memproses…" : "Ya, Reset"}</Button>
+          </div>
+        </div>
+      </Modal>
+    )}
+  </>;
 }
 
 function Stat({ label, v }: { label: string; v: number | string }) {
