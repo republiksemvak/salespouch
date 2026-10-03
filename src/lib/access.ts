@@ -7,6 +7,9 @@ export type StockScheme = "accumulation" | "clean_pull";
 export type Profile = {
   id: string;
   business_name: string | null;
+  business_category: string | null;
+  business_model: string | null;
+  main_product: string | null;
   business_address: string | null;
   business_phone: string | null;
   user_email: string | null;
