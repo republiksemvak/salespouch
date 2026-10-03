@@ -7,6 +7,20 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (error || !data) throw new Error("Hanya super admin");
 }
 
+export const getAdminUsers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: profiles, error: profileError }, { data: members, error: memberError }] = await Promise.all([
+      supabaseAdmin.from("profiles").select("*").order("created_at", { ascending: false }),
+      supabaseAdmin.from("team_members").select("user_id,owner_id,created_at,profiles!team_members_user_id_fkey(user_email,username,display_name)").order("created_at", { ascending: false }),
+    ]);
+    if (profileError) throw new Error(profileError.message);
+    if (memberError) throw new Error(memberError.message);
+    return { owners: profiles ?? [], sales: members ?? [] };
+  });
+
 async function resolveAuthUserId(supabaseAdmin: any, profileUserId: string) {
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
@@ -19,8 +33,6 @@ async function resolveAuthUserId(supabaseAdmin: any, profileUserId: string) {
   const { data: direct, error: directError } = await supabaseAdmin.auth.admin.getUserById(profileUserId);
   if (!directError && direct.user) return { authUserId: direct.user.id, profile };
 
-  // Fallback for older/orphaned profiles, including Sales accounts using
-  // username@salespouch.local as their Auth email.
   if (profile.user_email) {
     const { data: listed, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (!listError) {
@@ -34,14 +46,7 @@ async function resolveAuthUserId(supabaseAdmin: any, profileUserId: string) {
 
 export const setUserLicense = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
-    z.object({
-      userId: z.string().uuid(),
-      mode: z.enum(["add", "set", "revoke"]),
-      days: z.number().int().min(0).max(3650).optional(),
-      until: z.string().optional(),
-    }).parse(d),
-  )
+  .inputValidator((d) => z.object({ userId: z.string().uuid(), mode: z.enum(["add", "set", "revoke"]), days: z.number().int().min(0).max(3650).optional(), until: z.string().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -62,22 +67,15 @@ export const setUserLicense = createServerFn({ method: "POST" })
 
 export const resetUserPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
-    z.object({
-      userId: z.string().uuid(),
-      password: z.string().min(6, "Password minimal 6 karakter").max(72),
-    }).parse(d),
-  )
+  .inputValidator((d) => z.object({ userId: z.string().uuid(), password: z.string().min(6, "Password minimal 6 karakter").max(72) }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     if (data.userId === context.userId) throw new Error("Gunakan Profil Usaha untuk mengubah password akun admin.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: role } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId).eq("role", "admin").maybeSingle();
     if (role) throw new Error("Password akun super admin tidak dapat diubah dari sini.");
-
     const { authUserId } = await resolveAuthUserId(supabaseAdmin, data.userId);
     if (!authUserId) throw new Error("Akun Auth user tidak ditemukan. User ini perlu dibersihkan dari data lama.");
-
     const { error } = await supabaseAdmin.auth.admin.updateUserById(authUserId, { password: data.password });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -92,15 +90,11 @@ export const deleteUser = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: role } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId).eq("role", "admin").maybeSingle();
     if (role) throw new Error("Akun super admin tidak dapat dihapus dari sini.");
-
     const { authUserId } = await resolveAuthUserId(supabaseAdmin, data.userId);
-
     if (authUserId) {
       const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
       if (authError) throw new Error(authError.message);
     }
-
-    // Also remove the profile when the Auth account is already missing/orphaned.
     const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
     if (profileError) throw new Error(profileError.message);
     return { ok: true, orphanedAuth: !authUserId };
