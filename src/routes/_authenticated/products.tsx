@@ -7,6 +7,7 @@ import { ArrowLeft, ChevronDown, ChevronUp, Search, Trash2, Plus, X, Pencil, Tre
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts, useStockSummary } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
+import { aggregateProductSales } from "@/lib/product-sales";
 import { rp } from "@/lib/visit";
 import { formatQty, packSize, toPieces } from "@/lib/units";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ function OwnerProductsPage() {
       from.setDate(from.getDate() - 30);
       const { data, error } = await supabase
         .from("transactions")
-        .select("visit_date,line_items")
+        .select("visit_date,line_items,total_sales,discount_amount")
         .gte("visit_date", from.toISOString())
         .order("visit_date", { ascending: false });
       if (error) throw error;
@@ -139,22 +140,7 @@ function OwnerProductsPage() {
   const criticalCount = rows.filter((p) => p.warehouse_stock <= packSize(p.pcs_per_pack)).length;
   const editingProduct = rows.find((p) => p.id === editingId) ?? null;
 
-  const insightMap = new Map<string, { name: string; qty: number; omset: number }>();
-  for (const tx of insightRows ?? []) {
-    for (const item of (tx.line_items as Array<{ name?: string; sold?: number; price?: number; subtotal?: number; pcs_per_pack?: number }> | null) ?? []) {
-      const itemName = String(item.name ?? "").trim();
-      const qty = Number(item.sold) || 0;
-      if (!itemName || qty <= 0) continue;
-      const size = packSize(item.pcs_per_pack);
-      const omset = Number(item.subtotal) || Math.round(qty * (Number(item.price) || 0) / size);
-      const key = k(itemName);
-      const current = insightMap.get(key) ?? { name: itemName, qty: 0, omset: 0 };
-      current.qty += qty;
-      current.omset += omset;
-      insightMap.set(key, current);
-    }
-  }
-  const insightProducts = [...insightMap.values()];
+  const insightProducts = aggregateProductSales(insightRows ?? []);
   const topSelling = [...insightProducts].sort((a, b) => b.qty - a.qty).slice(0, 5);
   const topRevenue = [...insightProducts].sort((a, b) => b.omset - a.omset).slice(0, 5);
 
@@ -274,7 +260,10 @@ function ProductInsights({ topSelling, topRevenue }: { topSelling: { name: strin
       </div>
       <div className="grid grid-cols-2 divide-x">
         <InsightList title="Terlaris" rows={topSelling} max={maxQty} value={(r) => `${r.qty} pcs`} />
-        <InsightList title="Omset Terbesar" rows={topRevenue} max={maxRevenue} value={(r) => rp(r.omset)} revenue />
+        <InsightList title="Omset Bersih Terbesar" rows={topRevenue} max={maxRevenue} value={(r) => rp(r.omset)} revenue />
+      </div>
+      <div className="border-t px-3.5 py-2.5 text-[10px] leading-relaxed text-muted-foreground">
+        <b className="text-foreground">Catatan:</b> Terlaris dihitung dari pcs terjual. Omset bersih memakai rumus yang sama dengan Laporan Keuangan setelah diskon nota dialokasikan ke produk. Insight ini sengaja memakai periode 30 hari terakhir; Laporan Keuangan mengikuti rentang tanggal yang Anda pilih.
       </div>
       {!topSelling.length && <div className="px-3.5 py-4 text-center text-[11px] text-muted-foreground">Belum ada penjualan 30 hari terakhir.</div>}
     </section>
