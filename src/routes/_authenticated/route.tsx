@@ -85,7 +85,8 @@ function Setup() {
     e.preventDefault();
     setBusy(true);
     const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("profiles").update({ business_name: name.trim() }).eq("id", u.user!.id);
+    if (!u.user) { setBusy(false); toast.error("Akun tidak ditemukan"); return; }
+    const { error } = await supabase.from("profiles").update({ business_name: name.trim() }).eq("id", u.user.id);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: profileQueryKey });

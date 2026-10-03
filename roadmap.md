@@ -8,3 +8,4 @@
 - [x] Tambahkan edit transaksi dan revisi nota dengan rollback stok serta penyesuaian utang otomatis.
 - [x] Pisahkan daftar transaksi menjadi rute indeks agar halaman revisi nota dapat dirender.
 - [x] Tambahkan edit profil toko untuk Owner: nama, pemilik, telepon, alamat, lokasi, dan catatan rute.
+- [x] Tambahkan skema stok toko Akumulasi/Tarik Bersih dengan sisa rak dan retur fisik terpisah.

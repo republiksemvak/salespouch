@@ -20,3 +20,4 @@
 - Transaction revisions run through one database function that reverses old stock, applies revised stock, and cascades consignment debt forward; outlet, date, and transaction type remain immutable. Why: revisions must not leave stock or debt partially updated.
 - The transactions section uses an Outlet-only parent route and a separate index leaf for its list. Why: nested transaction edit pages must render through the parent route.
 - Outlet profile edits remain owner-only while sales retain read and visit access. Why: storefront identity and route details are business-managed data.
+- Each consignment snapshots the Owner's stock scheme; `remaining` means shelf stock and `returned` means physical stock returned to the warehouse. Why: stock history and revisions must remain stable when settings change.
