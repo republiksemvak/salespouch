@@ -47,6 +47,13 @@ const fmtDate = (d: string) =>
     timeStyle: "short",
   });
 
+type NextStock = {
+  name: string;
+  qty: number;
+  price: number;
+  pcs_per_pack: number;
+};
+
 function ReceiptPage() {
   const { id } = Route.useParams();
   const { data: p } = useProfile();
@@ -97,6 +104,83 @@ function ReceiptPage() {
 
   const store = outlet?.name ?? "-";
   const phone = outlet?.owner_phone ?? "";
+
+  /*
+   * STOK UNTUK NOTA BERIKUTNYA
+   *
+   * Hanya berlaku untuk skema AKUMULASI.
+   *
+   * Rumus:
+   * Sisa di rak hari ini + Titip baru hari ini
+   *
+   * Retur fisik tidak masuk karena retur kembali ke gudang.
+   *
+   * Contoh:
+   * Sisa rak 5 + titip baru 15 = stok nota berikutnya 20.
+   */
+  const nextStock: NextStock[] = [];
+
+  if (
+    t.transaction_type === "Consignment" &&
+    t.stock_scheme === "accumulation"
+  ) {
+    const stockMap = new Map<string, NextStock>();
+
+    const addNextStock = (
+      name: string,
+      qty: number,
+      price: number,
+      pcs_per_pack = 1
+    ) => {
+      if (!name || qty <= 0) return;
+
+      const cleanName = name.trim();
+      const key = cleanName.toLowerCase();
+
+      const existing = stockMap.get(key);
+
+      if (existing) {
+        existing.qty += qty;
+
+        if (!existing.price && price) {
+          existing.price = price;
+        }
+
+        if (!existing.pcs_per_pack) {
+          existing.pcs_per_pack = pcs_per_pack;
+        }
+      } else {
+        stockMap.set(key, {
+          name: cleanName,
+          qty,
+          price: price || 0,
+          pcs_per_pack: pcs_per_pack || 1,
+        });
+      }
+    };
+
+    // Sisa stok yang masih berada di rak.
+    items.forEach((i) => {
+      addNextStock(
+        i.name,
+        Number(i.remaining) || 0,
+        Number(i.price) || 0,
+        packSize(i.pcs_per_pack)
+      );
+    });
+
+    // Tambahkan titip baru hari ini.
+    newItems.forEach((n) => {
+      addNextStock(
+        n.name,
+        Number(n.qty) || 0,
+        Number(n.price) || 0,
+        packSize(n.pcs_per_pack)
+      );
+    });
+
+    nextStock.push(...stockMap.values());
+  }
 
   function asText() {
     const L: string[] = [business.toUpperCase()];
@@ -223,6 +307,25 @@ function ReceiptPage() {
             n.qty,
             n.pcs_per_pack
           )} @ ${rp(n.price)}/pack`
+        );
+      });
+    }
+
+    /*
+     * STOK UNTUK NOTA BERIKUTNYA
+     */
+    if (nextStock.length > 0) {
+      L.push(
+        "--------------------------------",
+        "STOK UNTUK NOTA BERIKUTNYA"
+      );
+
+      nextStock.forEach((n) => {
+        L.push(
+          `  ${n.name}: ${formatQty(
+            n.qty,
+            n.pcs_per_pack
+          )}`
         );
       });
     }
@@ -453,6 +556,30 @@ function ReceiptPage() {
             n.qty,
             n.pcs_per_pack
           )} @ ${rp(n.price)}/pack`,
+        });
+      });
+    }
+
+    /*
+     * STOK UNTUK NOTA BERIKUTNYA
+     */
+    if (nextStock.length > 0) {
+      L.push(
+        {
+          text: "--------------------------------",
+        },
+        {
+          text: "STOK UNTUK NOTA BERIKUTNYA",
+          bold: true,
+        }
+      );
+
+      nextStock.forEach((n) => {
+        L.push({
+          text: `  ${n.name}: ${formatQty(
+            n.qty,
+            n.pcs_per_pack
+          )}`,
         });
       });
     }
@@ -730,6 +857,27 @@ function ReceiptPage() {
                   n.pcs_per_pack
                 )})`}
                 v={`@ ${rp(n.price)}/pack`}
+              />
+            ))}
+          </>
+        )}
+
+        {nextStock.length > 0 && (
+          <>
+            {hr}
+
+            <div className="font-semibold">
+              STOK UNTUK NOTA BERIKUTNYA
+            </div>
+
+            {nextStock.map((n, idx) => (
+              <Row
+                key={idx}
+                k={n.name}
+                v={formatQty(
+                  n.qty,
+                  n.pcs_per_pack
+                )}
               />
             ))}
           </>
