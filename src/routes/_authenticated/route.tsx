@@ -24,20 +24,29 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function Gate() {
-  const { data: profileData, isLoading: profileLoading, error: profileError } = useProfile();
-  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
+  const { data: isAdmin, isLoading: adminLoading, error: adminError } = useIsAdmin();
 
-  if (profileLoading || adminLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
-
-  // Super Admin must never be blocked by business-profile onboarding.
-  // Admin access is determined by user_roles, not by the profiles row.
+  // Do not load the business profile for Super Admin. This prevents a missing
+  // profiles row from blocking the admin account before the main app loads.
+  if (adminLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
   if (isAdmin) return <Outlet />;
+  if (adminError) return <div className="p-10 text-center text-destructive">Gagal memeriksa akses akun. Silakan muat ulang.</div>;
 
+  return <OwnerGate />;
+}
+
+function OwnerGate() {
+  const { data: profileData, isLoading: profileLoading, error: profileError } = useProfile();
+
+  if (profileLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
   if (profileError || !profileData?.profile) return <div className="p-10 text-center text-destructive">Profil tidak ditemukan.</div>;
+
   const status = accessStatus(profileData.profile, profileData.email);
   if (!status.allowed) return <Blocked />;
+
   const incomplete = !profileData.profile.business_name || !profileData.profile.business_category || !profileData.profile.business_model || !profileData.profile.main_product;
   if (profileData.role === "owner" && incomplete) return <Setup profile={profileData.profile} />;
+
   return <Outlet />;
 }
 
