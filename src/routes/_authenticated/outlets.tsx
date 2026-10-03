@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Search, Store, LockKeyhole } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Search, Store, LockKeyhole } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/outlets")({
 type RegistrationSort = "newest" | "oldest";
 
 function AllOutlets() {
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<RegistrationSort>("newest");
   const search = q.trim();
@@ -47,6 +48,10 @@ function AllOutlets() {
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-8 pt-6">
       <header>
+        <Button type="button" variant="ghost" className="-ml-3 mb-2 h-9 px-3" onClick={() => navigate({ to: "/dashboard" })}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Kembali
+        </Button>
         <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Manajemen Outlet</div>
         <h1 className="mt-1 text-2xl font-bold">Semua Outlet</h1>
         <p className="mt-1 text-sm text-muted-foreground">{count} outlet terdaftar</p>
