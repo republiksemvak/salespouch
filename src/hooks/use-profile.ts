@@ -5,7 +5,7 @@ import type { Profile } from "@/lib/access";
 export const profileQueryKey = ["profile"] as const;
 
 const profileFields =
-  "id,business_name,business_address,business_phone,user_email,license_until,stock_scheme,created_at";
+  "id,business_name,business_category,business_model,main_product,business_address,business_phone,user_email,license_until,stock_scheme,created_at";
 
 export function useProfile() {
   return useQuery({
