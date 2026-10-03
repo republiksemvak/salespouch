@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
@@ -18,6 +18,8 @@ export const Route = createFileRoute("/_authenticated/reports")({
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 const k = (n: string) => n.trim().toLowerCase();
+
+type ProductReport = { name: string; qty: number; omset: number; hpp: number; profit: number };
 
 function ReportsPage() {
   const { data: account, isLoading } = useProfile();
@@ -64,8 +66,8 @@ function OwnerReportsPage() {
     });
     const tot = rows.reduce((a, x) => ({ omset: a.omset + x.omset, hpp: a.hpp + x.hpp, profit: a.profit + x.profit, dibayar: a.dibayar + x.dibayar }), { omset: 0, hpp: 0, profit: 0, dibayar: 0 });
     const productSales = aggregateProductSales(txs ?? []);
-    const reportProducts = productSales
-      .map((p) => ({ ...p, hpp: hppByProduct.get(k(p.name)) ?? 0 }))
+    const reportProducts: ProductReport[] = productSales
+      .map((p) => ({ ...p, hpp: hppByProduct.get(k(p.name)) ?? 0, profit: p.omset - (hppByProduct.get(k(p.name)) ?? 0) }))
       .sort((a, b) => b.omset - a.omset);
     return { rows, tot, products: reportProducts };
   }, [txs, products]);
@@ -94,6 +96,8 @@ function OwnerReportsPage() {
   }
 
   const margin = r.tot.omset ? (r.tot.profit / r.tot.omset) * 100 : 0;
+  const topSelling = [...r.products].sort((a, b) => b.qty - a.qty).slice(0, 5);
+  const topRevenue = [...r.products].sort((a, b) => b.omset - a.omset).slice(0, 5);
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
@@ -109,6 +113,9 @@ function OwnerReportsPage() {
       </div>
       <Button onClick={download} disabled={!r.rows.length} className="mt-4 h-12 w-full"><Download className="mr-1 h-4 w-4" />Download Excel</Button>
       <p className="mt-2 text-[11px] text-muted-foreground">HPP dihitung dari Harga Modal di Master Produk saat ini.</p>
+
+      <ProductInsights topSelling={topSelling} topRevenue={topRevenue} />
+
       <h2 className="mt-6 font-semibold">Per Produk</h2>
       <div className="mt-2 space-y-2">
         {isLoading && <p className="text-sm text-muted-foreground">Memuat…</p>}
@@ -121,6 +128,54 @@ function OwnerReportsPage() {
         ))}
       </div>
     </main>
+  );
+}
+
+function ProductInsights({ topSelling, topRevenue }: { topSelling: ProductReport[]; topRevenue: ProductReport[] }) {
+  const maxQty = topSelling[0]?.qty || 1;
+  const maxRevenue = topRevenue[0]?.omset || 1;
+  return (
+    <section className="mt-5 overflow-hidden rounded-2xl border bg-card">
+      <div className="flex items-center justify-between border-b px-3.5 py-3">
+        <div>
+          <div className="text-sm font-bold">Insight Produk</div>
+          <div className="text-[10px] text-muted-foreground">Sesuai rentang tanggal di atas</div>
+        </div>
+        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="grid grid-cols-2 divide-x">
+        <InsightList title="Terlaris" rows={topSelling} max={maxQty} value={(p) => `${p.qty} pcs`} />
+        <InsightList title="Omset Terbesar" rows={topRevenue} max={maxRevenue} value={(p) => rp(p.omset)} revenue />
+      </div>
+      <div className="border-t px-3.5 py-2.5 text-[10px] leading-relaxed text-muted-foreground">
+        <b className="text-foreground">Catatan:</b> Terlaris = pcs terjual. Omset = setelah diskon.
+      </div>
+    </section>
+  );
+}
+
+function InsightList({ title, rows, max, value, revenue }: { title: string; rows: ProductReport[]; max: number; value: (p: ProductReport) => string; revenue?: boolean }) {
+  return (
+    <div className="min-w-0 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+      <div className="mt-2 space-y-2.5">
+        {!rows.length && <div className="text-[11px] text-muted-foreground">Belum ada data</div>}
+        {rows.map((p) => {
+          const ratio = Math.max(8, Math.round(((revenue ? p.omset : p.qty) / max) * 100));
+          return (
+            <div key={`${title}-${p.name}`} className="min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="truncate font-medium">{p.name}</span>
+                <span className="shrink-0 text-muted-foreground">{value(p)}</span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${ratio}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
