@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isSuperAdminEmail } from "@/lib/access";
 import type { Profile } from "@/lib/access";
 
 export const profileQueryKey = ["profile"] as const;
@@ -20,6 +21,19 @@ export function useProfile() {
         .eq("id", u.user.id)
         .maybeSingle();
       if (error) throw error;
+
+      const superAdmin = isSuperAdminEmail(u.user.email);
+
+      // Super Admin is the web owner and must never be downgraded to Sales
+      // because of a team_members record left in the business data.
+      if (superAdmin) {
+        return {
+          profile: data as Profile | null,
+          email: u.user.email ?? null,
+          role: "owner" as const,
+          ownerId: u.user.id,
+        };
+      }
 
       const { data: membership, error: teamError } = await supabase
         .from("team_members")
