@@ -3,14 +3,22 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Trash2, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { accessStatus, type Profile } from "@/lib/access";
-import { setUserLicense } from "@/lib/admin.functions";
+import { deleteUser, resetUserPassword, setUserLicense } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Super Admin — Sales Pouch" }, { name: "description", content: "Kelola pengguna, lisensi, paket dan promo." }, { property: "og:title", content: "Super Admin — Sales Pouch" }, { property: "og:description", content: "Kelola pengguna, lisensi, paket dan promo." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -41,6 +49,8 @@ function AdminPage() {
 function Users() {
   const qc = useQueryClient();
   const setLicense = useServerFn(setUserLicense);
+  const resetPassword = useServerFn(resetUserPassword);
+  const removeUser = useServerFn(deleteUser);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const { data: users } = useQuery({
@@ -62,6 +72,19 @@ function Users() {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
     } catch (e) { toast.error((e as Error).message); }
   }
+  async function resetUser(userId: string, password: string) {
+    try {
+      await resetPassword({ data: { userId, password } });
+      toast.success("Password user berhasil direset");
+    } catch (e) { toast.error((e as Error).message); throw e; }
+  }
+  async function remove(userId: string) {
+    try {
+      await removeUser({ data: { userId } });
+      toast.success("User berhasil dihapus");
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (e) { toast.error((e as Error).message); }
+  }
   const rows = (users ?? []).map((u) => ({ u, s: accessStatus(u) }))
     .filter(({ u, s }) => (filter === "all" || s.reason === filter) &&
       `${u.user_email ?? ""} ${u.business_name ?? ""}`.toLowerCase().includes(q.trim().toLowerCase()));
@@ -79,15 +102,55 @@ function Users() {
       <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari email / nama usaha…" className="h-11 pl-9" /></div>
       <p className="text-xs text-muted-foreground">{rows.length} dari {users?.length ?? 0} pengguna</p>
-      {rows.map(({ u, s }) => <UserRow key={u.id} u={u} s={s} pkgs={pkgs ?? []} apply={apply} />)}
+      {rows.map(({ u, s }) => <UserRow key={u.id} u={u} s={s} pkgs={pkgs ?? []} apply={apply} resetPassword={resetUser} deleteUser={remove} />)}
     </div>
   );
 }
 
-function UserRow({ u, s, pkgs, apply }: { u: Profile; s: ReturnType<typeof accessStatus>; pkgs: { id: string; name: string; days: number }[]; apply: (id: string, i: { mode: "add" | "set" | "revoke"; days?: number; until?: string }) => Promise<void> }) {
+function UserRow({
+  u,
+  s,
+  pkgs,
+  apply,
+  resetPassword,
+  deleteUser,
+}: {
+  u: Profile;
+  s: ReturnType<typeof accessStatus>;
+  pkgs: { id: string; name: string; days: number }[];
+  apply: (id: string, i: { mode: "add" | "set" | "revoke"; days?: number; until?: string }) => Promise<void>;
+  resetPassword: (id: string, password: string) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
+}) {
   const [pkg, setPkg] = useState("");
   const [date, setDate] = useState("");
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const badge = s.reason === "expired" ? "bg-destructive/15 text-destructive" : s.reason === "trial" ? "bg-accent/20" : "bg-primary/15 text-primary";
+
+  async function savePassword() {
+    if (newPassword.length < 6) {
+      toast.error("Password minimal 6 karakter");
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      await resetPassword(u.id, newPassword);
+      setNewPassword("");
+      setPasswordOpen(false);
+    } catch {
+      // Error is already shown by the parent action.
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!confirm(`Hapus user ${u.user_email ?? "ini"}? Semua data usaha user akan ikut terhapus dan tidak dapat dikembalikan.`)) return;
+    await deleteUser(u.id);
+  }
+
   return (
     <div className="rounded-2xl border bg-card p-4 text-sm">
       <div className="flex items-start justify-between gap-2">
@@ -114,6 +177,41 @@ function UserRow({ u, s, pkgs, apply }: { u: Profile; s: ReturnType<typeof acces
           {u.license_until && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => confirm("Cabut lisensi?") && apply(u.id, { mode: "revoke" })}>Cabut</Button>}
         </div>
       )}
+
+      <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
+        <Button size="sm" variant="outline" onClick={() => setPasswordOpen(true)}>
+          <KeyRound className="mr-1.5 h-4 w-4" />Reset Password
+        </Button>
+        <Button size="sm" variant="ghost" className="text-destructive" onClick={confirmDelete}>
+          <Trash2 className="mr-1.5 h-4 w-4" />Hapus User
+        </Button>
+      </div>
+
+      <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset Password User</DialogTitle>
+            <DialogDescription>
+              Buat password baru untuk <b>{u.user_email}</b>. Minimal 6 karakter.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Password baru"
+              className="h-12"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPasswordOpen(false)} disabled={passwordBusy}>Batal</Button>
+            <Button type="button" onClick={savePassword} disabled={passwordBusy}>{passwordBusy ? "Menyimpan…" : "Simpan Password"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
