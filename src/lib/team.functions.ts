@@ -1,9 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isSuperAdminEmail } from "@/lib/access";
 import { salesAuthEmail, normalizeSalesUsername } from "@/lib/sales-auth";
 
 async function assertOwner(context: { supabase: any; userId: string }) {
+  const { data: authUser, error: authError } = await context.supabase.auth.getUser();
+  if (!authError && authUser.user && authUser.user.id === context.userId && isSuperAdminEmail(authUser.user.email)) return;
+
   const { data, error } = await context.supabase.from("team_members").select("user_id").eq("user_id", context.userId).maybeSingle();
   if (error || data) throw new Error("Hanya Owner yang dapat mengelola tim.");
 }
