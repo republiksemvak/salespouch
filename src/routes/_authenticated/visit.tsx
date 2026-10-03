@@ -109,13 +109,67 @@ function VisitPage() {
   const remainingDebt = Math.max(0, totalDue - amountPaid);
 
   function validReturns() {
-    if (rows.some((r) => r.returnPack === "" && r.returnPcs === "")) { toast.error("Isi retur fisik untuk semua produk, termasuk 0 bila tidak ada"); return false; }
-    if (stockScheme === "accumulation" && rows.some((r) => r.shelfPack === "" && r.shelfPcs === "")) { toast.error("Isi sisa di rak untuk semua produk, termasuk 0 bila habis"); return false; }
-    if (rows.some((r) => (r.returnPack !== "" && !/^\d+$/.test(r.returnPack)) || invalidRemainder(r.returnPcs, r.pcs_per_pack) || (r.shelfPack !== "" && !/^\d+$/.test(r.shelfPack)) || invalidRemainder(r.shelfPcs, r.pcs_per_pack) || toPieces(whole(r.returnPack), whole(r.returnPcs), r.pcs_per_pack) + (stockScheme === "accumulation" ? toPieces(whole(r.shelfPack), whole(r.shelfPcs), r.pcs_per_pack) : 0) > r.prev_stock)) {
-      toast.error("Sisa rak dan retur fisik harus valid serta tidak melebihi titipan sebelumnya"); return false;
-    }
-    return true;
+  // Kosong = 0.
+  // Sales tidak wajib mengisi retur maupun sisa rak.
+
+  const invalid = rows.some((r) => {
+    const returned = toPieces(
+      whole(r.returnPack),
+      whole(r.returnPcs),
+      r.pcs_per_pack
+    );
+
+    const shelf =
+      stockScheme === "accumulation"
+        ? toPieces(
+            whole(r.shelfPack),
+            whole(r.shelfPcs),
+            r.pcs_per_pack
+          )
+        : 0;
+
+    const invalidReturnPack =
+      r.returnPack !== "" &&
+      !/^\d+$/.test(r.returnPack);
+
+    const invalidReturnPcs =
+      invalidRemainder(
+        r.returnPcs,
+        r.pcs_per_pack
+      );
+
+    const invalidShelfPack =
+      r.shelfPack !== "" &&
+      !/^\d+$/.test(r.shelfPack);
+
+    const invalidShelfPcs =
+      stockScheme === "accumulation" &&
+      invalidRemainder(
+        r.shelfPcs,
+        r.pcs_per_pack
+      );
+
+    const exceedsPrevious =
+      returned + shelf > r.prev_stock;
+
+    return (
+      invalidReturnPack ||
+      invalidReturnPcs ||
+      invalidShelfPack ||
+      invalidShelfPcs ||
+      exceedsPrevious
+    );
+  });
+
+  if (invalid) {
+    toast.error(
+      "Sisa rak dan retur fisik harus valid serta tidak boleh melebihi titipan sebelumnya"
+    );
+    return false;
   }
+
+  return true;
+}
 
   function start() {
     if (!outletId) { toast.error("Pilih outlet dulu"); return; }
