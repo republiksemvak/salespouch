@@ -92,6 +92,7 @@ function Dashboard() {
 
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Button asChild variant="outline" className="h-11"><Link to="/products"><Package className="mr-1 h-4 w-4" />Master Produk</Link></Button>
+          <Button asChild variant="outline" className="h-11"><Link to="/stock-opening"><Package className="mr-1 h-4 w-4" />Stok Pembukaan</Link></Button>
           <Button asChild variant="outline" className="h-11"><Link to="/profile"><UserCog className="mr-1 h-4 w-4" />Profil Usaha</Link></Button>
           <Button asChild variant="outline" className="col-span-2 h-11"><Link to="/reports"><Package className="mr-1 h-4 w-4" />Laporan Keuangan</Link></Button>
           <Button type="button" variant="outline" className="col-span-2 h-11 justify-between" onClick={() => setTeamOpen((open) => !open)} aria-expanded={teamOpen}>
