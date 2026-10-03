@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, Pencil, LockKeyhole } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, Pencil, LockKeyhole, Route as RouteIcon, WalletCards, BarChart3, UserRoundCog } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -25,8 +25,6 @@ function Dashboard() {
   const { data: outletResult, isLoading } = useQuery({
     queryKey: ["outlets", search],
     queryFn: async () => {
-      // Dashboard hanya mengambil kolom yang benar-benar ditampilkan.
-      // Foto toko tetap tidak dimuat di daftar agar halaman ringan.
       let query = supabase
         .from("outlets")
         .select("id,name,owner_phone,map_location,created_at", { count: "exact" })
@@ -48,6 +46,24 @@ function Dashboard() {
   const outlets = outletResult?.data ?? [];
   const outletCount = outletResult?.count ?? 0;
   const isOwner = p?.role === "owner";
+  const teamFeatures = LOCKED_FEATURES.filter((feature) => ["sales", "sales-kpi", "uang-jalan", "payroll"].includes(feature.id));
+  const outletFeatures = LOCKED_FEATURES.filter((feature) => ["schedule-route"].includes(feature.id));
+
+  const previewButton = (feature: (typeof LOCKED_FEATURES)[number]) => (
+    isOwner ? (
+      <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3">
+        <Link to="/feature-preview/$feature" params={{ feature: feature.id }}>
+          <span>{feature.label}</span>
+          <LockKeyhole className="h-4 w-4 text-muted-foreground" />
+        </Link>
+      </Button>
+    ) : (
+      <Button key={feature.id} type="button" variant="outline" disabled className="h-11 justify-between px-3 opacity-70">
+        <span>{feature.label}</span>
+        <LockKeyhole className="h-4 w-4 text-muted-foreground" />
+      </Button>
+    )
+  );
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-28 pt-6">
@@ -65,50 +81,39 @@ function Dashboard() {
         </div>
       )}
 
-      {isOwner && <div className="mt-4 grid grid-cols-2 gap-2">
-        <Button asChild variant="outline" className="h-11"><Link to="/products"><Package className="mr-1 h-4 w-4" />Master Produk</Link></Button>
-        <Button asChild variant="outline" className="h-11"><Link to="/profile"><UserCog className="mr-1 h-4 w-4" />Profil Usaha</Link></Button>
-        <Button asChild variant="outline" className="col-span-2 h-11"><Link to="/reports"><Package className="mr-1 h-4 w-4" />Laporan Keuangan</Link></Button>
-        <Button asChild variant="outline" className="col-span-2 h-11"><Link to="/team"><Users className="mr-1 h-4 w-4" />Manajemen Tim</Link></Button>
-        {isAdmin && <Button asChild className="col-span-2 h-11"><Link to="/admin"><ShieldCheck className="mr-1 h-4 w-4" />Dashboard Super Admin</Link></Button>}
-      </div>}
+      {isOwner && <>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button asChild variant="outline" className="h-11"><Link to="/products"><Package className="mr-1 h-4 w-4" />Master Produk</Link></Button>
+          <Button asChild variant="outline" className="h-11"><Link to="/profile"><UserCog className="mr-1 h-4 w-4" />Profil Usaha</Link></Button>
+          <Button asChild variant="outline" className="col-span-2 h-11"><Link to="/reports"><Package className="mr-1 h-4 w-4" />Laporan Keuangan</Link></Button>
+          <Button asChild variant="outline" className="col-span-2 h-11"><Link to="/team"><Users className="mr-1 h-4 w-4" />Manajemen Tim</Link></Button>
+          {isAdmin && <Button asChild className="col-span-2 h-11"><Link to="/admin"><ShieldCheck className="mr-1 h-4 w-4" />Dashboard Super Admin</Link></Button>}
+        </div>
 
-      <section className="mt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Modul Sales</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Fitur yang sedang disiapkan bertahap.</p>
+        <section className="mt-4 rounded-2xl border bg-card p-3">
+          <div className="flex items-center gap-2 px-1">
+            <UserRoundCog className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Manajemen Tim</h2>
           </div>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {LOCKED_FEATURES.slice(0, 6).map((feature) => (
-            isOwner ? (
-              <Button
-                key={feature.id}
-                asChild
-                variant="outline"
-                className="h-auto min-h-16 justify-between whitespace-normal px-3 py-2 text-left"
-              >
-                <Link to="/feature-preview/$feature" params={{ feature: feature.id }}>
-                  <span className="min-w-0 text-sm font-medium">{feature.label}</span>
-                  <LockKeyhole className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                key={feature.id}
-                type="button"
-                variant="outline"
-                disabled
-                className="h-auto min-h-16 justify-between whitespace-normal px-3 py-2 text-left opacity-70"
-              >
-                <span className="min-w-0 text-sm font-medium">{feature.label}</span>
-                <LockKeyhole className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
-              </Button>
-            )
-          ))}
-        </div>
-      </section>
+          <p className="px-1 pt-1 text-xs text-muted-foreground">Kelola Sales dan kebutuhan tim secara bertahap.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {teamFeatures.map(previewButton)}
+          </div>
+        </section>
+
+        <section className="mt-3 rounded-2xl border bg-card p-3">
+          <div className="flex items-center gap-2 px-1">
+            <Store className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Manajemen Outlet</h2>
+          </div>
+          <p className="px-1 pt-1 text-xs text-muted-foreground">Semua outlet, jadwal kunjungan, dan route.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/dashboard"><span>Semua Outlet</span><Store className="h-4 w-4 text-muted-foreground" /></Link></Button>
+            {outletFeatures.map(previewButton)}
+            <Button type="button" variant="outline" disabled className="h-11 justify-between px-3 opacity-70"><span>Penugasan Sales</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button>
+          </div>
+        </section>
+      </>}
 
       <Button asChild variant="outline" className="mt-4 h-11 w-full"><Link to="/transactions"><History className="mr-1 h-4 w-4" />Riwayat Transaksi</Link></Button>
 
