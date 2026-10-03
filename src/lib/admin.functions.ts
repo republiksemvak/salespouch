@@ -7,6 +7,31 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (error || !data) throw new Error("Hanya super admin");
 }
 
+async function resolveAuthUserId(supabaseAdmin: any, profileUserId: string) {
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("id,user_email")
+    .eq("id", profileUserId)
+    .maybeSingle();
+  if (profileError) throw new Error(profileError.message);
+  if (!profile) throw new Error("Profil user tidak ditemukan.");
+
+  const { data: direct, error: directError } = await supabaseAdmin.auth.admin.getUserById(profileUserId);
+  if (!directError && direct.user) return { authUserId: direct.user.id, profile };
+
+  // Fallback for older/orphaned profiles, including Sales accounts using
+  // username@salespouch.local as their Auth email.
+  if (profile.user_email) {
+    const { data: listed, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (!listError) {
+      const match = listed.users.find((u: { email?: string }) => u.email?.toLowerCase() === profile.user_email?.toLowerCase());
+      if (match) return { authUserId: match.id, profile };
+    }
+  }
+
+  return { authUserId: null, profile };
+}
+
 export const setUserLicense = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
@@ -49,7 +74,11 @@ export const resetUserPassword = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: role } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId).eq("role", "admin").maybeSingle();
     if (role) throw new Error("Password akun super admin tidak dapat diubah dari sini.");
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { password: data.password });
+
+    const { authUserId } = await resolveAuthUserId(supabaseAdmin, data.userId);
+    if (!authUserId) throw new Error("Akun Auth user tidak ditemukan. User ini perlu dibersihkan dari data lama.");
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(authUserId, { password: data.password });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -64,10 +93,15 @@ export const deleteUser = createServerFn({ method: "POST" })
     const { data: role } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId).eq("role", "admin").maybeSingle();
     if (role) throw new Error("Akun super admin tidak dapat dihapus dari sini.");
 
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
-    if (authError) throw new Error(authError.message);
+    const { authUserId } = await resolveAuthUserId(supabaseAdmin, data.userId);
 
+    if (authUserId) {
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      if (authError) throw new Error(authError.message);
+    }
+
+    // Also remove the profile when the Auth account is already missing/orphaned.
     const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
     if (profileError) throw new Error(profileError.message);
-    return { ok: true };
+    return { ok: true, orphanedAuth: !authUserId };
   });
