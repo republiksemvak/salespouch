@@ -118,19 +118,19 @@ function OpeningStockPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Store className="h-5 w-5" /></div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Stok Pembukaan</h1>
-            <p className="text-xs text-muted-foreground">Untuk usaha yang sudah berjalan dan sudah memiliki stok sebelum memakai Sales Pouch.</p>
+            <p className="text-xs text-muted-foreground">Untuk usaha yang sudah berjalan atau produknya sudah beredar.</p>
           </div>
         </div>
       </header>
 
       <section className="mt-3 rounded-2xl border bg-card p-4">
-        <div className="text-sm font-semibold">Sudah punya stok sebelum memakai Sales Pouch?</div>
+        <div className="text-sm font-semibold">Sudah punya stok yang sudah beredar?</div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Masukkan jumlah stok yang benar-benar tersedia saat ini sebagai <b>titik awal pencatatan</b>. Tidak perlu membuat transaksi lama atau transaksi fiktif.
+          Masukkan jumlah barang yang <b>saat ini sudah ada di toko</b>. Ini menjadi stok awal pencatatan di Sales Pouch.
         </p>
         <div className="mt-3 rounded-xl bg-muted/60 p-3 text-[11px] leading-relaxed">
-          <div><b>Usaha baru:</b> stok awal cukup dimasukkan saat menambahkan produk.</div>
-          <div className="mt-1"><b>Usaha sudah berjalan:</b> gunakan Stok Pembukaan untuk mencatat stok yang sudah ada di outlet sebelum Sales Pouch digunakan.</div>
+          <div><b>Mulai dari awal?</b> Masukkan <b>Stok Gudang Awal</b> melalui Master Produk.</div>
+          <div className="mt-1"><b>Stok sudah beredar?</b> Gunakan halaman ini untuk memasukkan stok yang saat ini ada di toko.</div>
         </div>
       </section>
 
@@ -151,7 +151,7 @@ function OpeningStockPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-semibold">2. Masukkan Stok Saat Ini</div>
-            <p className="mt-1 text-[11px] text-muted-foreground">Isi 0 jika produk tidak ada di toko. Ini bukan transaksi.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Isi 0 jika produk tidak ada di toko.</p>
           </div>
           <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[10px]">{filledCount} terisi</span>
         </div>
@@ -188,13 +188,13 @@ function OpeningStockPage() {
         <div className="sticky bottom-4 mt-4">
           <Button onClick={save} disabled={saving} className="h-13 w-full rounded-xl text-base">
             <Save className="mr-2 h-4 w-4" />
-            {saving ? "Menyimpan…" : "Simpan Stok Pembukaan"}
+            {saving ? "Menyimpan…" : "Simpan Stok Saat Ini"}
           </Button>
         </div>
       )}
 
       <p className="mt-4 text-center text-[10px] leading-relaxed text-muted-foreground">
-        Stok pembukaan adalah titik awal pencatatan, bukan transaksi penjualan. Setelah pencatatan outlet mulai berjalan, sistem melanjutkan perhitungan berdasarkan kunjungan dan transaksi.
+        Stok yang dimasukkan di sini menjadi titik awal pencatatan untuk outlet tersebut.
       </p>
     </main>
   );
