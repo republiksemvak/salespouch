@@ -127,6 +127,7 @@ export type Database = {
           created_at: string
           id: string
           license_until: string | null
+          stock_scheme: string
           user_email: string | null
         }
         Insert: {
@@ -136,6 +137,7 @@ export type Database = {
           created_at?: string
           id: string
           license_until?: string | null
+          stock_scheme?: string
           user_email?: string | null
         }
         Update: {
@@ -145,6 +147,7 @@ export type Database = {
           created_at?: string
           id?: string
           license_until?: string | null
+          stock_scheme?: string
           user_email?: string | null
         }
         Relationships: []
@@ -233,6 +236,7 @@ export type Database = {
           remaining_debt: number
           revised_at: string | null
           sales_name: string
+          stock_scheme: string
           total_due: number
           total_sales: number
           transaction_type: string
@@ -253,6 +257,7 @@ export type Database = {
           remaining_debt?: number
           revised_at?: string | null
           sales_name: string
+          stock_scheme?: string
           total_due?: number
           total_sales?: number
           transaction_type?: string
@@ -273,6 +278,7 @@ export type Database = {
           remaining_debt?: number
           revised_at?: string | null
           sales_name?: string
+          stock_scheme?: string
           total_due?: number
           total_sales?: number
           transaction_type?: string
@@ -376,6 +382,7 @@ export type Database = {
           remaining_debt: number
           revised_at: string | null
           sales_name: string
+          stock_scheme: string
           total_due: number
           total_sales: number
           transaction_type: string
