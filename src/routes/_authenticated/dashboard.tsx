@@ -26,7 +26,8 @@ function Dashboard() {
   const [outletOpen, setOutletOpen] = useState(false);
   const search = q.trim();
   const status = p?.profile ? accessStatus(p.profile, p.email) : null;
-  const uid = p?.user?.id;
+  const { data: authUser } = useQuery({ queryKey: ["dashboard-auth-user"], queryFn: async () => (await supabase.auth.getUser()).data.user });
+  const uid = authUser?.id;
 
   const { data: outletResult, isLoading } = useQuery({
     queryKey: ["outlets", search],
