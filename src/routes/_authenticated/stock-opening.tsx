@@ -118,24 +118,23 @@ function OpeningStockPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Store className="h-5 w-5" /></div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Stok Pembukaan</h1>
-            <p className="text-xs text-muted-foreground">Untuk usaha yang sudah berjalan atau produknya sudah beredar.</p>
+            <p className="text-xs text-muted-foreground">Masukkan stok yang sudah ada di toko sebelum mulai mencatat transaksi.</p>
           </div>
         </div>
       </header>
 
       <section className="mt-3 rounded-2xl border bg-card p-4">
-        <div className="text-sm font-semibold">Sudah punya stok yang sudah beredar?</div>
+        <div className="text-sm font-semibold">Sudah punya stok di toko?</div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Masukkan jumlah barang yang <b>saat ini sudah ada di toko</b>. Ini menjadi stok awal pencatatan di Sales Pouch.
+          Isi jumlah produk yang <b>saat ini sudah ada di toko</b>. Produk dan <b>stok gudang</b> diatur melalui <b>Master Produk</b>.
         </p>
-        <div className="mt-3 rounded-xl bg-muted/60 p-3 text-[11px] leading-relaxed">
-          <div><b>Mulai dari awal?</b> Masukkan <b>Stok Gudang Awal</b> melalui Master Produk.</div>
-          <div className="mt-1"><b>Stok sudah beredar?</b> Gunakan halaman ini untuk memasukkan stok yang saat ini ada di toko.</div>
-        </div>
       </section>
 
       <section className="mt-3 rounded-2xl border bg-card p-4">
         <div className="text-sm font-semibold">1. Pilih Outlet</div>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+          Profil toko dibuat melalui <b className="text-foreground">Tambah Outlet</b>.
+        </p>
         <select
           value={outletId}
           onChange={(e) => setOutletId(e.target.value)}
@@ -151,14 +150,14 @@ function OpeningStockPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-semibold">2. Masukkan Stok Saat Ini</div>
-            <p className="mt-1 text-[11px] text-muted-foreground">Isi 0 jika produk tidak ada di toko.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Produk diambil dari Master Produk. Isi 0 jika tidak ada di toko.</p>
           </div>
           <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[10px]">{filledCount} terisi</span>
         </div>
 
         {!outletId && <p className="mt-5 text-center text-sm text-muted-foreground">Pilih outlet untuk mulai mengisi stok.</p>}
         {outletId && (productsLoading || existingLoading) && <p className="mt-5 text-center text-sm text-muted-foreground">Memuat stok…</p>}
-        {outletId && !productsLoading && !existingLoading && productList.length === 0 && <p className="mt-5 text-center text-sm text-muted-foreground">Belum ada produk.</p>}
+        {outletId && !productsLoading && !existingLoading && productList.length === 0 && <p className="mt-5 text-center text-sm text-muted-foreground">Belum ada produk. Tambahkan produk melalui Master Produk.</p>}
         {outletId && !productsLoading && !existingLoading && productList.length > 0 && (
           <div className="mt-4 space-y-2">
             {productList.map((p) => (
@@ -194,7 +193,7 @@ function OpeningStockPage() {
       )}
 
       <p className="mt-4 text-center text-[10px] leading-relaxed text-muted-foreground">
-        Stok yang dimasukkan di sini menjadi titik awal pencatatan untuk outlet tersebut.
+        Stok ini menjadi titik awal pencatatan untuk outlet tersebut.
       </p>
     </main>
   );
