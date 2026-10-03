@@ -34,10 +34,18 @@ function EditOutletPage() {
   const { data: outlet, isLoading, error } = useQuery({
     queryKey: ["outlet-profile", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("outlets").select("*").eq("id", id).single();
+      const { data, error } = await supabase
+        .from("outlets")
+        .select("id,name,owner_name,owner_phone,address,map_location,route_notes,store_photo")
+        .eq("id", id)
+        .single();
       if (error) throw error;
-      const photos = data.store_photo ? await signedPhotoUrls([data.store_photo]) : {};
-      return { ...data, photoUrl: data.store_photo ? photos[data.store_photo] : undefined };
+      let photoUrl: string | undefined;
+      if (data.store_photo) {
+        const photos = await signedPhotoUrls([data.store_photo]);
+        photoUrl = photos[data.store_photo];
+      }
+      return { ...data, photoUrl };
     },
   });
 
