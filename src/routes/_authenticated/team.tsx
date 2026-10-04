@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
-import { listTeam, createSales, removeSales } from "@/lib/team.functions";
+import { useIsAdmin } from "@/hooks/use-is-admin";
+import { listOwners, listTeam, createSales, removeSales } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -15,27 +16,50 @@ export const Route = createFileRoute("/_authenticated/team")({
 });
 
 function TeamPage() {
-  const { data: profile, isLoading } = useProfile();
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const owner = profile?.role === "owner";
+  const superAdmin = !!isAdmin;
+  const fetchOwners = useServerFn(listOwners);
   const fetchTeam = useServerFn(listTeam);
   const create = useServerFn(createSales);
   const remove = useServerFn(removeSales);
   const qc = useQueryClient();
-  const { data: members, error } = useQuery({ queryKey: ["team"], enabled: owner, queryFn: fetchTeam });
+  const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
-  if (!owner) return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat mengelola tim.</div>;
+
+  const { data: owners } = useQuery({
+    queryKey: ["team-owners"],
+    enabled: superAdmin,
+    queryFn: () => fetchOwners({}),
+  });
+
+  useEffect(() => {
+    if (superAdmin && !selectedOwnerId && owners?.length) setSelectedOwnerId(owners[0].id);
+  }, [superAdmin, selectedOwnerId, owners]);
+
+  const activeOwnerId = superAdmin ? selectedOwnerId : profile?.id;
+  const { data: members, error } = useQuery({
+    queryKey: ["team", activeOwnerId],
+    enabled: !profileLoading && !adminLoading && (!!owner || (superAdmin && !!selectedOwnerId)),
+    queryFn: () => fetchTeam({ data: { ownerId: superAdmin ? selectedOwnerId : undefined } }),
+  });
+
+  if (profileLoading || adminLoading) return <div className="p-10 text-center">Memuat…</div>;
+  if (!owner && !superAdmin) return <div className="p-10 text-center text-destructive">Hanya Owner atau Super Admin yang dapat mengelola tim.</div>;
 
   async function add(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true);
+    e.preventDefault();
+    if (superAdmin && !selectedOwnerId) { toast.error("Pilih bisnis Owner terlebih dahulu."); return; }
+    setBusy(true);
     try {
-      await create({ data: { name, username, password } });
+      await create({ data: { name, username, password, ...(superAdmin ? { ownerId: selectedOwnerId } : {}) } });
       setName(""); setUsername(""); setPassword("");
-      toast.success("Akun Sales berhasil dibuat");
-      qc.invalidateQueries({ queryKey: ["team"] });
+      toast.success("Akun Sales berhasil dibuat dan dihubungkan ke bisnis Owner");
+      qc.invalidateQueries({ queryKey: ["team", activeOwnerId] });
     } catch (err) { toast.error((err as Error).message); }
     finally { setBusy(false); }
   }
@@ -43,6 +67,14 @@ function TeamPage() {
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
     <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
     <h1 className="mt-4 text-2xl font-bold">Manajemen Tim</h1>
+    {superAdmin && <div className="mt-5 rounded-lg border bg-card p-3">
+      <label className="text-sm font-medium">Bisnis Owner</label>
+      <select value={selectedOwnerId} onChange={(e) => setSelectedOwnerId(e.target.value)} className="mt-2 h-12 w-full rounded-md border bg-background px-3 text-sm">
+        <option value="">Pilih bisnis…</option>
+        {(owners ?? []).map((o) => <option key={o.id} value={o.id}>{o.business_name || o.display_name || o.user_email}</option>)}
+      </select>
+      <p className="mt-1 text-xs text-muted-foreground">Sales yang dibuat akan mengikuti lisensi bisnis ini, bukan lisensi Super Admin.</p>
+    </div>}
     <form onSubmit={add} className="mt-6 space-y-3">
       <label className="text-sm font-medium">Nama Sales</label>
       <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Budi" className="h-12" />
@@ -50,7 +82,7 @@ function TeamPage() {
       <Input required minLength={3} maxLength={30} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="budi.sales" className="h-12" />
       <label className="text-sm font-medium">Password</label>
       <Input required minLength={6} maxLength={72} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" className="h-12" />
-      <Button disabled={busy} className="h-12 w-full">{busy ? "Membuat akun…" : "Buat Akun Sales"}</Button>
+      <Button disabled={busy || (superAdmin && !selectedOwnerId)} className="h-12 w-full">{busy ? "Membuat akun…" : "Buat Akun Sales"}</Button>
     </form>
     <h2 className="mt-8 text-sm font-semibold">Anggota tim ({members?.length ?? 0})</h2>
     {error && <p className="mt-3 text-sm text-destructive">Daftar tim tidak dapat dimuat.</p>}
@@ -61,7 +93,7 @@ function TeamPage() {
           <div className="truncate text-sm font-medium">{p?.display_name ?? p?.username ?? p?.user_email ?? "Sales"}</div>
           <div className="truncate text-xs text-muted-foreground">{p?.username ? `@${p.username}` : "Sales"}</div>
         </div>
-        <Button variant="ghost" size="icon" aria-label="Hapus sales" title="Hapus sales dari tim" onClick={async () => { if (!confirm("Keluarkan sales dari tim?")) return; try { await remove({ data: { userId: member.user_id } }); qc.invalidateQueries({ queryKey: ["team"] }); toast.success("Sales dikeluarkan"); } catch (err) { toast.error((err as Error).message); } }}><UserMinus className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Hapus sales" title="Hapus sales dari tim" onClick={async () => { if (!confirm("Keluarkan sales dari tim?")) return; try { await remove({ data: { userId: member.user_id, ...(superAdmin ? { ownerId: selectedOwnerId } : {}) } }); qc.invalidateQueries({ queryKey: ["team", activeOwnerId] }); toast.success("Sales dikeluarkan"); } catch (err) { toast.error((err as Error).message); } }}><UserMinus className="h-4 w-4" /></Button>
       </div>;
     })}</div>
   </main>;
