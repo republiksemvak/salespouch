@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProfile } from "@/hooks/use-profile";
 import { isSuperAdminEmail } from "@/lib/access";
@@ -35,6 +35,7 @@ function SalesExpenses() {
   const [spentAt, setSpentAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const categoriesQuery = useQuery({
@@ -64,20 +65,18 @@ function SalesExpenses() {
 
   const total = useMemo(() => (expensesQuery.data ?? []).reduce((sum, item) => sum + Number(item.amount), 0), [expensesQuery.data]);
 
-  async function handleAddCategory(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleAddCategory() {
     const name = newCategory.trim();
-    if (!name || !ownerId || !userId) return;
+    if (!name || !ownerId || !userId || addingCategory) return;
     setErrorMessage("");
+    setAddingCategory(true);
     const { error } = await supabase.from("expense_categories").insert({ owner_id: ownerId, created_by: userId, name });
-    if (error) setErrorMessage(error.message);
-    else { setNewCategory(""); await queryClient.invalidateQueries({ queryKey: ["expense-categories"] }); }
-  }
+    setAddingCategory(false);
+    if (error) return setErrorMessage(error.message);
 
-  async function handleDeleteCategory(id: string) {
-    const { error } = await supabase.from("expense_categories").update({ is_active: false }).eq("id", id).eq("created_by", userId!);
-    if (error) setErrorMessage(error.message);
-    else await queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
+    setNewCategory("");
+    setCategory(name);
+    await queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -111,10 +110,14 @@ function SalesExpenses() {
           <Label>Keperluan</Label>
           <div className="flex flex-wrap gap-2">
             {categories.map((item) => <button key={item.id} type="button" onClick={() => setCategory(item.name)} className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${category === item.name ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>{item.name}</button>)}
-            <button type="button" onClick={() => document.getElementById("new-expense-category")?.focus()} className="rounded-full border border-dashed px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted">+ Tambah</button>
           </div>
-          <Input id="new-expense-category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} onKeyDown={async (e) => { if (e.key === "Enter") { e.preventDefault(); await handleAddCategory(e as unknown as React.FormEvent<HTMLFormElement>); } }} placeholder="Ketik kategori baru, lalu Enter" className="mt-2" />
-          {!categories.length && <p className="text-xs text-muted-foreground">Buat kategori pertama sesuai kebutuhan Anda.</p>}
+          <div className="flex gap-2">
+            <Input id="new-expense-category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Kategori baru, misalnya Pulsa" className="mt-2" />
+            <Button type="button" variant="outline" className="mt-2 shrink-0" onClick={handleAddCategory} disabled={!newCategory.trim() || addingCategory}>
+              {addingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tambah"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Kategori yang ditambahkan akan otomatis muncul sebagai tombol di atas.</p>
         </div>
         <div className="space-y-2"><Label htmlFor="amount">Nominal</Label><Input id="amount" type="number" min="1" inputMode="numeric" placeholder="Contoh: 50000" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
         <div className="space-y-2"><Label htmlFor="spentAt">Tanggal</Label><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="spentAt" type="date" className="pl-9" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} required /></div></div>
