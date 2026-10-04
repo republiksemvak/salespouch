@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText } from "lucide-react";
+import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText, LockKeyhole } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProfile } from "@/hooks/use-profile";
 import { isSuperAdminEmail } from "@/lib/access";
@@ -28,7 +28,8 @@ function SalesExpenses() {
   const userId = profileData?.profile?.id;
   const ownerId = profileData?.ownerId;
   const isSuperAdmin = isSuperAdminEmail(profileData?.email);
-  const canInput = role === "sales" || isSuperAdmin;
+  const canAccess = isSuperAdmin;
+  const canInput = isSuperAdmin;
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -41,7 +42,7 @@ function SalesExpenses() {
 
   const expensesQuery = useQuery({
     queryKey: ["sales-expenses", ownerId, role],
-    enabled: Boolean(ownerId),
+    enabled: Boolean(ownerId && canAccess),
     queryFn: async () => {
       const { data, error } = await supabase.from("sales_expenses").select("id,category,amount,note,spent_at,sales_id").order("spent_at", { ascending: false }).order("created_at", { ascending: false });
       if (error) throw error;
@@ -49,8 +50,6 @@ function SalesExpenses() {
     },
   });
 
-  // Categories are intentionally derived from saved expenses.
-  // This keeps each Sales account flexible without requiring a separate categories table.
   const savedCategories = useMemo(() => {
     const seen = new Set<string>();
     return (expensesQuery.data ?? [])
@@ -74,7 +73,6 @@ function SalesExpenses() {
     if (!name || addingCategory) return;
     setErrorMessage("");
     setAddingCategory(true);
-
     const existing = categories.find((item) => item.toLowerCase() === name.toLowerCase());
     const selectedName = existing ?? name;
     if (!existing) setLocalCategories((current) => [...current, name]);
@@ -100,6 +98,23 @@ function SalesExpenses() {
 
   if (profileLoading) return <main className="mx-auto max-w-md px-5 py-10 text-sm text-muted-foreground">Memuat...</main>;
 
+  if (!canAccess) {
+    return (
+      <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
+        <header>
+          <Link to="/" className="mb-5 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Beranda</Link>
+          <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Sales Pouch</div>
+          <h1 className="mt-1 text-2xl font-bold">Pengeluaran Sales</h1>
+        </header>
+        <section className="mt-8 rounded-2xl border border-dashed p-6 text-center">
+          <LockKeyhole className="mx-auto h-8 w-8 text-muted-foreground" />
+          <h2 className="mt-3 font-semibold">Fitur sementara dikunci</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Pengeluaran Sales sedang dalam tahap pengembangan dan sementara belum tersedia.</p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
       <header>
@@ -118,9 +133,7 @@ function SalesExpenses() {
           </div>
           <div className="flex gap-2">
             <Input id="new-expense-category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Kategori baru, misalnya Pulsa" className="mt-2" />
-            <Button type="button" variant="outline" className="mt-2 shrink-0" onClick={handleAddCategory} disabled={!newCategory.trim() || addingCategory}>
-              {addingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tambah"}
-            </Button>
+            <Button type="button" variant="outline" className="mt-2 shrink-0" onClick={handleAddCategory} disabled={!newCategory.trim() || addingCategory}>{addingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tambah"}</Button>
           </div>
           <p className="text-xs text-muted-foreground">Ketik keperluan baru lalu tekan Tambah. Tombolnya langsung muncul di atas.</p>
         </div>
