@@ -126,11 +126,15 @@ export const createSales = createServerFn({ method: "POST" })
 
 export const removeSales = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ userId: z.string().uuid() }).parse(input))
+  .inputValidator((input) => z.object({ userId: z.string().uuid(), ownerId: z.string().uuid().optional() }).parse(input))
   .handler(async ({ context, data }) => {
     await assertOwner(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("team_members").delete().eq("owner_id", context.userId).eq("user_id", data.userId);
+    const { data: authUser } = await context.supabase.auth.getUser();
+    const isSuperAdmin = !!authUser.user && isSuperAdminEmail(authUser.user.email);
+    const ownerId = isSuperAdmin ? data.ownerId : context.userId;
+    if (!ownerId) throw new Error("Pilih bisnis Owner terlebih dahulu.");
+    const { error } = await supabaseAdmin.from("team_members").delete().eq("owner_id", ownerId).eq("user_id", data.userId);
     if (error) throw error;
     return { ok: true };
   });
