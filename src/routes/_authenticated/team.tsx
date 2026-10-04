@@ -41,11 +41,11 @@ function TeamPage() {
     if (superAdmin && !selectedOwnerId && owners?.length) setSelectedOwnerId(owners[0].id);
   }, [superAdmin, selectedOwnerId, owners]);
 
-  const activeOwnerId = superAdmin ? selectedOwnerId : profile?.id;
+  const activeOwnerId = superAdmin ? "all" : profile?.id;
   const { data: members, error } = useQuery({
     queryKey: ["team", activeOwnerId],
-    enabled: !profileLoading && !adminLoading && (!!owner || (superAdmin && !!selectedOwnerId)),
-    queryFn: () => fetchTeam({ data: { ownerId: superAdmin ? selectedOwnerId : undefined } }),
+    enabled: !profileLoading && !adminLoading && (!!owner || superAdmin),
+    queryFn: () => fetchTeam({ data: superAdmin ? {} : { ownerId: profile?.id } }),
   });
 
   if (profileLoading || adminLoading) return <div className="p-10 text-center">Memuat…</div>;
@@ -67,14 +67,15 @@ function TeamPage() {
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
     <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
     <h1 className="mt-4 text-2xl font-bold">Manajemen Tim</h1>
+
     {superAdmin && <div className="mt-5 rounded-lg border bg-card p-3">
-      <label className="text-sm font-medium">Bisnis Owner</label>
+      <label className="text-sm font-medium">Bisnis untuk akun Sales baru</label>
       <select value={selectedOwnerId} onChange={(e) => setSelectedOwnerId(e.target.value)} className="mt-2 h-12 w-full rounded-md border bg-background px-3 text-sm">
         <option value="">Pilih bisnis…</option>
         {(owners ?? []).map((o) => <option key={o.id} value={o.id}>{o.business_name || o.display_name || o.user_email}</option>)}
       </select>
-      <p className="mt-1 text-xs text-muted-foreground">Sales yang dibuat akan mengikuti lisensi bisnis ini, bukan lisensi Super Admin.</p>
     </div>}
+
     <form onSubmit={add} className="mt-6 space-y-3">
       <label className="text-sm font-medium">Nama Sales</label>
       <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Budi" className="h-12" />
@@ -84,16 +85,22 @@ function TeamPage() {
       <Input required minLength={6} maxLength={72} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" className="h-12" />
       <Button disabled={busy || (superAdmin && !selectedOwnerId)} className="h-12 w-full">{busy ? "Membuat akun…" : "Buat Akun Sales"}</Button>
     </form>
-    <h2 className="mt-8 text-sm font-semibold">Anggota tim ({members?.length ?? 0})</h2>
+
+    <div className="mt-8 flex items-center justify-between gap-3">
+      <h2 className="text-sm font-semibold">Anggota tim ({members?.length ?? 0})</h2>
+      {superAdmin && <span className="text-xs text-muted-foreground">Semua bisnis</span>}
+    </div>
     {error && <p className="mt-3 text-sm text-destructive">Daftar tim tidak dapat dimuat.</p>}
     <div className="mt-3 space-y-2">{members?.map((member) => {
       const p = member.profiles as { user_email?: string; username?: string; display_name?: string } | null;
-      return <div key={member.user_id} className="flex items-center justify-between gap-3 rounded border bg-card p-3">
+      const business = (member as typeof member & { owner?: { business_name?: string | null; display_name?: string | null; user_email?: string | null } | null }).owner;
+      return <div key={`${member.owner_id}-${member.user_id}`} className="flex items-center justify-between gap-3 rounded border bg-card p-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{p?.display_name ?? p?.username ?? p?.user_email ?? "Sales"}</div>
           <div className="truncate text-xs text-muted-foreground">{p?.username ? `@${p.username}` : "Sales"}</div>
+          {superAdmin && <div className="truncate text-xs text-muted-foreground">{business?.business_name ?? business?.display_name ?? business?.user_email ?? "Bisnis Owner"}</div>}
         </div>
-        <Button variant="ghost" size="icon" aria-label="Hapus sales" title="Hapus sales dari tim" onClick={async () => { if (!confirm("Keluarkan sales dari tim?")) return; try { await remove({ data: { userId: member.user_id, ...(superAdmin ? { ownerId: selectedOwnerId } : {}) } }); qc.invalidateQueries({ queryKey: ["team", activeOwnerId] }); toast.success("Sales dikeluarkan"); } catch (err) { toast.error((err as Error).message); } }}><UserMinus className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Hapus sales" title="Hapus sales dari tim" onClick={async () => { if (!confirm("Keluarkan sales dari tim?")) return; try { await remove({ data: { userId: member.user_id, ...(superAdmin ? { ownerId: member.owner_id } : {}) } }); qc.invalidateQueries({ queryKey: ["team", activeOwnerId] }); toast.success("Sales dikeluarkan"); } catch (err) { toast.error((err as Error).message); } }}><UserMinus className="h-4 w-4" /></Button>
       </div>;
     })}</div>
   </main>;
