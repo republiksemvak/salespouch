@@ -89,15 +89,17 @@ function ReceiptPage() {
     );
   }
 
-  const items = (t.line_items as LineItem[]) ?? [];
-  const newItems = (t.new_consignment_items as NewItem[]) ?? [];
+  const receipt = t;
 
-  const prevDebt = Number(t.previous_debt);
-  const discountAmount = Number(t.discount_amount) || 0;
+  const items = (receipt.line_items as LineItem[]) ?? [];
+  const newItems = (receipt.new_consignment_items as NewItem[]) ?? [];
+
+  const prevDebt = Number(receipt.previous_debt);
+  const discountAmount = Number(receipt.discount_amount) || 0;
 
   const business = p?.profile?.business_name ?? "";
 
-  const outlet = t.outlets as {
+  const outlet = receipt.outlets as {
     name: string;
     owner_phone: string | null;
   } | null;
@@ -121,8 +123,8 @@ function ReceiptPage() {
   const nextStock: NextStock[] = [];
 
   if (
-    t.transaction_type === "Consignment" &&
-    t.stock_scheme === "accumulation"
+    receipt.transaction_type === "Consignment" &&
+    receipt.stock_scheme === "accumulation"
   ) {
     const stockMap = new Map<string, NextStock>();
 
@@ -194,18 +196,18 @@ function ReceiptPage() {
     }
 
     L.push(
-      `No Nota : ${t.receipt_number}`,
+      `No Nota : ${receipt.receipt_number}`,
       `Jenis   : ${
-        t.transaction_type === "Direct Sale"
+        receipt.transaction_type === "Direct Sale"
           ? "JUAL LANGSUNG"
           : "KONSINYASI"
       }`
     );
 
-    if (t.transaction_type === "Consignment") {
+    if (receipt.transaction_type === "Consignment") {
       L.push(
         `Skema   : ${
-          t.stock_scheme === "accumulation"
+          receipt.stock_scheme === "accumulation"
             ? "AKUMULASI"
             : "TARIK BERSIH"
         }`
@@ -214,8 +216,8 @@ function ReceiptPage() {
 
     L.push(
       `Toko    : ${store}`,
-      `Sales   : ${t.sales_name}`,
-      `Tanggal : ${fmtDate(t.visit_date)}`,
+      `Sales   : ${receipt.sales_name}`,
+      `Tanggal : ${fmtDate(receipt.visit_date)}`,
       "--------------------------------",
       "KUNJUNGAN HARI INI"
     );
@@ -223,7 +225,7 @@ function ReceiptPage() {
     items.forEach((i) => {
       L.push(i.name);
 
-      if (t.transaction_type === "Consignment") {
+      if (receipt.transaction_type === "Consignment") {
         L.push(
           `  Titip Sebelumnya: ${formatQty(
             i.prev_stock,
@@ -242,8 +244,8 @@ function ReceiptPage() {
       );
 
       if (
-        t.transaction_type === "Consignment" &&
-        t.stock_scheme === "accumulation"
+        receipt.transaction_type === "Consignment" &&
+        receipt.stock_scheme === "accumulation"
       ) {
         L.push(
           `  Sisa di rak: ${formatQty(
@@ -253,7 +255,7 @@ function ReceiptPage() {
         );
       }
 
-      if (t.transaction_type === "Consignment") {
+      if (receipt.transaction_type === "Consignment") {
         L.push(
           `  Retur fisik: ${formatQty(
             i.returned,
@@ -268,7 +270,7 @@ function ReceiptPage() {
     if (prevDebt > 0) {
       L.push(
         `Utang Sebelumnya : ${rp(prevDebt)}`,
-        `Total Penjualan  : ${rp(t.total_sales)}`
+        `Total Penjualan  : ${rp(receipt.total_sales)}`
       );
 
       if (discountAmount > 0) {
@@ -276,21 +278,21 @@ function ReceiptPage() {
       }
 
       L.push(
-        `Total Tagihan    : ${rp(t.total_due)}`,
-        `Dibayar          : ${rp(t.amount_paid)}`,
-        `Sisa Utang       : ${rp(t.remaining_debt)}`
+        `Total Tagihan    : ${rp(receipt.total_due)}`,
+        `Dibayar          : ${rp(receipt.amount_paid)}`,
+        `Sisa Utang       : ${rp(receipt.remaining_debt)}`
       );
     } else {
       if (discountAmount > 0) {
         L.push(
-          `Total Penjualan  : ${rp(t.total_sales)}`,
+          `Total Penjualan  : ${rp(receipt.total_sales)}`,
           `Diskon Nota      : -${rp(discountAmount)}`
         );
       }
 
       L.push(
         `TOTAL TAGIHAN / DIBAYAR : ${rp(
-          t.total_due
+          receipt.total_due
         )} (Status: Lunas / Tanpa Tunggakan) ✅`
       );
     }
@@ -330,8 +332,8 @@ function ReceiptPage() {
       });
     }
 
-    if (t.custom_note) {
-      L.push("", t.custom_note);
+    if (receipt.custom_note) {
+      L.push("", receipt.custom_note);
     }
 
     L.push(
@@ -391,21 +393,21 @@ function ReceiptPage() {
 
     L.push(
       {
-        text: `No Nota : ${t.receipt_number}`,
+        text: `No Nota : ${receipt.receipt_number}`,
       },
       {
         text: `Jenis   : ${
-          t.transaction_type === "Direct Sale"
+          receipt.transaction_type === "Direct Sale"
             ? "JUAL LANGSUNG"
             : "KONSINYASI"
         }`,
         bold: true,
       },
-      ...(t.transaction_type === "Consignment"
+      ...(receipt.transaction_type === "Consignment"
         ? [
             {
               text: `Skema   : ${
-                t.stock_scheme === "accumulation"
+                receipt.stock_scheme === "accumulation"
                   ? "AKUMULASI"
                   : "TARIK BERSIH"
               }`,
@@ -414,8 +416,8 @@ function ReceiptPage() {
           ]
         : []),
       { text: `Toko    : ${store}` },
-      { text: `Sales   : ${t.sales_name}` },
-      { text: `Tanggal : ${fmtDate(t.visit_date)}` },
+      { text: `Sales   : ${receipt.sales_name}` },
+      { text: `Tanggal : ${fmtDate(receipt.visit_date)}` },
       { text: "--------------------------------" },
       {
         text: "KUNJUNGAN HARI INI",
@@ -429,7 +431,7 @@ function ReceiptPage() {
         bold: true,
       });
 
-      if (t.transaction_type === "Consignment") {
+      if (receipt.transaction_type === "Consignment") {
         L.push({
           text: `  Titip Sebelumnya: ${formatQty(
             i.prev_stock,
@@ -448,8 +450,8 @@ function ReceiptPage() {
       });
 
       if (
-        t.transaction_type === "Consignment" &&
-        t.stock_scheme === "accumulation"
+        receipt.transaction_type === "Consignment" &&
+        receipt.stock_scheme === "accumulation"
       ) {
         L.push({
           text: `  Sisa di rak: ${formatQty(
@@ -459,7 +461,7 @@ function ReceiptPage() {
         });
       }
 
-      if (t.transaction_type === "Consignment") {
+      if (receipt.transaction_type === "Consignment") {
         L.push({
           text: `  Retur fisik: ${formatQty(
             i.returned,
@@ -480,7 +482,7 @@ function ReceiptPage() {
         },
         {
           text: `Total Penjualan  : ${rp(
-            Number(t.total_sales)
+            Number(receipt.total_sales)
           )}`,
         },
         ...(discountAmount > 0
@@ -494,18 +496,18 @@ function ReceiptPage() {
           : []),
         {
           text: `Total Tagihan    : ${rp(
-            Number(t.total_due)
+            Number(receipt.total_due)
           )}`,
           bold: true,
         },
         {
           text: `Dibayar          : ${rp(
-            Number(t.amount_paid)
+            Number(receipt.amount_paid)
           )}`,
         },
         {
           text: `Sisa Utang       : ${rp(
-            Number(t.remaining_debt)
+            Number(receipt.remaining_debt)
           )}`,
           bold: true,
         }
@@ -515,7 +517,7 @@ function ReceiptPage() {
         L.push(
           {
             text: `Total Penjualan  : ${rp(
-              Number(t.total_sales)
+              Number(receipt.total_sales)
             )}`,
           },
           {
@@ -529,7 +531,7 @@ function ReceiptPage() {
       L.push(
         {
           text: `TOTAL TAGIHAN / DIBAYAR : ${rp(
-            Number(t.total_due)
+            Number(receipt.total_due)
           )}`,
           bold: true,
         },
@@ -584,10 +586,10 @@ function ReceiptPage() {
       });
     }
 
-    if (t.custom_note) {
+    if (receipt.custom_note) {
       L.push(
         { text: "" },
-        { text: t.custom_note }
+        { text: receipt.custom_note }
       );
     }
 
@@ -612,7 +614,7 @@ function ReceiptPage() {
     try {
       const how = await shareReceiptPng(
         asLines(),
-        `${t.receipt_number}.png`
+        `${receipt.receipt_number}.png`
       );
 
       if (how === "downloaded") {
@@ -681,23 +683,23 @@ function ReceiptPage() {
 
         {hr}
 
-        <Row k="No Nota" v={t.receipt_number} />
+        <Row k="No Nota" v={receipt.receipt_number} />
 
         <Row
           k="Jenis"
           v={
-            t.transaction_type === "Direct Sale"
+            receipt.transaction_type === "Direct Sale"
               ? "JUAL LANGSUNG"
               : "KONSINYASI"
           }
           bold
         />
 
-        {t.transaction_type === "Consignment" && (
+        {receipt.transaction_type === "Consignment" && (
           <Row
             k="Skema"
             v={
-              t.stock_scheme === "accumulation"
+              receipt.stock_scheme === "accumulation"
                 ? "AKUMULASI"
                 : "TARIK BERSIH"
             }
@@ -706,10 +708,10 @@ function ReceiptPage() {
         )}
 
         <Row k="Toko" v={store} />
-        <Row k="Sales" v={t.sales_name} />
-        <Row k="Tanggal" v={fmtDate(t.visit_date)} />
+        <Row k="Sales" v={receipt.sales_name} />
+        <Row k="Tanggal" v={fmtDate(receipt.visit_date)} />
 
-        {t.revised_at && (
+        {receipt.revised_at && (
           <Row
             k="Status"
             v="DIREVISI"
@@ -735,7 +737,7 @@ function ReceiptPage() {
               {i.name}
             </div>
 
-            {t.transaction_type === "Consignment" && (
+            {receipt.transaction_type === "Consignment" && (
               <Row
                 k="Titip Sebelumnya"
                 v={formatQty(
@@ -756,8 +758,8 @@ function ReceiptPage() {
               v={rp(i.subtotal)}
             />
 
-            {t.transaction_type === "Consignment" &&
-              t.stock_scheme === "accumulation" && (
+            {receipt.transaction_type === "Consignment" &&
+              receipt.stock_scheme === "accumulation" && (
                 <Row
                   k="Sisa di rak"
                   v={formatQty(
@@ -767,7 +769,7 @@ function ReceiptPage() {
                 />
               )}
 
-            {t.transaction_type === "Consignment" && (
+            {receipt.transaction_type === "Consignment" && (
               <Row
                 k="Retur fisik"
                 v={formatQty(
@@ -790,7 +792,7 @@ function ReceiptPage() {
 
             <Row
               k="Total Penjualan"
-              v={rp(Number(t.total_sales))}
+              v={rp(Number(receipt.total_sales))}
             />
 
             {discountAmount > 0 && (
@@ -802,18 +804,18 @@ function ReceiptPage() {
 
             <Row
               k="Total Tagihan"
-              v={rp(Number(t.total_due))}
+              v={rp(Number(receipt.total_due))}
               bold
             />
 
             <Row
               k="Dibayar"
-              v={rp(Number(t.amount_paid))}
+              v={rp(Number(receipt.amount_paid))}
             />
 
             <Row
               k="Sisa Utang"
-              v={rp(Number(t.remaining_debt))}
+              v={rp(Number(receipt.remaining_debt))}
               bold
             />
           </>
@@ -823,7 +825,7 @@ function ReceiptPage() {
               <>
                 <Row
                   k="Total Penjualan"
-                  v={rp(Number(t.total_sales))}
+                  v={rp(Number(receipt.total_sales))}
                 />
 
                 <Row
@@ -835,7 +837,7 @@ function ReceiptPage() {
 
             <div className="font-semibold">
               TOTAL TAGIHAN / DIBAYAR :{" "}
-              {rp(Number(t.total_due))}{" "}
+              {rp(Number(receipt.total_due))}{" "}
               (Status: Lunas / Tanpa Tunggakan) ✅
             </div>
           </>
@@ -885,9 +887,9 @@ function ReceiptPage() {
 
         {hr}
 
-        {t.custom_note && (
+        {receipt.custom_note && (
           <p className="mb-2 whitespace-pre-wrap text-xs text-gray-500">
-            {t.custom_note}
+            {receipt.custom_note}
           </p>
         )}
 

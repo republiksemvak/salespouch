@@ -9,6 +9,10 @@ export const Route = createFileRoute("/_authenticated/feature-preview/$feature")
     meta: [
       { title: "Preview Fitur — Sales Pouch" },
       { name: "description", content: "Preview struktur fitur Sales Pouch yang sedang dipersiapkan." },
+      { property: "og:title", content: "Preview Fitur — Sales Pouch" },
+      { property: "og:description", content: "Preview struktur fitur Sales Pouch yang sedang dipersiapkan." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: FeaturePreviewPage,

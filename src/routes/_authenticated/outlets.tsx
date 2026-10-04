@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/outlets")({
   head: () => ({
-    meta: [{ title: "Semua Outlet — Sales Pouch" }, { name: "description", content: "Daftar seluruh outlet terdaftar." }],
+    meta: [{ title: "Semua Outlet — Sales Pouch" }, { name: "description", content: "Daftar seluruh outlet terdaftar." }, { property: "og:title", content: "Semua Outlet — Sales Pouch" }, { property: "og:description", content: "Daftar seluruh outlet terdaftar." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }],
   }),
   component: AllOutlets,
 });

@@ -48,7 +48,8 @@ export const createSales = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const username = normalizeSalesUsername(data.username);
     const name = data.name.trim();
-    const { data: existing } = await supabaseAdmin.from("profiles").select("id").eq("username", username).maybeSingle();
+    const { data: existing, error: lookupError } = await supabaseAdmin.from("profiles").select("id").eq("username", username).maybeSingle();
+    if (lookupError) throw lookupError;
     if (existing) throw new Error("Username sudah digunakan. Pilih username lain.");
 
     const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -60,10 +61,15 @@ export const createSales = createServerFn({ method: "POST" })
     if (createError || !created.user) throw new Error(createError?.message ?? "Akun Sales gagal dibuat.");
 
     try {
-      const { error: profileError } = await (supabaseAdmin.from("profiles") as any)
+      const { data: savedProfile, error: profileError } = await supabaseAdmin.from("profiles")
         .update({ username, display_name: name })
-        .eq("id", created.user.id);
+        .eq("id", created.user.id)
+        .select("id,username,display_name")
+        .single();
       if (profileError) throw profileError;
+      if (savedProfile?.username !== username || savedProfile.display_name !== name) {
+        throw new Error("Profil Sales gagal disimpan.");
+      }
 
       const { error: linkError } = await supabaseAdmin.from("team_members")
         .insert({ owner_id: context.userId, user_id: created.user.id });

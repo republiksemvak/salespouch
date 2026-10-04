@@ -1,7 +1,8 @@
 - [x] Isolasi data bisnis Owner/Sales dan rahasiakan HPP pada tingkat akses data.
 - [x] Tambahkan pembuatan/pengelolaan akun sales oleh Owner.
+- [x] Terapkan kolom username dan display_name pada profil serta pastikan akun Sales tersimpan sebelum ditambahkan ke tim.
 - [x] Batasi menu dan halaman sensitif; hubungkan transaksi dan stok sales ke bisnis Owner.
-- [ ] Uji alur Owner dan Sales, termasuk akses yang ditolak — memerlukan sesi Owner/Sales aktif; izin masuk ke akun Owner ditolak dan akun uji yang tersedia sudah melewati trial.
+- [ ] Uji akses operasional dan penolakan akses Sales setelah masuk — pembuatan akun, daftar tim, dan login Sales sudah teruji; akun Sales mengikuti lisensi bisnis Owner yang sudah kedaluwarsa sehingga pemeriksaan halaman operasional tertahan.
 - [x] Tambahkan diskon nominal per nota kunjungan, tampilkan pada struk, dan hitung dalam laporan.
 - [x] Pindahkan pilihan Konsinyasi/Jual Langsung ke awal kunjungan; Jual Langsung melewati stok toko dan berlabel pada struk.
 - [x] Tampilkan dan input stok gudang dalam pack + sisa pcs; kosongkan nilai awal kolom jumlah produk.
