@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Camera, Crosshair, MapPin, Pencil, Phone, Search, Store, LockKeyhole } from "lucide-react";
+import { ArrowLeft, Camera, Crosshair, MapPin, Pencil, Phone, Search, Store } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signedPhotoUrls, uploadStorePhoto } from "@/lib/photos";
@@ -32,13 +32,27 @@ type OutletProfile = {
   photoUrl?: string;
 };
 
+const SCHEDULE_DAYS = [
+  { value: "1", label: "Senin" },
+  { value: "2", label: "Selasa" },
+  { value: "3", label: "Rabu" },
+  { value: "4", label: "Kamis" },
+  { value: "5", label: "Jumat" },
+  { value: "6", label: "Sabtu" },
+  { value: "7", label: "Minggu" },
+];
+
 function AllOutlets() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { data: account } = useProfile();
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<RegistrationSort>("newest");
+  const [scheduleDay, setScheduleDay] = useState("");
+  const [salesFilter, setSalesFilter] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const search = q.trim();
+  const ownerId = account?.ownerId;
 
   const { data, isLoading } = useQuery({
     queryKey: ["all-outlets", search, sort],
@@ -61,7 +75,40 @@ function AllOutlets() {
     staleTime: 30_000,
   });
 
-  const outlets = data?.outlets ?? [];
+  const { data: schedules = [], isLoading: schedulesLoading } = useQuery({
+    queryKey: ["all-outlet-schedule-filters", ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const client = supabase as any;
+      const { data, error } = await client
+        .from("store_schedules")
+        .select("outlet_id,sales_id,day_of_week,profiles!store_schedules_sales_id_fkey(display_name,username,user_email)")
+        .eq("owner_id", ownerId);
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+  const salesOptions = Array.from(
+    new Map(
+      schedules.map((item: any) => [
+        item.sales_id,
+        item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales",
+      ]),
+    ).entries(),
+  );
+
+  const filteredOutletIds = schedules
+    .filter((item: any) => {
+      const dayMatches = !scheduleDay || String(item.day_of_week) === scheduleDay;
+      const salesMatches = !salesFilter || item.sales_id === salesFilter;
+      return dayMatches && salesMatches;
+    })
+    .map((item: any) => item.outlet_id);
+
+  const hasScheduleFilter = !!scheduleDay || !!salesFilter;
+  const outlets = (data?.outlets ?? []).filter((outlet) => !hasScheduleFilter || filteredOutletIds.includes(outlet.id));
   const count = data?.count ?? 0;
 
   if (editingId) {
@@ -104,18 +151,39 @@ function AllOutlets() {
       </div>
 
       <div className="mt-2 grid grid-cols-2 gap-2">
-        <Button type="button" variant="outline" disabled className="h-10 justify-between opacity-70"><span>Jadwal Hari</span><LockKeyhole className="h-4 w-4" /></Button>
-        <Button type="button" variant="outline" disabled className="h-10 justify-between opacity-70"><span>Sales</span><LockKeyhole className="h-4 w-4" /></Button>
+        <select
+          value={scheduleDay}
+          onChange={(e) => setScheduleDay(e.target.value)}
+          className={`h-10 w-full rounded-md border bg-background px-3 text-sm ${scheduleDay ? "font-medium" : "text-muted-foreground"}`}
+          aria-label="Filter Jadwal Hari"
+          disabled={schedulesLoading}
+        >
+          <option value="">Jadwal Hari</option>
+          {SCHEDULE_DAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
+        </select>
+        <select
+          value={salesFilter}
+          onChange={(e) => setSalesFilter(e.target.value)}
+          className={`h-10 w-full rounded-md border bg-background px-3 text-sm ${salesFilter ? "font-medium" : "text-muted-foreground"}`}
+          aria-label="Filter Sales"
+          disabled={schedulesLoading}
+        >
+          <option value="">Sales</option>
+          {salesOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+        </select>
       </div>
 
-      <p className="mt-2 text-[11px] text-muted-foreground">Filter jadwal hari dan Sales akan aktif setelah struktur penugasan outlet tersedia.</p>
+      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <span>{hasScheduleFilter ? `${outlets.length} outlet sesuai filter` : "Filter berdasarkan jadwal kunjungan"}</span>
+        {hasScheduleFilter && <button type="button" className="underline" onClick={() => { setScheduleDay(""); setSalesFilter(""); }}>Reset</button>}
+      </div>
 
       <div className="mt-4 space-y-2">
         {isLoading && <p className="text-sm text-muted-foreground">Memuat outlet…</p>}
         {!isLoading && outlets.length === 0 && (
           <div className="rounded-2xl border border-dashed p-8 text-center">
             <Store className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-3 text-sm text-muted-foreground">Outlet tidak ditemukan.</p>
+            <p className="mt-3 text-sm text-muted-foreground">{hasScheduleFilter ? "Tidak ada outlet yang sesuai filter." : "Outlet tidak ditemukan."}</p>
           </div>
         )}
         {outlets.map((outlet) => (
