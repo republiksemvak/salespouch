@@ -37,12 +37,8 @@ function Dashboard() {
   const isOwner = !!isAdmin || p?.role === "owner";
   const teamFeatures = LOCKED_FEATURES.filter((feature) => ["sales", "sales-kpi", "uang-jalan", "payroll"].includes(feature.id));
   const previewButton = (feature: (typeof LOCKED_FEATURES)[number]) => {
-    if (feature.id === "sales") {
-      return <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/team"><span>{feature.label}</span><Users className="h-4 w-4 text-muted-foreground" /></Link></Button>;
-    }
-    if (feature.id === "uang-jalan") {
-      return <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/travel-funds"><span>{feature.label}</span><Wallet className="h-4 w-4 text-muted-foreground" /></Link></Button>;
-    }
+    if (feature.id === "sales") return <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/team"><span>{feature.label}</span><Users className="h-4 w-4 text-muted-foreground" /></Link></Button>;
+    if (feature.id === "uang-jalan") return <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/travel-funds"><span>{feature.label}</span><Wallet className="h-4 w-4 text-muted-foreground" /></Link></Button>;
     return isOwner ? <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/feature-preview/$feature" params={{ feature: feature.id }}><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Link></Button> : <Button key={feature.id} type="button" variant="outline" disabled className="h-11 justify-between px-3 opacity-70"><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button>;
   };
 
@@ -64,7 +60,7 @@ function Dashboard() {
         {outletOpen && <section className="mt-2 rounded-2xl border bg-card p-3"><div className="flex items-center gap-2 px-1"><UsersRound className="h-4 w-4 text-muted-foreground" /><div><h2 className="text-sm font-semibold">Manajemen Outlet</h2><p className="text-xs text-muted-foreground">Kelola outlet, jadwal, route, dan penugasan Sales.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2"><Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/outlets"><span>Semua Outlet</span><Store className="h-4 w-4 text-muted-foreground" /></Link></Button><Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/schedule"><span>Jadwal Toko</span><span className="text-xs text-muted-foreground">›</span></Link></Button><Button type="button" variant="outline" disabled className="h-11 justify-between px-3"><span>Penugasan Sales</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button></div></section>}
       </>}
       {!isOwner && <Button asChild variant="outline" className="mt-2 h-11 w-full justify-between"><Link to="/travel-funds"><span className="flex items-center"><Wallet className="mr-1 h-4 w-4" />Uang Jalan</span><span className="text-xs text-muted-foreground">›</span></Link></Button>}
-      <Button asChild variant="outline" className="mt-2 h-11 w-full"><Link to="/notes"><FileText className="mr-1 h-4 w-4" />Catatan</Link></Button>
+      <Button asChild variant="outline" className="mt-2 h-11 w-full"><Link to="/notes"><FileText className="mr-1 h-4 w-4" />Catatan dan Pengeluaran</Link></Button>
       <Button asChild variant="outline" className="mt-2 h-11 w-full"><Link to="/transactions"><History className="mr-1 h-4 w-4" />Riwayat Transaksi</Link></Button>
       <div className="mt-8 flex items-center justify-between gap-3"><h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Outlet ({outletCount})</h2>{outletCount > 50 && <span className="text-[11px] text-muted-foreground">50 terbaru</span>}</div>
       <div className="relative mt-3"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Cari toko…" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 pl-9" /></div>
