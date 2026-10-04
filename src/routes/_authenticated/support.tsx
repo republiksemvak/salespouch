@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-export const Route = createFileRoute("/_authenticated/support")({ head: () => ({ meta: [{ title: "Support — Sales Pouch" }] }), component: SupportPage });
+export const Route = createFileRoute("/_authenticated/support")({ head: () => ({ meta: [{ title: "Support — Sales Pouch" }, { name: "description", content: "Percakapan bantuan untuk pengguna Sales Pouch." }, { property: "og:title", content: "Support — Sales Pouch" }, { property: "og:description", content: "Percakapan bantuan untuk pengguna Sales Pouch." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: SupportPage });
 const db = supabase as any;
 const fmt = (d: string) => new Date(d).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
 type C = { id: string; user_id: string; status: "open" | "closed"; created_at: string; updated_at: string };

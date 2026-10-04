@@ -15,6 +15,10 @@ export const Route = createFileRoute("/_authenticated/stock-opening")({
     meta: [
       { title: "Stok Pembukaan — Sales Pouch" },
       { name: "description", content: "Masukkan stok yang sudah berada di outlet sebelum Sales Pouch mulai digunakan." },
+      { property: "og:title", content: "Stok Pembukaan — Sales Pouch" },
+      { property: "og:description", content: "Masukkan stok yang sudah berada di outlet sebelum Sales Pouch mulai digunakan." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: OpeningStockPage,

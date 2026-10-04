@@ -16,6 +16,10 @@ export const Route = createFileRoute("/_authenticated/outlets/$id/edit")({
     meta: [
       { title: "Edit Profil Toko — Sales Pouch" },
       { name: "description", content: "Ubah profil dan petunjuk kunjungan toko." },
+      { property: "og:title", content: "Edit Profil Toko — Sales Pouch" },
+      { property: "og:description", content: "Ubah profil dan petunjuk kunjungan toko." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: EditOutletPage,
