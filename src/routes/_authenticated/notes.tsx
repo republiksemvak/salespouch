@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { ArrowLeft, Bell, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { useProfile } from "@/hooks/use-profile";
 import { isSuperAdminEmail } from "@/lib/access";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/_authenticated/notes")({
   head: () => ({
     meta: [
-      { title: "Catatan — Sales Pouch" },
+      { title: "Catatan dan Pengeluaran — Sales Pouch" },
       { name: "description", content: "Catatan pengeluaran sales, pemasukan lain, dan pengingat." },
     ],
   }),
@@ -25,8 +25,9 @@ function Notes() {
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
       <header>
+        <Link to="/" className="mb-5 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Beranda</Link>
         <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Sales Pouch</div>
-        <h1 className="mt-1 text-2xl font-bold">Catatan</h1>
+        <h1 className="mt-1 text-2xl font-bold">Catatan dan Pengeluaran</h1>
         <p className="mt-1 text-sm text-muted-foreground">Catat hal penting dalam kegiatan usaha.</p>
       </header>
 
