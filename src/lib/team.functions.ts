@@ -40,42 +40,16 @@ export const getOwnerProducts = createServerFn({ method: "GET" })
 
 export const listTeam = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ ownerId: z.string().uuid().optional() }).parse(input ?? {}))
-  .handler(async ({ context, data }) => {
+  .inputValidator((input) => z.object({}).parse(input ?? {}))
+  .handler(async ({ context }) => {
     await assertOwner(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: authUser } = await context.supabase.auth.getUser();
-    const isSuperAdmin = !!authUser.user && isSuperAdminEmail(authUser.user.email);
-    const ownerId = isSuperAdmin ? data.ownerId : context.userId;
-
-    if (isSuperAdmin && ownerId) {
-      const { data: owner, error: ownerError } = await supabaseAdmin.from("profiles").select("id,role").eq("id", ownerId).maybeSingle();
-      if (ownerError) throw ownerError;
-      if (!owner || owner.role !== "owner") throw new Error("Owner bisnis tidak ditemukan.");
-    }
-
-    let query = supabaseAdmin.from("team_members")
+    const { data: members, error } = await supabaseAdmin.from("team_members")
       .select("user_id,owner_id,created_at,profiles!team_members_user_id_fkey(user_email,username,display_name)")
+      .eq("owner_id", context.userId)
       .order("created_at", { ascending: false });
-    if (ownerId) query = query.eq("owner_id", ownerId);
-
-    const { data: members, error } = await query;
     if (error) throw error;
-    if (!members?.length || !isSuperAdmin) return members ?? [];
-
-    const ownerIds = [...new Set(members.map((member) => member.owner_id).filter(Boolean))];
-    if (!ownerIds.length) return members;
-    const { data: ownerProfiles, error: ownerProfilesError } = await supabaseAdmin
-      .from("profiles")
-      .select("id,business_name,display_name,user_email")
-      .in("id", ownerIds);
-    if (ownerProfilesError) throw ownerProfilesError;
-
-    const ownerMap = new Map((ownerProfiles ?? []).map((owner) => [owner.id, owner]));
-    return members.map((member) => ({
-      ...member,
-      owner: ownerMap.get(member.owner_id) ?? null,
-    }));
+    return members ?? [];
   });
 
 export const createSales = createServerFn({ method: "POST" })
@@ -84,24 +58,11 @@ export const createSales = createServerFn({ method: "POST" })
     name: z.string().trim().min(1, "Nama Sales wajib diisi.").max(100),
     username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9._-]+$/, "Username hanya boleh berisi huruf, angka, titik, garis bawah, atau tanda minus."),
     password: z.string().min(6, "Password minimal 6 karakter.").max(72),
-    ownerId: z.string().uuid().optional(),
   }).parse(input))
   .handler(async ({ context, data }) => {
     await assertOwner(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: authUser } = await context.supabase.auth.getUser();
-    const isSuperAdmin = !!authUser.user && isSuperAdminEmail(authUser.user.email);
-    const ownerId = isSuperAdmin ? data.ownerId : context.userId;
-
-    if (!ownerId) throw new Error("Super Admin wajib memilih bisnis Owner untuk akun Sales.");
-    if (isSuperAdmin) {
-      const { data: owner, error: ownerError } = await supabaseAdmin.from("profiles")
-        .select("id,role")
-        .eq("id", ownerId)
-        .maybeSingle();
-      if (ownerError) throw ownerError;
-      if (!owner || owner.role !== "owner") throw new Error("Owner bisnis tidak ditemukan.");
-    }
+    const ownerId = context.userId;
 
     const username = normalizeSalesUsername(data.username);
     const name = data.name.trim();
@@ -144,15 +105,14 @@ export const createSales = createServerFn({ method: "POST" })
 
 export const removeSales = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ userId: z.string().uuid(), ownerId: z.string().uuid().optional() }).parse(input))
+  .inputValidator((input) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
     await assertOwner(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: authUser } = await context.supabase.auth.getUser();
-    const isSuperAdmin = !!authUser.user && isSuperAdminEmail(authUser.user.email);
-    const ownerId = isSuperAdmin ? data.ownerId : context.userId;
-    if (!ownerId) throw new Error("Pilih bisnis Owner terlebih dahulu.");
-    const { error } = await supabaseAdmin.from("team_members").delete().eq("owner_id", ownerId).eq("user_id", data.userId);
+    const { error } = await supabaseAdmin.from("team_members")
+      .delete()
+      .eq("owner_id", context.userId)
+      .eq("user_id", data.userId);
     if (error) throw error;
     return { ok: true };
   });
