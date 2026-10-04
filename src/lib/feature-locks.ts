@@ -8,8 +8,7 @@ export type LockedFeature = {
 };
 
 /**
- * Central registry for modules that are being prepared but are not yet
- * customer-facing. Keep this UI-only for now; backend/RLS activation comes later.
+ * Central registry for modules that are being prepared or are customer-facing.
  */
 export const LOCKED_FEATURES: LockedFeature[] = [
   {
@@ -33,8 +32,8 @@ export const LOCKED_FEATURES: LockedFeature[] = [
   {
     id: "uang-jalan",
     label: "Uang Jalan",
-    description: "Pencatatan uang jalan dan biaya operasional Sales.",
-    access: "locked",
+    description: "Uang masuk dari Owner dan saldo setelah dikurangi pengeluaran operasional Sales.",
+    access: "active",
   },
   {
     id: "sales-kpi",
