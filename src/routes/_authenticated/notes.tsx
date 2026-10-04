@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -22,10 +22,12 @@ function Notes() {
       </header>
 
       <section className="mt-6 grid gap-3">
-        <Button type="button" variant="outline" className="h-auto min-h-16 justify-start px-4 py-3 text-left" disabled>
-          <ArrowDownCircle className="mr-3 h-5 w-5 shrink-0" />
-          <span className="min-w-0"><span className="block font-semibold">Pengeluaran Sales</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Biaya operasional: bensin, parkir, tol, tambal ban, ganti oli.</span></span>
-        </Button>
+        <Link to="/expenses" className="block">
+          <Button type="button" variant="outline" className="h-auto min-h-16 w-full justify-start px-4 py-3 text-left">
+            <ArrowDownCircle className="mr-3 h-5 w-5 shrink-0" />
+            <span className="min-w-0"><span className="block font-semibold">Pengeluaran Sales</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Biaya operasional: bensin, parkir, tol, tambal ban, ganti oli.</span></span>
+          </Button>
+        </Link>
 
         <Button type="button" variant="outline" className="h-auto min-h-16 justify-start px-4 py-3 text-left" disabled>
           <ArrowUpCircle className="mr-3 h-5 w-5 shrink-0" />
