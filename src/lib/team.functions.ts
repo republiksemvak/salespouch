@@ -42,10 +42,25 @@ export const createSales = createServerFn({ method: "POST" })
     name: z.string().trim().min(1, "Nama Sales wajib diisi.").max(100),
     username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9._-]+$/, "Username hanya boleh berisi huruf, angka, titik, garis bawah, atau tanda minus."),
     password: z.string().min(6, "Password minimal 6 karakter.").max(72),
+    ownerId: z.string().uuid().optional(),
   }).parse(input))
   .handler(async ({ context, data }) => {
     await assertOwner(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: authUser } = await context.supabase.auth.getUser();
+    const isSuperAdmin = !!authUser.user && isSuperAdminEmail(authUser.user.email);
+    const ownerId = isSuperAdmin ? data.ownerId : context.userId;
+
+    if (!ownerId) throw new Error("Super Admin wajib memilih bisnis Owner untuk akun Sales.");
+    if (isSuperAdmin) {
+      const { data: owner, error: ownerError } = await supabaseAdmin.from("profiles")
+        .select("id,role")
+        .eq("id", ownerId)
+        .maybeSingle();
+      if (ownerError) throw ownerError;
+      if (!owner || owner.role !== "owner") throw new Error("Owner bisnis tidak ditemukan.");
+    }
+
     const username = normalizeSalesUsername(data.username);
     const name = data.name.trim();
     const { data: existing, error: lookupError } = await supabaseAdmin.from("profiles").select("id").eq("username", username).maybeSingle();
@@ -72,7 +87,7 @@ export const createSales = createServerFn({ method: "POST" })
       }
 
       const { error: linkError } = await supabaseAdmin.from("team_members")
-        .insert({ owner_id: context.userId, user_id: created.user.id });
+        .insert({ owner_id: ownerId, user_id: created.user.id });
       if (linkError) throw linkError;
     } catch (error) {
       await supabaseAdmin.auth.admin.deleteUser(created.user.id);
