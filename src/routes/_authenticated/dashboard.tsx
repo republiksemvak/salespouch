@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, LockKeyhole, UserRoundCog, ChevronDown, UsersRound, MessageCircle, FileText, CalendarDays } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search, UserCog, ShieldCheck, Users, History, LockKeyhole, UserRoundCog, ChevronDown, UsersRound, MessageCircle, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -40,9 +40,6 @@ function Dashboard() {
     if (feature.id === "sales") {
       return <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/team"><span>{feature.label}</span><Users className="h-4 w-4 text-muted-foreground" /></Link></Button>;
     }
-    if (feature.id === "schedule-route") {
-      return <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/schedule"><span>Jadwal Toko</span><CalendarDays className="h-4 w-4 text-muted-foreground" /></Link></Button>;
-    }
     return isOwner ? <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/feature-preview/$feature" params={{ feature: feature.id }}><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Link></Button> : <Button key={feature.id} type="button" variant="outline" disabled className="h-11 justify-between px-3 opacity-70"><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button>;
   };
 
@@ -61,9 +58,8 @@ function Dashboard() {
         </div>
         {teamOpen && <section className="mt-2 rounded-2xl border bg-card p-3"><div className="flex items-center gap-2 px-1"><UserRoundCog className="h-4 w-4 text-muted-foreground" /><div><h2 className="text-sm font-semibold">Manajemen Tim</h2><p className="text-xs text-muted-foreground">Kelola Sales dan kebutuhan tim.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2">{teamFeatures.map(previewButton)}</div></section>}
         <div className="mt-2"><Button type="button" variant="outline" className="h-11 w-full justify-between" onClick={() => setOutletOpen((open) => !open)} aria-expanded={outletOpen}><span className="flex items-center"><Store className="mr-1 h-4 w-4" />Manajemen Outlet</span><ChevronDown className={`h-4 w-4 transition-transform ${outletOpen ? "rotate-180" : ""}`} /></Button></div>
-        {outletOpen && <section className="mt-2 rounded-2xl border bg-card p-3"><div className="flex items-center gap-2 px-1"><UsersRound className="h-4 w-4 text-muted-foreground" /><div><h2 className="text-sm font-semibold">Manajemen Outlet</h2><p className="text-xs text-muted-foreground">Kelola outlet, jadwal, route, dan penugasan Sales.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2"><Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/outlets"><span>Semua Outlet</span><Store className="h-4 w-4 text-muted-foreground" /></Link></Button><Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/schedule"><span>Jadwal Toko</span><CalendarDays className="h-4 w-4 text-muted-foreground" /></Link></Button><Button type="button" variant="outline" disabled className="h-11 justify-between px-3"><span>Penugasan Sales</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button></div></section>}
+        {outletOpen && <section className="mt-2 rounded-2xl border bg-card p-3"><div className="flex items-center gap-2 px-1"><UsersRound className="h-4 w-4 text-muted-foreground" /><div><h2 className="text-sm font-semibold">Manajemen Outlet</h2><p className="text-xs text-muted-foreground">Kelola outlet, jadwal, route, dan penugasan Sales.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2"><Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/outlets"><span>Semua Outlet</span><Store className="h-4 w-4 text-muted-foreground" /></Link></Button><Button asChild variant="outline" className="h-11 justify-between px-3"><Link to="/schedule"><span>Jadwal Toko</span><span className="text-xs text-muted-foreground">›</span></Link></Button><Button type="button" variant="outline" disabled className="h-11 justify-between px-3"><span>Penugasan Sales</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button></div></section>}
       </>}
-      <Button asChild variant="outline" className="mt-2 h-11 w-full"><Link to="/schedule"><CalendarDays className="mr-1 h-4 w-4" />Jadwal Toko</Link></Button>
       <Button asChild variant="outline" className="mt-2 h-11 w-full"><Link to="/notes"><FileText className="mr-1 h-4 w-4" />Catatan</Link></Button>
       <Button asChild variant="outline" className="mt-2 h-11 w-full"><Link to="/transactions"><History className="mr-1 h-4 w-4" />Riwayat Transaksi</Link></Button>
       <div className="mt-8 flex items-center justify-between gap-3"><h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Outlet ({outletCount})</h2>{outletCount > 50 && <span className="text-[11px] text-muted-foreground">50 terbaru</span>}</div>
