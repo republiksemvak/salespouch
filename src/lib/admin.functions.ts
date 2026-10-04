@@ -23,10 +23,6 @@ export const getAdminUsers = createServerFn({ method: "GET" })
     if (profileError) throw new Error(profileError.message);
     if (memberError) throw new Error(memberError.message);
     if (roleError) throw new Error(roleError.message);
-
-    // Super Admin hanya menampilkan akun Owner/bisnis.
-    // Sales tidak boleh menjadi baris bisnis tersendiri. Ini juga menutup Sales lama/orphan
-    // yang belum tercatat di team_members, karena akun Sales dibuat dengan domain khusus.
     const salesIds = new Set((members ?? []).map((m: { user_id: string }) => m.user_id));
     const adminIds = new Set((adminRoles ?? []).map((r: { user_id: string }) => r.user_id));
     const owners = (profiles ?? []).filter((p: { id: string; role?: string; user_email?: string | null }) => {
@@ -34,27 +30,17 @@ export const getAdminUsers = createServerFn({ method: "GET" })
       const isSalesAccount = salesIds.has(p.id) || p.role === "sales" || email.endsWith("@salespouch.local");
       return !isSalesAccount && !adminIds.has(p.id);
     });
-
     const salesCountByOwner: Record<string, number> = {};
-    for (const member of members ?? []) {
-      salesCountByOwner[member.owner_id] = (salesCountByOwner[member.owner_id] ?? 0) + 1;
-    }
-
+    for (const member of members ?? []) salesCountByOwner[member.owner_id] = (salesCountByOwner[member.owner_id] ?? 0) + 1;
     return { owners, salesCountByOwner };
   });
 
 async function resolveAuthUserId(supabaseAdmin: any, profileUserId: string) {
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .select("id,user_email")
-    .eq("id", profileUserId)
-    .maybeSingle();
+  const { data: profile, error: profileError } = await supabaseAdmin.from("profiles").select("id,user_email").eq("id", profileUserId).maybeSingle();
   if (profileError) throw new Error(profileError.message);
   if (!profile) throw new Error("Profil user tidak ditemukan.");
-
   const { data: direct, error: directError } = await supabaseAdmin.auth.admin.getUserById(profileUserId);
   if (!directError && direct.user) return { authUserId: direct.user.id, profile };
-
   if (profile.user_email) {
     const { data: listed, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (!listError) {
@@ -62,7 +48,6 @@ async function resolveAuthUserId(supabaseAdmin: any, profileUserId: string) {
       if (match) return { authUserId: match.id, profile };
     }
   }
-
   return { authUserId: null, profile };
 }
 
@@ -120,4 +105,18 @@ export const deleteUser = createServerFn({ method: "POST" })
     const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
     if (profileError) throw new Error(profileError.message);
     return { ok: true, orphanedAuth: !authUserId };
+  });
+
+export const resetStockOpening = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ ownerId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: setup, error: setupError } = await supabaseAdmin.from("stock_setups").select("id,owner_id").eq("owner_id", data.ownerId).maybeSingle();
+    if (setupError) throw new Error(setupError.message);
+    if (!setup) return { ok: true, reset: false };
+    const { error } = await supabaseAdmin.from("stock_setups").delete().eq("id", setup.id).eq("owner_id", data.ownerId);
+    if (error) throw new Error(error.message);
+    return { ok: true, reset: true };
   });
