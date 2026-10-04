@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, ArrowDownCircle, ArrowUpCircle, LockKeyhole } from "lucide-react";
+import { Bell, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { useProfile } from "@/hooks/use-profile";
-import { isSuperAdminEmail } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/notes")({
@@ -16,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/notes")({
 
 function Notes() {
   const { data: profileData, isLoading } = useProfile();
-  const isSuperAdmin = isSuperAdminEmail(profileData?.email);
+  const canUseExpenses = profileData?.role === "owner" || profileData?.role === "sales";
 
   if (isLoading) return <main className="mx-auto max-w-md px-5 py-10 text-sm text-muted-foreground">Memuat...</main>;
 
@@ -29,17 +28,17 @@ function Notes() {
       </header>
 
       <section className="mt-6 grid gap-3">
-        {isSuperAdmin ? (
+        {canUseExpenses ? (
           <Link to="/expenses" className="block">
             <Button type="button" variant="outline" className="h-auto min-h-16 w-full justify-start px-4 py-3 text-left">
               <ArrowDownCircle className="mr-3 h-5 w-5 shrink-0" />
-              <span className="min-w-0"><span className="block font-semibold">Pengeluaran Sales</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Khusus Super Admin untuk pengujian sementara.</span></span>
+              <span className="min-w-0"><span className="block font-semibold">Pengeluaran Sales</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Catat bensin, parkir, tol, pulsa, dan biaya operasional lainnya.</span></span>
             </Button>
           </Link>
         ) : (
           <Button type="button" variant="outline" className="h-auto min-h-16 w-full justify-start px-4 py-3 text-left" disabled>
-            <LockKeyhole className="mr-3 h-5 w-5 shrink-0" />
-            <span className="min-w-0"><span className="block font-semibold">Pengeluaran Sales <span className="font-normal text-muted-foreground">(sementara dikunci)</span></span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Fitur sedang dalam tahap pengembangan.</span></span>
+            <ArrowDownCircle className="mr-3 h-5 w-5 shrink-0" />
+            <span className="min-w-0"><span className="block font-semibold">Pengeluaran Sales</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Tersedia untuk Owner dan Sales.</span></span>
           </Button>
         )}
 
@@ -55,7 +54,7 @@ function Notes() {
       </section>
 
       <div className="mt-6 rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
-        Pengeluaran Sales sedang dikunci sementara sampai koneksi database siap. Pemasukan Lain dan Pengingat belum aktif.
+        Pengeluaran Sales sudah aktif untuk Owner dan Sales. Pemasukan Lain dan Pengingat belum aktif.
       </div>
     </main>
   );
