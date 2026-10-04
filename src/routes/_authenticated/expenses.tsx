@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProfile } from "@/hooks/use-profile";
+import { isSuperAdminEmail } from "@/lib/access";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,8 @@ function SalesExpenses() {
   const queryClient = useQueryClient();
   const role = profileData?.role;
   const ownerId = profileData?.ownerId;
-  const isSales = role === "sales";
+  const isSuperAdmin = isSuperAdminEmail(profileData?.email);
+  const canInput = role === "sales" || isSuperAdmin;
 
   const [category, setCategory] = useState(categories[0]);
   const [amount, setAmount] = useState("");
@@ -123,17 +125,17 @@ function SalesExpenses() {
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
       <header>
-        <Link to="/notes" className="mb-5 inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Catatan
+        <Link to="/" className="mb-5 inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Beranda
         </Link>
         <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Sales Pouch</div>
         <h1 className="mt-1 text-2xl font-bold">Pengeluaran Sales</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {isSales ? "Catat biaya operasional Anda. Pengeluaran ini nantinya menjadi pengurang Uang Jalan." : "Lihat pengeluaran operasional semua Sales dalam usaha Anda."}
+          {canInput ? "Catat biaya operasional. Untuk Sales, pengeluaran ini nantinya menjadi pengurang Uang Jalan." : "Lihat pengeluaran operasional semua Sales dalam usaha Anda."}
         </p>
       </header>
 
-      {isSales && (
+      {canInput && (
         <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border p-4">
           <div className="flex items-center gap-2 font-semibold">
             <Plus className="h-4 w-4" /> Tambah Pengeluaran
