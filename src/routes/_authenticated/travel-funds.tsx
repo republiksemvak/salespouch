@@ -162,7 +162,10 @@ function TravelFundsPage() {
           <Input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Nominal, contoh 500000" className="h-11" />
           <Input type="date" value={givenAt} onChange={(e) => setGivenAt(e.target.value)} className="h-11" />
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={transactionType === "in" ? "Catatan (opsional)" : "Alasan pengurangan (opsional)"} className="h-11" />
-          <Button disabled={saving || membersLoading} className="h-11 w-full"><{transactionType === "in" ? "Plus" : "Minus"} className="mr-2 h-4 w-4" />{saving ? "Menyimpan..." : transactionType === "in" ? "Tambah Uang Jalan" : "Kurangi Uang Jalan"}</Button>
+          <Button disabled={saving || membersLoading} className="h-11 w-full">
+            {transactionType === "in" ? <Plus className="mr-2 h-4 w-4" /> : <Minus className="mr-2 h-4 w-4" />}
+            {saving ? "Menyimpan..." : transactionType === "in" ? "Tambah Uang Jalan" : "Kurangi Uang Jalan"}
+          </Button>
         </form>
       )}
 
