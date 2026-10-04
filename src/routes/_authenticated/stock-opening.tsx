@@ -1,204 +1,210 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Save, Store } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, Boxes, Check, ChevronRight, RefreshCw, Sparkles, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/stock-opening")({
   head: () => ({
     meta: [
       { title: "Stok Pembukaan — Sales Pouch" },
-      { name: "description", content: "Masukkan stok yang sudah berada di outlet sebelum Sales Pouch mulai digunakan." },
-      { property: "og:title", content: "Stok Pembukaan — Sales Pouch" },
-      { property: "og:description", content: "Masukkan stok yang sudah berada di outlet sebelum Sales Pouch mulai digunakan." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "description", content: "Atur cara memulai stok di Sales Pouch." },
     ],
   }),
   component: OpeningStockPage,
 });
 
+type SetupMode = "migration" | "from_start";
+
+type StockSetup = {
+  id: string;
+  mode: SetupMode;
+  status: "active" | "finalized";
+  started_at: string;
+  finalized_at: string | null;
+};
+
 function OpeningStockPage() {
   const { data: account, isLoading: accountLoading } = useProfile();
-  const { data: products, isLoading: productsLoading } = useProducts();
   const qc = useQueryClient();
-  const [outletId, setOutletId] = useState("");
-  const [qty, setQty] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
+  const [savingMode, setSavingMode] = useState<SetupMode | null>(null);
 
-  const { data: outlets = [], isLoading: outletsLoading } = useQuery({
-    queryKey: ["opening-stock-outlets"],
-    enabled: account?.role === "owner",
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("outlets")
-        .select("id,name")
-        .order("name");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const { data: existing = [], isLoading: existingLoading } = useQuery({
-    queryKey: ["opening-stock", outletId],
-    enabled: !!outletId,
+  const { data: setup, isLoading: setupLoading } = useQuery<StockSetup | null>({
+    queryKey: ["stock-setup", account?.ownerId],
+    enabled: !!account?.ownerId,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
-        .from("outlet_opening_stock")
-        .select("product_id,quantity")
-        .eq("outlet_id", outletId);
+        .from("stock_setups")
+        .select("id,mode,status,started_at,finalized_at")
+        .eq("owner_id", account!.ownerId)
+        .maybeSingle();
       if (error) throw error;
-      return (data ?? []) as { product_id: string; quantity: number }[];
+      return data as StockSetup | null;
     },
   });
 
-  useEffect(() => {
-    const next: Record<string, string> = {};
-    for (const row of existing) next[row.product_id] = String(Number(row.quantity) || 0);
-    setQty(next);
-  }, [existing]);
+  const modeLabel = useMemo(() => {
+    if (setup?.mode === "migration") return "Migrasi Usaha";
+    if (setup?.mode === "from_start") return "Mulai dari Awal";
+    return "";
+  }, [setup]);
 
-  const selectedOutlet = outlets.find((o) => o.id === outletId);
-  const productList = useMemo(() => products ?? [], [products]);
-  const filledCount = productList.filter((p) => Number(qty[p.id] || 0) > 0).length;
-
-  async function save() {
-    if (!outletId) return void toast.error("Pilih outlet terlebih dahulu.");
-    if (!productList.length) return void toast.error("Belum ada produk.");
-
-    setSaving(true);
+  async function chooseMode(mode: SetupMode) {
+    if (!account?.ownerId || savingMode) return;
+    setSavingMode(mode);
     try {
-      const { error: delError } = await (supabase as any)
-        .from("outlet_opening_stock")
-        .delete()
-        .eq("outlet_id", outletId);
-      if (delError) throw delError;
-
-      const rows = productList
-        .map((p) => ({
-          outlet_id: outletId,
-          product_id: p.id,
-          quantity: Math.max(0, Number(qty[p.id] || 0)),
-        }))
-        .filter((row) => row.quantity > 0);
-
-      if (rows.length) {
-        const { error } = await (supabase as any)
-          .from("outlet_opening_stock")
-          .insert(rows);
-        if (error) throw error;
-      }
-
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["opening-stock", outletId] }),
-        qc.invalidateQueries({ queryKey: ["stock-summary"] }),
-        qc.invalidateQueries({ queryKey: ["last-visit", outletId] }),
-      ]);
-      toast.success(`Stok pembukaan ${selectedOutlet?.name ?? "outlet"} berhasil disimpan.`);
+      const { data, error } = await (supabase as any)
+        .from("stock_setups")
+        .insert({ owner_id: account.ownerId, mode, status: "active" })
+        .select("id,mode,status,started_at,finalized_at")
+        .single();
+      if (error) throw error;
+      qc.setQueryData(["stock-setup", account.ownerId], data);
+      toast.success(`${mode === "migration" ? "Migrasi Usaha" : "Mulai dari Awal"} dipilih.`);
     } catch (error) {
-      toast.error(`Gagal menyimpan: ${(error as Error).message}`);
+      toast.error(`Gagal menyimpan pilihan: ${(error as Error).message}`);
     } finally {
-      setSaving(false);
+      setSavingMode(null);
     }
   }
 
-  if (accountLoading) return <div className="p-10 text-center">Memuat…</div>;
-  if (account?.role !== "owner") return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat mengatur stok pembukaan.</div>;
+  if (accountLoading || setupLoading) {
+    return <main className="mx-auto min-h-screen max-w-md px-4 pt-12 text-center text-sm text-muted-foreground">Memuat pengaturan stok…</main>;
+  }
+
+  if (account?.role !== "owner") {
+    return <main className="mx-auto min-h-screen max-w-md px-4 pt-12 text-center text-destructive">Hanya Owner yang dapat mengatur stok pembukaan.</main>;
+  }
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-5">
-      <Link to="/products" className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-        <ArrowLeft className="h-4 w-4" /> Kembali ke Master Produk
+      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+        <ArrowLeft className="h-4 w-4" /> Kembali ke Dashboard
       </Link>
 
-      <header className="mt-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Store className="h-5 w-5" /></div>
+      <header className="mt-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
+            <Boxes className="h-6 w-6" />
+          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Stok Pembukaan</h1>
-            <p className="text-xs text-muted-foreground">Masukkan stok yang sudah ada di toko sebelum mulai mencatat transaksi.</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Tentukan bagaimana stok usaha Anda mulai dicatat di Sales Pouch.</p>
           </div>
         </div>
       </header>
 
-      <section className="mt-3 rounded-2xl border bg-card p-4">
-        <div className="text-sm font-semibold">Sudah punya stok di toko?</div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Isi jumlah produk yang <b>saat ini sudah ada di toko</b>. Produk dan <b>stok gudang</b> diatur melalui <b>Master Produk</b>.
-        </p>
-      </section>
+      {!setup && (
+        <>
+          <section className="mt-6 rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Sparkles className="h-4 w-4 text-orange-600" /> Pilih cara memulai
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Pilihan ini hanya dibuat sekali. Setelah dipilih, kita lanjut mengisi stok Gudang, Toko, dan Sales sesuai kondisi usaha.
+            </p>
+          </section>
 
-      <section className="mt-3 rounded-2xl border bg-card p-4">
-        <div className="text-sm font-semibold">1. Pilih Outlet</div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Profil toko dibuat melalui <b className="text-foreground">Tambah Outlet</b>.
-        </p>
-        <select
-          value={outletId}
-          onChange={(e) => setOutletId(e.target.value)}
-          className="mt-3 h-11 w-full rounded-md border bg-background px-3 text-sm"
-          disabled={outletsLoading}
-        >
-          <option value="">Pilih toko…</option>
-          {outlets.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-        </select>
-      </section>
-
-      <section className="mt-3 rounded-2xl border bg-card p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold">2. Masukkan Stok Saat Ini</div>
-            <p className="mt-1 text-[11px] text-muted-foreground">Produk diambil dari Master Produk. Isi 0 jika tidak ada di toko.</p>
-          </div>
-          <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[10px]">{filledCount} terisi</span>
-        </div>
-
-        {!outletId && <p className="mt-5 text-center text-sm text-muted-foreground">Pilih outlet untuk mulai mengisi stok.</p>}
-        {outletId && (productsLoading || existingLoading) && <p className="mt-5 text-center text-sm text-muted-foreground">Memuat stok…</p>}
-        {outletId && !productsLoading && !existingLoading && productList.length === 0 && <p className="mt-5 text-center text-sm text-muted-foreground">Belum ada produk. Tambahkan produk melalui Master Produk.</p>}
-        {outletId && !productsLoading && !existingLoading && productList.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {productList.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 rounded-xl border p-2.5">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{p.name}</div>
-                  <div className="text-[10px] text-muted-foreground">{p.pcs_per_pack} pcs/pack</div>
+          <div className="mt-4 space-y-3">
+            <button
+              type="button"
+              onClick={() => chooseMode("migration")}
+              disabled={!!savingMode}
+              className="w-full rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-orange-300 hover:bg-orange-50/40 disabled:opacity-60"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
+                  <RefreshCw className="h-5 w-5" />
                 </div>
-                <Input
-                  type="number"
-                  min={0}
-                  step={1}
-                  inputMode="numeric"
-                  value={qty[p.id] ?? "0"}
-                  onChange={(e) => setQty((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                  className="h-10 w-24 text-right"
-                  aria-label={`Stok ${p.name}`}
-                />
-                <span className="w-6 text-[10px] text-muted-foreground">pcs</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-base font-bold">Usaha sudah berjalan</h2>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Pilih <b>Migrasi Usaha</b>. Anda bisa memasukkan stok awal bertahap sambil usaha tetap berjalan.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <span className="rounded-full bg-orange-100 px-2 py-1 text-[10px] font-medium text-orange-800">Bertahap</span>
+                    <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium">Tetap beroperasi</span>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            </button>
 
-      {outletId && productList.length > 0 && (
-        <div className="sticky bottom-4 mt-4">
-          <Button onClick={save} disabled={saving} className="h-13 w-full rounded-xl text-base">
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? "Menyimpan…" : "Simpan Stok Saat Ini"}
-          </Button>
-        </div>
+            <button
+              type="button"
+              onClick={() => chooseMode("from_start")}
+              disabled={!!savingMode}
+              className="w-full rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/40 disabled:opacity-60"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <Warehouse className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-base font-bold">Usaha baru / mulai dari awal</h2>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Pilih <b>Mulai dari Awal</b>. Masukkan seluruh stok awal sebelum pencatatan stok berjalan dimulai.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-medium text-emerald-800">Sekali isi</span>
+                    <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium">Lalu dikunci</span>
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <p className="mt-5 text-center text-[10px] leading-relaxed text-muted-foreground">
+            Stok Pembukaan bukan transaksi harian. Setelah final, perubahan stok dicatat melalui Stok In, Stok Out, Transfer, Retur, atau Penyesuaian.
+          </p>
+        </>
       )}
 
-      <p className="mt-4 text-center text-[10px] leading-relaxed text-muted-foreground">
-        Stok ini menjadi titik awal pencatatan untuk outlet tersebut.
-      </p>
+      {setup && (
+        <section className="mt-6 rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+              <Check className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Mode stok aktif</div>
+              <h2 className="text-lg font-bold">{modeLabel}</h2>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl bg-muted/60 p-3 text-xs leading-relaxed">
+            {setup.mode === "migration"
+              ? "Usaha tetap bisa berjalan. Stok awal dapat dimasukkan bertahap per lokasi, lalu dikunci setelah migrasi selesai."
+              : "Masukkan seluruh stok awal per lokasi sebelum setup difinalkan. Setelah final, Stok Pembukaan tidak dapat dibuka kembali."
+            }
+          </div>
+
+          <div className="mt-4 space-y-2 text-xs">
+            <div className="flex items-center justify-between rounded-xl border p-3">
+              <span>Status setup</span>
+              <span className="font-semibold text-emerald-700">{setup.status === "active" ? "Aktif" : "Final"}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border p-3">
+              <span>Langkah berikutnya</span>
+              <span className="font-semibold">Isi stok per lokasi</span>
+            </div>
+          </div>
+
+          <Button className="mt-4 h-11 w-full rounded-xl" disabled>
+            <Warehouse className="mr-2 h-4 w-4" /> Isi Stok Pembukaan
+          </Button>
+          <p className="mt-2 text-center text-[10px] text-muted-foreground">Form Gudang, Toko, dan Sales akan kita sambungkan di langkah berikutnya.</p>
+        </section>
+      )}
     </main>
   );
 }
