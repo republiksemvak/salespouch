@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Wallet, Plus } from "lucide-react";
+import { ArrowLeft, Wallet, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/travel-funds")({
 });
 
 type Member = { user_id: string; profiles?: { display_name?: string | null; username?: string | null; user_email?: string | null } | null };
-type Fund = { id: string; sales_id: string; amount: number; note: string | null; given_at: string; created_at: string };
+type Fund = { id: string; sales_id: string; amount: number; note: string | null; given_at: string; created_at: string; transaction_type: "in" | "out" };
 type Expense = { sales_id: string; amount: number; category: string; spent_at: string };
 
 function displayName(member?: Member | null) {
@@ -36,6 +36,7 @@ function TravelFundsPage() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [givenAt, setGivenAt] = useState(new Date().toISOString().slice(0, 10));
+  const [transactionType, setTransactionType] = useState<"in" | "out">("in");
   const [saving, setSaving] = useState(false);
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
@@ -59,7 +60,7 @@ function TravelFundsPage() {
       const client = supabase as any;
       const { data, error } = await client
         .from("sales_travel_funds")
-        .select("id,sales_id,amount,note,given_at,created_at")
+        .select("id,sales_id,amount,note,given_at,created_at,transaction_type")
         .eq("owner_id", ownerId)
         .order("given_at", { ascending: false })
         .order("created_at", { ascending: false });
@@ -87,7 +88,8 @@ function TravelFundsPage() {
     const map = new Map<string, { in: number; out: number }>();
     for (const fund of funds) {
       const row = map.get(fund.sales_id) ?? { in: 0, out: 0 };
-      row.in += Number(fund.amount);
+      if (fund.transaction_type === "out") row.out += Number(fund.amount);
+      else row.in += Number(fund.amount);
       map.set(fund.sales_id, row);
     }
     for (const expense of expenses) {
@@ -100,15 +102,17 @@ function TravelFundsPage() {
 
   const selectedMember = members.find((m) => m.user_id === salesId);
   const ownBalance = profile?.id ? balances.get(profile.id) : undefined;
-  const totalIn = funds.reduce((sum, item) => sum + Number(item.amount), 0);
-  const totalOut = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
+  const totalIn = funds.filter((item) => item.transaction_type !== "out").reduce((sum, item) => sum + Number(item.amount), 0);
+  const totalOwnerOut = funds.filter((item) => item.transaction_type === "out").reduce((sum, item) => sum + Number(item.amount), 0);
+  const totalExpenseOut = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
+  const totalOut = totalOwnerOut + totalExpenseOut;
   const isLoading = profileLoading || fundsLoading || expensesLoading;
 
   async function addFund(e: React.FormEvent) {
     e.preventDefault();
     const numericAmount = Number(amount.replace(/[^0-9]/g, ""));
     if (!ownerId || !salesId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
-      toast.error("Pilih Sales dan isi nominal Uang Masuk.");
+      toast.error(`Pilih Sales dan isi nominal ${transactionType === "in" ? "Uang Masuk" : "Pengurangan"}.`);
       return;
     }
     setSaving(true);
@@ -118,16 +122,17 @@ function TravelFundsPage() {
         owner_id: ownerId,
         sales_id: salesId,
         amount: numericAmount,
+        transaction_type: transactionType,
         note: note.trim() || null,
         given_at: givenAt,
       });
       if (error) throw error;
       setAmount("");
       setNote("");
-      toast.success(`Uang jalan ${rupiah(numericAmount)} diberikan ke ${displayName(selectedMember)}`);
-      qc.invalidateQueries({ queryKey: ["travel-funds", ownerId] });
+      toast.success(transactionType === "in" ? `Uang jalan ${rupiah(numericAmount)} diberikan ke ${displayName(selectedMember)}` : `Uang jalan ${rupiah(numericAmount)} dikurangi dari ${displayName(selectedMember)}`);
+      await qc.invalidateQueries({ queryKey: ["travel-funds", ownerId] });
     } catch (error) {
-      toast.error((error as Error).message || "Uang jalan gagal disimpan.");
+      toast.error((error as Error).message || "Perubahan uang jalan gagal disimpan.");
     } finally {
       setSaving(false);
     }
@@ -140,20 +145,24 @@ function TravelFundsPage() {
       <a href="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</a>
       <header className="mt-4">
         <div className="flex items-center gap-2"><Wallet className="h-5 w-5" /><h1 className="text-2xl font-bold">Uang Jalan</h1></div>
-        <p className="mt-1 text-sm text-muted-foreground">Owner memberi uang jalan. Pengeluaran Sales otomatis menguranginya.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Owner memberi atau mengurangi uang jalan. Pengeluaran Sales otomatis menguranginya.</p>
       </header>
 
       {canManage && (
         <form onSubmit={addFund} className="mt-6 space-y-3 rounded-2xl border bg-card p-4">
-          <h2 className="font-semibold">Uang Masuk</h2>
+          <div className="flex rounded-lg border bg-muted/30 p-1">
+            <button type="button" onClick={() => setTransactionType("in")} className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-medium ${transactionType === "in" ? "bg-background shadow-sm" : "text-muted-foreground"}`}><Plus className="h-4 w-4" />Uang Masuk</button>
+            <button type="button" onClick={() => setTransactionType("out")} className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-medium ${transactionType === "out" ? "bg-background shadow-sm" : "text-muted-foreground"}`}><Minus className="h-4 w-4" />Kurangi</button>
+          </div>
+          <h2 className="font-semibold">{transactionType === "in" ? "Tambah Uang Jalan" : "Kurangi Uang Jalan"}</h2>
           <select required value={salesId} onChange={(e) => setSalesId(e.target.value)} className="h-11 w-full rounded-md border bg-background px-3 text-sm">
             <option value="">Pilih Sales</option>
             {members.map((member) => <option key={member.user_id} value={member.user_id}>{displayName(member)}</option>)}
           </select>
           <Input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Nominal, contoh 500000" className="h-11" />
           <Input type="date" value={givenAt} onChange={(e) => setGivenAt(e.target.value)} className="h-11" />
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan (opsional)" className="h-11" />
-          <Button disabled={saving || membersLoading} className="h-11 w-full"><Plus className="mr-2 h-4 w-4" />{saving ? "Menyimpan..." : "Tambah Uang Jalan"}</Button>
+          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={transactionType === "in" ? "Catatan (opsional)" : "Alasan pengurangan (opsional)"} className="h-11" />
+          <Button disabled={saving || membersLoading} className="h-11 w-full"><{transactionType === "in" ? "Plus" : "Minus"} className="mr-2 h-4 w-4" />{saving ? "Menyimpan..." : transactionType === "in" ? "Tambah Uang Jalan" : "Kurangi Uang Jalan"}</Button>
         </form>
       )}
 
@@ -161,7 +170,7 @@ function TravelFundsPage() {
         <section className="mt-6 rounded-2xl border bg-card p-5">
           <div className="text-sm text-muted-foreground">Sisa Uang Jalan</div>
           <div className="mt-1 text-3xl font-bold">{rupiah(ownBalance.in - ownBalance.out)}</div>
-          <div className="mt-3 text-xs text-muted-foreground">Masuk {rupiah(ownBalance.in)} · Pengeluaran {rupiah(ownBalance.out)}</div>
+          <div className="mt-3 text-xs text-muted-foreground">Masuk {rupiah(ownBalance.in)} · Keluar {rupiah(ownBalance.out)}</div>
         </section>
       )}
 
@@ -174,7 +183,7 @@ function TravelFundsPage() {
           <div className="mt-4 space-y-2">
             {members.map((member) => {
               const row = balances.get(member.user_id) ?? { in: 0, out: 0 };
-              return <div key={member.user_id} className="rounded-xl border p-3"><div className="font-semibold">{displayName(member)}</div><div className="mt-1 text-xs text-muted-foreground">Masuk {rupiah(row.in)} · Pengeluaran {rupiah(row.out)}</div><div className="mt-1 text-lg font-bold">Sisa {rupiah(row.in - row.out)}</div></div>;
+              return <div key={member.user_id} className="rounded-xl border p-3"><div className="font-semibold">{displayName(member)}</div><div className="mt-1 text-xs text-muted-foreground">Masuk {rupiah(row.in)} · Keluar {rupiah(row.out)}</div><div className="mt-1 text-lg font-bold">Sisa {rupiah(row.in - row.out)}</div></div>;
             })}
             {members.length === 0 && <p className="text-sm text-muted-foreground">Belum ada Sales.</p>}
           </div>
@@ -182,10 +191,10 @@ function TravelFundsPage() {
       )}
 
       <section className="mt-6">
-        <h2 className="font-semibold">Riwayat Uang Masuk</h2>
+        <h2 className="font-semibold">Riwayat Uang Jalan</h2>
         <div className="mt-3 space-y-2">
-          {funds.map((fund) => <div key={fund.id} className="rounded-xl border bg-card p-3"><div className="flex items-start justify-between gap-3"><div><div className="font-semibold">{members.find((m) => m.user_id === fund.sales_id) ? displayName(members.find((m) => m.user_id === fund.sales_id)) : "Sales"}</div><div className="mt-1 text-xs text-muted-foreground">{new Date(`${fund.given_at}T00:00:00`).toLocaleDateString("id-ID", { dateStyle: "medium" })}{fund.note ? ` · ${fund.note}` : ""}</div></div><div className="font-semibold">+{rupiah(Number(fund.amount))}</div></div></div>)}
-          {!isLoading && funds.length === 0 && <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Belum ada Uang Masuk.</div>}
+          {funds.map((fund) => <div key={fund.id} className="rounded-xl border bg-card p-3"><div className="flex items-start justify-between gap-3"><div><div className="font-semibold">{members.find((m) => m.user_id === fund.sales_id) ? displayName(members.find((m) => m.user_id === fund.sales_id)) : "Sales"}</div><div className="mt-1 text-xs text-muted-foreground">{new Date(`${fund.given_at}T00:00:00`).toLocaleDateString("id-ID", { dateStyle: "medium" })}{fund.note ? ` · ${fund.note}` : ""}</div></div><div className={`font-semibold ${fund.transaction_type === "out" ? "text-destructive" : ""}`}>{fund.transaction_type === "out" ? "-" : "+"}{rupiah(Number(fund.amount))}</div></div></div>)}
+          {!isLoading && funds.length === 0 && <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Belum ada transaksi Uang Jalan.</div>}
         </div>
       </section>
     </main>
