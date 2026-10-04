@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/expenses")({
 });
 
 type Expense = { id: string; category: string; amount: number | string; note: string | null; spent_at: string; sales_id: string };
-type Category = { id: string; name: string };
+type Category = { id: string; name: string; created_by: string };
 type TeamMember = { user_id: string; profiles?: { user_email?: string; username?: string; display_name?: string } | null };
 
 function formatRupiah(value: number | string) {
@@ -62,69 +62,47 @@ function SalesExpenses() {
     queryKey: ["sales-expense-categories", ownerId, userId],
     enabled: Boolean(ownerId && userId && canInput),
     queryFn: async () => {
-      const { data, error } = await supabase.from("expense_categories").select("id,name").eq("is_active", true).order("name");
+      const { data, error } = await supabase.from("expense_categories").select("id,name,created_by").eq("is_active", true).order("name");
       if (error) throw error;
       return (data ?? []) as Category[];
     },
   });
 
-  const teamQuery = useQuery({
-    queryKey: ["expense-team", ownerId],
-    enabled: Boolean(isOwner && ownerId && !isAdmin),
-    queryFn: () => fetchTeam({ data: { ownerId: undefined } }),
-  });
-  const superAdminTeamQuery = useQuery({
-    queryKey: ["expense-team-admin", ownerId],
-    enabled: Boolean(isSuperAdmin && ownerId),
-    queryFn: () => fetchTeam({ data: { ownerId } }),
-  });
+  const teamQuery = useQuery({ queryKey: ["expense-team", ownerId], enabled: Boolean(isOwner && ownerId && !isAdmin), queryFn: () => fetchTeam({ data: { ownerId: undefined } }) });
+  const superAdminTeamQuery = useQuery({ queryKey: ["expense-team-admin", ownerId], enabled: Boolean(isSuperAdmin && ownerId), queryFn: () => fetchTeam({ data: { ownerId } }) });
   const teamMembers = (isOwner && !isAdmin ? teamQuery.data : superAdminTeamQuery.data) as TeamMember[] | undefined;
   const salesNames = useMemo(() => {
     const map = new Map<string, string>();
-    for (const member of teamMembers ?? []) {
-      const p = member.profiles;
-      map.set(member.user_id, p?.display_name ?? p?.username ?? p?.user_email ?? "Sales");
-    }
+    for (const member of teamMembers ?? []) { const p = member.profiles; map.set(member.user_id, p?.display_name ?? p?.username ?? p?.user_email ?? "Sales"); }
     return map;
   }, [teamMembers]);
   const categories = categoriesQuery.data ?? [];
 
-  useEffect(() => {
-    if (!category && categories.length) setCategory(categories[0].name);
-  }, [categories, category]);
-
+  useEffect(() => { if (!category && categories.length) setCategory(categories[0].name); }, [categories, category]);
   const total = useMemo(() => (expensesQuery.data ?? []).reduce((sum, item) => sum + Number(item.amount), 0), [expensesQuery.data]);
   const salesReport = useMemo(() => {
     const grouped = new Map<string, Expense[]>();
-    for (const expense of expensesQuery.data ?? []) {
-      const list = grouped.get(expense.sales_id) ?? [];
-      list.push(expense);
-      grouped.set(expense.sales_id, list);
-    }
+    for (const expense of expensesQuery.data ?? []) { const list = grouped.get(expense.sales_id) ?? []; list.push(expense); grouped.set(expense.sales_id, list); }
     for (const member of teamMembers ?? []) if (!grouped.has(member.user_id)) grouped.set(member.user_id, []);
     return [...grouped.entries()].map(([salesId, expenses]) => ({ salesId, name: salesNames.get(salesId) ?? (salesId === userId ? "Anda" : "Sales"), expenses, total: expenses.reduce((sum, item) => sum + Number(item.amount), 0) })).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   }, [expensesQuery.data, teamMembers, salesNames, userId]);
 
-  function resetForm() {
-    setEditingExpense(null); setAmount(""); setNote(""); setSpentAt(new Date().toISOString().slice(0, 10)); setErrorMessage("");
-  }
-
-  function startEdit(expense: Expense) {
-    setEditingExpense(expense); setCategory(expense.category); setAmount(String(expense.amount)); setNote(expense.note ?? ""); setSpentAt(expense.spent_at); setErrorMessage(""); window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+  function resetForm() { setEditingExpense(null); setAmount(""); setNote(""); setSpentAt(new Date().toISOString().slice(0, 10)); setErrorMessage(""); }
+  function startEdit(expense: Expense) { setEditingExpense(expense); setCategory(expense.category); setAmount(String(expense.amount)); setNote(expense.note ?? ""); setSpentAt(expense.spent_at); setErrorMessage(""); window.scrollTo({ top: 0, behavior: "smooth" }); }
 
   async function handleAddCategory() {
     const name = newCategory.trim();
     if (!name || !userId || !ownerId || saving) return;
     if (categories.some((item) => item.name.toLowerCase() === name.toLowerCase())) { setCategory(name); setNewCategory(""); return; }
     setSaving(true); setErrorMessage("");
-    const { data, error } = await supabase.from("expense_categories").insert({ owner_id: ownerId, created_by: userId, name }).select("id,name").single();
+    const { data, error } = await supabase.from("expense_categories").insert({ owner_id: ownerId, created_by: userId, name }).select("id,name,created_by").single();
     setSaving(false);
     if (error) return setErrorMessage(error.message);
     if (data) { setCategory(data.name); setNewCategory(""); await queryClient.invalidateQueries({ queryKey: ["sales-expense-categories", ownerId, userId] }); }
   }
 
   async function handleDeleteCategory(item: Category) {
+    if (item.created_by !== userId) return;
     if (!confirm(`Hapus keperluan "${item.name}" dari daftar? Riwayat pengeluaran tidak akan dihapus.`)) return;
     setErrorMessage("");
     const { error } = await supabase.from("expense_categories").delete().eq("id", item.id).eq("created_by", userId);
@@ -141,13 +119,10 @@ function SalesExpenses() {
     if (!profileData?.ownerId || !userId) return setErrorMessage("Profil belum siap. Coba lagi.");
     setSaving(true);
     const payload = { category: category.trim(), amount: numericAmount, note: note.trim() || null, spent_at: spentAt };
-    const result = editingExpense
-      ? await supabase.from("sales_expenses").update(payload).eq("id", editingExpense.id).eq("sales_id", userId)
-      : await supabase.from("sales_expenses").insert({ ...payload, owner_id: profileData.ownerId, sales_id: userId });
+    const result = editingExpense ? await supabase.from("sales_expenses").update(payload).eq("id", editingExpense.id).eq("sales_id", userId) : await supabase.from("sales_expenses").insert({ ...payload, owner_id: profileData.ownerId, sales_id: userId });
     setSaving(false);
     if (result.error) return setErrorMessage(result.error.message);
-    resetForm();
-    await queryClient.invalidateQueries({ queryKey: ["sales-expenses"] });
+    resetForm(); await queryClient.invalidateQueries({ queryKey: ["sales-expenses"] });
   }
 
   if (profileLoading || adminLoading) return <main className="mx-auto max-w-md px-5 py-10 text-sm text-muted-foreground">Memuat...</main>;
@@ -158,8 +133,8 @@ function SalesExpenses() {
 
     {canInput && <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border p-4">
       <div className="flex items-center justify-between"><div className="flex items-center gap-2 font-semibold">{editingExpense ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}{editingExpense ? "Edit Pengeluaran" : "Tambah Pengeluaran"}</div>{editingExpense && <Button type="button" variant="ghost" size="sm" onClick={resetForm}><X className="mr-1 h-4 w-4" /> Batal</Button>}</div>
-      <div className="space-y-2"><Label>Keperluan</Label><div className="flex flex-wrap gap-2">{categories.map((item) => <div key={item.id} className="flex items-center gap-1 rounded-full border bg-background pl-3 pr-1 py-1"><button type="button" onClick={() => setCategory(item.name)} className={`text-sm ${category === item.name ? "font-semibold" : ""}`}>{item.name}</button><button type="button" onClick={() => handleDeleteCategory(item)} aria-label={`Hapus ${item.name}`} className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button></div>)}</div>
-        <div className="flex gap-2"><Input id="new-expense-category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Kategori baru, misalnya Pulsa" className="mt-2" /><Button type="button" variant="outline" className="mt-2 shrink-0" onClick={handleAddCategory} disabled={!newCategory.trim() || saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tambah"}</Button></div><p className="text-xs text-muted-foreground">Kategori yang dibuat sendiri bisa dihapus. Riwayat pengeluaran tetap aman.</p>
+      <div className="space-y-2"><Label>Keperluan</Label><div className="flex flex-wrap gap-2">{categories.map((item) => <div key={item.id} className="flex items-center gap-1 rounded-full border bg-background pl-3 pr-1 py-1"><button type="button" onClick={() => setCategory(item.name)} className={`text-sm ${category === item.name ? "font-semibold" : ""}`}>{item.name}</button>{item.created_by === userId && <button type="button" onClick={() => handleDeleteCategory(item)} aria-label={`Hapus ${item.name}`} className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}</div>)}</div>
+        <div className="flex gap-2"><Input id="new-expense-category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Kategori baru, misalnya Pulsa" className="mt-2" /><Button type="button" variant="outline" className="mt-2 shrink-0" onClick={handleAddCategory} disabled={!newCategory.trim() || saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tambah"}</Button></div><p className="text-xs text-muted-foreground">Kamu hanya bisa menghapus kategori yang kamu buat sendiri. Riwayat pengeluaran tetap aman.</p>
       </div>
       <div className="space-y-2"><Label htmlFor="amount">Nominal</Label><Input id="amount" type="number" min="1" inputMode="numeric" placeholder="Contoh: 50000" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
       <div className="space-y-2"><Label htmlFor="spentAt">Tanggal</Label><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="spentAt" type="date" className="pl-9" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} required /></div></div>
