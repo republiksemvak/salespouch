@@ -12,6 +12,20 @@ async function assertOwner(context: { supabase: any; userId: string }) {
   if (error || data) throw new Error("Hanya Owner yang dapat mengelola tim.");
 }
 
+export const listOwners = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: authUser, error: authError } = await context.supabase.auth.getUser();
+    if (authError || !authUser.user || !isSuperAdminEmail(authUser.user.email)) throw new Error("Akses hanya untuk Super Admin.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin.from("profiles")
+      .select("id,business_name,user_email,display_name")
+      .eq("role", "owner")
+      .order("business_name");
+    if (error) throw error;
+    return data ?? [];
+  });
+
 export const getOwnerProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -26,14 +40,24 @@ export const getOwnerProducts = createServerFn({ method: "GET" })
 
 export const listTeam = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input) => z.object({ ownerId: z.string().uuid().optional() }).parse(input ?? {}))
+  .handler(async ({ context, data }) => {
     await assertOwner(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.from("team_members")
+    const { data: authUser } = await context.supabase.auth.getUser();
+    const isSuperAdmin = !!authUser.user && isSuperAdminEmail(authUser.user.email);
+    const ownerId = isSuperAdmin ? data.ownerId : context.userId;
+    if (!ownerId) throw new Error("Pilih bisnis Owner terlebih dahulu.");
+    if (isSuperAdmin) {
+      const { data: owner, error: ownerError } = await supabaseAdmin.from("profiles").select("id,role").eq("id", ownerId).maybeSingle();
+      if (ownerError) throw ownerError;
+      if (!owner || owner.role !== "owner") throw new Error("Owner bisnis tidak ditemukan.");
+    }
+    const { data: members, error } = await supabaseAdmin.from("team_members")
       .select("user_id,created_at,profiles!team_members_user_id_fkey(user_email,username,display_name)")
-      .eq("owner_id", context.userId).order("created_at", { ascending: false });
+      .eq("owner_id", ownerId).order("created_at", { ascending: false });
     if (error) throw error;
-    return data;
+    return members;
   });
 
 export const createSales = createServerFn({ method: "POST" })
