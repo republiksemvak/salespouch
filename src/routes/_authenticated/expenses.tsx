@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText, LockKeyhole } from "lucide-react";
+import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProfile } from "@/hooks/use-profile";
-import { isSuperAdminEmail } from "@/lib/access";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,9 +26,8 @@ function SalesExpenses() {
   const role = profileData?.role;
   const userId = profileData?.profile?.id;
   const ownerId = profileData?.ownerId;
-  const isSuperAdmin = isSuperAdminEmail(profileData?.email);
-  const canAccess = isSuperAdmin;
-  const canInput = isSuperAdmin;
+  const canAccess = role === "owner" || role === "sales";
+  const canInput = role === "sales";
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -41,7 +39,7 @@ function SalesExpenses() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const expensesQuery = useQuery({
-    queryKey: ["sales-expenses", ownerId, role],
+    queryKey: ["sales-expenses", ownerId, role, userId],
     enabled: Boolean(ownerId && canAccess),
     queryFn: async () => {
       const { data, error } = await supabase.from("sales_expenses").select("id,category,amount,note,spent_at,sales_id").order("spent_at", { ascending: false }).order("created_at", { ascending: false });
@@ -107,9 +105,8 @@ function SalesExpenses() {
           <h1 className="mt-1 text-2xl font-bold">Pengeluaran Sales</h1>
         </header>
         <section className="mt-8 rounded-2xl border border-dashed p-6 text-center">
-          <LockKeyhole className="mx-auto h-8 w-8 text-muted-foreground" />
-          <h2 className="mt-3 font-semibold">Fitur sementara dikunci</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Pengeluaran Sales sedang dalam tahap pengembangan dan sementara belum tersedia.</p>
+          <h2 className="mt-3 font-semibold">Fitur tidak tersedia untuk akun ini</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Pengeluaran Sales tersedia untuk Owner dan Sales.</p>
         </section>
       </main>
     );
@@ -118,10 +115,10 @@ function SalesExpenses() {
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
       <header>
-        <Link to="/" className="mb-5 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Beranda</Link>
+        <Link to="/notes" className="mb-5 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Catatan</Link>
         <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Sales Pouch</div>
         <h1 className="mt-1 text-2xl font-bold">Pengeluaran Sales</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Catat biaya operasional sesuai kebutuhan Anda.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{canInput ? "Catat biaya operasional yang Anda keluarkan." : "Lihat seluruh pengeluaran operasional Sales."}</p>
       </header>
 
       {canInput && <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border p-4">
@@ -135,7 +132,7 @@ function SalesExpenses() {
             <Input id="new-expense-category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Kategori baru, misalnya Pulsa" className="mt-2" />
             <Button type="button" variant="outline" className="mt-2 shrink-0" onClick={handleAddCategory} disabled={!newCategory.trim() || addingCategory}>{addingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tambah"}</Button>
           </div>
-          <p className="text-xs text-muted-foreground">Ketik keperluan baru lalu tekan Tambah. Tombolnya langsung muncul di atas.</p>
+          <p className="text-xs text-muted-foreground">Ketik keperluan baru lalu tekan Tambah. Kategori akan tersimpan saat pengeluaran disimpan.</p>
         </div>
         <div className="space-y-2"><Label htmlFor="amount">Nominal</Label><Input id="amount" type="number" min="1" inputMode="numeric" placeholder="Contoh: 50000" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
         <div className="space-y-2"><Label htmlFor="spentAt">Tanggal</Label><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="spentAt" type="date" className="pl-9" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} required /></div></div>
