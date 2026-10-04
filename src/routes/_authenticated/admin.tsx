@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, Search, Trash2, KeyRound } from "lucide-react";
+import { ArrowLeft, Search, Trash2, KeyRound, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { accessStatus, type Profile } from "@/lib/access";
@@ -27,7 +27,11 @@ function AdminPage() {
   const { data: isAdmin, isLoading } = useIsAdmin();
   if (isLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
   if (!isAdmin) return <div className="p-10 text-center text-destructive">Halaman ini khusus super admin.</div>;
-  return <main className="mx-auto min-h-screen max-w-3xl px-5 pb-16 pt-6"><Link to="/dashboard" className="flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link><h1 className="mt-2 text-2xl font-bold">Dashboard Super Admin</h1><Tabs defaultValue="users" className="mt-5"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="users">Pengguna</TabsTrigger><TabsTrigger value="packages">Paket</TabsTrigger><TabsTrigger value="promos">Promo</TabsTrigger></TabsList><TabsContent value="users"><Users /></TabsContent><TabsContent value="packages"><Packages /></TabsContent><TabsContent value="promos"><Promos /></TabsContent></Tabs></main>;
+  return <main className="mx-auto min-h-screen max-w-3xl px-5 pb-16 pt-6"><Link to="/dashboard" className="flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link><h1 className="mt-2 text-2xl font-bold">Dashboard Super Admin</h1><Tabs defaultValue="users" className="mt-5"><TabsList className="grid w-full grid-cols-4"><TabsTrigger value="users">Pengguna</TabsTrigger><TabsTrigger value="packages">Paket</TabsTrigger><TabsTrigger value="promos">Promo</TabsTrigger><TabsTrigger value="stock-reset">Stok</TabsTrigger></TabsList><TabsContent value="users"><Users /></TabsContent><TabsContent value="packages"><Packages /></TabsContent><TabsContent value="promos"><Promos /></TabsContent><TabsContent value="stock-reset"><StockReset /></TabsContent></Tabs></main>;
+}
+
+function StockReset() {
+  return <div className="mt-4 rounded-2xl border border-orange-200 bg-orange-50 p-5"><div className="flex items-start gap-3"><div className="rounded-xl bg-orange-100 p-2.5 text-orange-700"><RotateCcw className="h-5 w-5" /></div><div><h2 className="font-bold">Bantuan Reset Stok Pembukaan</h2><p className="mt-1 text-sm leading-5 text-orange-950">Gunakan jika user salah memilih mode atau salah mengisi stok awal. Reset hanya menghapus proses Stok Pembukaan; Master Produk, Toko/Outlet, Sales, dan data usaha lain tetap aman.</p></div></div><Link to="/admin-stock-reset" className="mt-4 block"><Button className="w-full rounded-xl"><RotateCcw className="mr-2 h-4 w-4" />Buka Reset Stok Pembukaan</Button></Link></div>;
 }
 
 function Users() {
