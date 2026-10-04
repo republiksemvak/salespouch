@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Boxes, Check, ChevronRight, RefreshCw, Sparkles, Warehouse } from "lucide-react";
+import { ArrowLeft, Boxes, Check, ChevronRight, Pencil, RefreshCw, Sparkles, Warehouse, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -32,6 +32,7 @@ function OpeningStockPage() {
   const { data: account, isLoading: accountLoading } = useProfile();
   const qc = useQueryClient();
   const [savingMode, setSavingMode] = useState<SetupMode | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   const { data: setup, isLoading: setupLoading } = useQuery<StockSetup | null>({
     queryKey: ["stock-setup", account?.ownerId],
@@ -69,6 +70,38 @@ function OpeningStockPage() {
       toast.error(`Gagal menyimpan pilihan: ${(error as Error).message}`);
     } finally {
       setSavingMode(null);
+    }
+  }
+
+  async function editMode() {
+    if (!account?.ownerId || !setup || setup.status !== "active" || resetting) return;
+    setResetting(true);
+    try {
+      const { count, error: countError } = await (supabase as any)
+        .from("stock_opening_items")
+        .select("id", { count: "exact", head: true })
+        .eq("setup_id", setup.id);
+      if (countError) throw countError;
+
+      if ((count ?? 0) > 0) {
+        toast.error("Stok sudah pernah diisi. Jangan batalkan setup; gunakan Edit Stok untuk memperbaiki jumlah.");
+        return;
+      }
+
+      const { error } = await (supabase as any)
+        .from("stock_setups")
+        .delete()
+        .eq("id", setup.id)
+        .eq("owner_id", account.ownerId)
+        .eq("status", "active");
+      if (error) throw error;
+
+      qc.setQueryData(["stock-setup", account.ownerId], null);
+      toast.success("Pilihan dibatalkan. Silakan pilih mode stok lagi.");
+    } catch (error) {
+      toast.error(`Gagal membatalkan pilihan: ${(error as Error).message}`);
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -110,99 +143,63 @@ function OpeningStockPage() {
           </section>
 
           <div className="mt-4 space-y-3">
-            <button
-              type="button"
-              onClick={() => chooseMode("migration")}
-              disabled={!!savingMode}
-              className="w-full rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-orange-300 hover:bg-orange-50/40 disabled:opacity-60"
-            >
+            <button type="button" onClick={() => chooseMode("migration")} disabled={!!savingMode} className="w-full rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-orange-300 hover:bg-orange-50/40 disabled:opacity-60">
               <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
-                  <RefreshCw className="h-5 w-5" />
-                </div>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700"><RefreshCw className="h-5 w-5" /></div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-base font-bold">Usaha sudah berjalan</h2>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Pilih <b>Migrasi Usaha</b>. Anda bisa memasukkan stok awal bertahap sambil usaha tetap berjalan.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <span className="rounded-full bg-orange-100 px-2 py-1 text-[10px] font-medium text-orange-800">Bertahap</span>
-                    <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium">Tetap beroperasi</span>
-                  </div>
+                  <div className="flex items-center justify-between gap-2"><h2 className="text-base font-bold">Usaha sudah berjalan</h2><ChevronRight className="h-5 w-5 text-muted-foreground" /></div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pilih <b>Migrasi Usaha</b>. Anda bisa memasukkan stok awal bertahap sambil usaha tetap berjalan.</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5"><span className="rounded-full bg-orange-100 px-2 py-1 text-[10px] font-medium text-orange-800">Bertahap</span><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium">Tetap beroperasi</span></div>
                 </div>
               </div>
             </button>
 
-            <button
-              type="button"
-              onClick={() => chooseMode("from_start")}
-              disabled={!!savingMode}
-              className="w-full rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/40 disabled:opacity-60"
-            >
+            <button type="button" onClick={() => chooseMode("from_start")} disabled={!!savingMode} className="w-full rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/40 disabled:opacity-60">
               <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                  <Warehouse className="h-5 w-5" />
-                </div>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><Warehouse className="h-5 w-5" /></div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-base font-bold">Usaha baru / mulai dari awal</h2>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Pilih <b>Mulai dari Awal</b>. Masukkan seluruh stok awal sebelum pencatatan stok berjalan dimulai.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-medium text-emerald-800">Sekali isi</span>
-                    <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium">Lalu dikunci</span>
-                  </div>
+                  <div className="flex items-center justify-between gap-2"><h2 className="text-base font-bold">Usaha baru / mulai dari awal</h2><ChevronRight className="h-5 w-5 text-muted-foreground" /></div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pilih <b>Mulai dari Awal</b>. Masukkan seluruh stok awal sebelum pencatatan stok berjalan dimulai.</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5"><span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-medium text-emerald-800">Sekali isi</span><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium">Lalu dikunci</span></div>
                 </div>
               </div>
             </button>
           </div>
-
-          <p className="mt-5 text-center text-[10px] leading-relaxed text-muted-foreground">
-            Stok Pembukaan bukan transaksi harian. Setelah final, perubahan stok dicatat melalui Stok In, Stok Out, Transfer, Retur, atau Penyesuaian.
-          </p>
+          <p className="mt-5 text-center text-[10px] leading-relaxed text-muted-foreground">Stok Pembukaan bukan transaksi harian. Setelah final, perubahan stok dicatat melalui Stok In, Stok Out, Transfer, Retur, atau Penyesuaian.</p>
         </>
       )}
 
       {setup && (
         <section className="mt-6 rounded-2xl border bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-              <Check className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Mode stok aktif</div>
-              <h2 className="text-lg font-bold">{modeLabel}</h2>
-            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><Check className="h-5 w-5" /></div>
+            <div><div className="text-xs text-muted-foreground">Mode stok aktif</div><h2 className="text-lg font-bold">{modeLabel}</h2></div>
           </div>
 
           <div className="mt-4 rounded-xl bg-muted/60 p-3 text-xs leading-relaxed">
-            {setup.mode === "migration"
-              ? "Usaha tetap bisa berjalan. Stok awal dapat dimasukkan bertahap per lokasi, lalu dikunci setelah migrasi selesai."
-              : "Masukkan seluruh stok awal per lokasi sebelum setup difinalkan. Setelah final, Stok Pembukaan tidak dapat dibuka kembali."
-            }
+            {setup.mode === "migration" ? "Usaha tetap bisa berjalan. Stok awal dapat dimasukkan bertahap per lokasi, lalu dikunci setelah migrasi selesai." : "Masukkan seluruh stok awal per lokasi sebelum setup difinalkan. Setelah final, Stok Pembukaan tidak dapat dibuka kembali."}
           </div>
 
           <div className="mt-4 space-y-2 text-xs">
-            <div className="flex items-center justify-between rounded-xl border p-3">
-              <span>Status setup</span>
-              <span className="font-semibold text-emerald-700">{setup.status === "active" ? "Aktif" : "Final"}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border p-3">
-              <span>Langkah berikutnya</span>
-              <span className="font-semibold">Isi stok per lokasi</span>
-            </div>
+            <div className="flex items-center justify-between rounded-xl border p-3"><span>Status setup</span><span className="font-semibold text-emerald-700">{setup.status === "active" ? "Aktif" : "Final"}</span></div>
+            <div className="flex items-center justify-between rounded-xl border p-3"><span>Langkah berikutnya</span><span className="font-semibold">Isi stok per lokasi</span></div>
           </div>
 
-          <Button className="mt-4 h-11 w-full rounded-xl" disabled>
-            <Warehouse className="mr-2 h-4 w-4" /> Isi Stok Pembukaan
+          <Button className="mt-4 h-11 w-full rounded-xl" disabled={setup.status === "finalized"}>
+            <Warehouse className="mr-2 h-4 w-4" /> Isi / Edit Stok Pembukaan
           </Button>
-          <p className="mt-2 text-center text-[10px] text-muted-foreground">Form Gudang, Toko, dan Sales akan kita sambungkan di langkah berikutnya.</p>
+          <p className="mt-2 text-center text-[10px] text-muted-foreground">Selama setup masih Aktif, stok pembukaan boleh diperbaiki. Setelah Final, data dikunci.</p>
+
+          {setup.status === "active" && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={editMode} disabled={resetting} className="h-10 rounded-xl text-xs">
+                <Pencil className="mr-1.5 h-3.5 w-3.5" /> Ubah Pilihan
+              </Button>
+              <Button variant="outline" onClick={() => toast.info("Pembatalan stok dilakukan dari form Isi / Edit Stok agar data yang sudah dimasukkan tidak hilang.")} className="h-10 rounded-xl text-xs text-muted-foreground">
+                <X className="mr-1.5 h-3.5 w-3.5" /> Batal Input
+              </Button>
+            </div>
+          )}
         </section>
       )}
     </main>
