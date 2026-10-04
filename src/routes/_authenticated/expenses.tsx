@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText, LockKeyhole } from "lucide-react";
+import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProfile } from "@/hooks/use-profile";
 import { isSuperAdminEmail } from "@/lib/access";
@@ -28,8 +28,8 @@ function SalesExpenses() {
   const userId = profileData?.profile?.id;
   const ownerId = profileData?.ownerId;
   const isSuperAdmin = isSuperAdminEmail(profileData?.email);
-  const canAccess = isSuperAdmin;
-  const canInput = isSuperAdmin;
+  const canAccess = isSuperAdmin || role === "owner" || role === "sales";
+  const canInput = isSuperAdmin || role === "sales";
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -105,11 +105,11 @@ function SalesExpenses() {
           <Link to="/" className="mb-5 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Beranda</Link>
           <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Sales Pouch</div>
           <h1 className="mt-1 text-2xl font-bold">Pengeluaran Sales</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Catat biaya operasional sesuai kebutuhan Anda.</p>
         </header>
         <section className="mt-8 rounded-2xl border border-dashed p-6 text-center">
-          <LockKeyhole className="mx-auto h-8 w-8 text-muted-foreground" />
-          <h2 className="mt-3 font-semibold">Fitur sementara dikunci</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Pengeluaran Sales sedang dalam tahap pengembangan dan sementara belum tersedia.</p>
+          <h2 className="font-semibold">Akses belum tersedia</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Menu ini hanya tersedia untuk Owner dan Sales.</p>
         </section>
       </main>
     );
@@ -121,7 +121,7 @@ function SalesExpenses() {
         <Link to="/" className="mb-5 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Beranda</Link>
         <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Sales Pouch</div>
         <h1 className="mt-1 text-2xl font-bold">Pengeluaran Sales</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Catat biaya operasional sesuai kebutuhan Anda.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{canInput ? "Catat biaya operasional sesuai kebutuhan Anda." : "Lihat seluruh pengeluaran operasional Sales."}</p>
       </header>
 
       {canInput && <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border p-4">
