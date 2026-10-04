@@ -30,7 +30,7 @@ export const LOCKED_FEATURES: LockedFeature[] = [
     access: "locked",
   },
   {
-    id: "operasional",
+    id: "uang-jalan",
     label: "Operasional",
     description: "Uang jalan, pengeluaran, saldo, dan laporan operasional Sales.",
     access: "active",
