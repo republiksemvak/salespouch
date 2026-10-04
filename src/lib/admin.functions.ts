@@ -28,7 +28,8 @@ export const getAdminUsers = createServerFn({ method: "GET" })
     const owners = (profiles ?? []).filter((p: { id: string; role?: string; user_email?: string | null }) => {
       const email = (p.user_email ?? "").trim().toLowerCase();
       const isSalesAccount = salesIds.has(p.id) || p.role === "sales" || email.endsWith("@salespouch.local");
-      return !isSalesAccount && !adminIds.has(p.id);
+      const isSuperAdminAccount = isSuperAdminEmail(email);
+      return !isSalesAccount && (!adminIds.has(p.id) || isSuperAdminAccount);
     });
     const salesCountByOwner: Record<string, number> = {};
     for (const member of members ?? []) salesCountByOwner[member.owner_id] = (salesCountByOwner[member.owner_id] ?? 0) + 1;
