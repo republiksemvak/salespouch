@@ -18,6 +18,7 @@ function Notes() {
   const { data: profileData, isLoading } = useProfile();
   const isSuperAdmin = isSuperAdminEmail(profileData?.email);
   const canUseExpenses = isSuperAdmin || profileData?.role === "owner" || profileData?.role === "sales";
+  const canUsePersonalNotes = isSuperAdmin || profileData?.role === "owner" || profileData?.role === "sales";
 
   if (isLoading) return <main className="mx-auto max-w-md px-5 py-10 text-sm text-muted-foreground">Memuat...</main>;
 
@@ -44,19 +45,37 @@ function Notes() {
           </Button>
         )}
 
-        <Button type="button" variant="outline" className="h-auto min-h-16 w-full min-w-0 justify-start whitespace-normal px-4 py-3 text-left" disabled>
-          <ArrowUpCircle className="mr-3 mt-0.5 h-5 w-5 shrink-0 self-start" />
-          <span className="min-w-0 flex-1 break-words"><span className="block font-semibold">Pemasukan Lain</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Pemasukan di luar transaksi penjualan: bonus, komisi, atau pemasukan lainnya.</span></span>
-        </Button>
+        {canUsePersonalNotes ? (
+          <Link to="/other-income" className="block min-w-0">
+            <Button type="button" variant="outline" className="h-auto min-h-16 w-full min-w-0 justify-start whitespace-normal px-4 py-3 text-left">
+              <ArrowUpCircle className="mr-3 mt-0.5 h-5 w-5 shrink-0 self-start" />
+              <span className="min-w-0 flex-1 break-words"><span className="block font-semibold">Pemasukan Lain</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Catatan pribadi bonus, komisi, atau pemasukan lainnya. Tidak tersinkron ke data usaha.</span></span>
+            </Button>
+          </Link>
+        ) : (
+          <Button type="button" variant="outline" className="h-auto min-h-16 w-full min-w-0 justify-start whitespace-normal px-4 py-3 text-left" disabled>
+            <ArrowUpCircle className="mr-3 mt-0.5 h-5 w-5 shrink-0 self-start" />
+            <span className="min-w-0 flex-1 break-words"><span className="block font-semibold">Pemasukan Lain</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Catatan pribadi akun.</span></span>
+          </Button>
+        )}
 
-        <Button type="button" variant="outline" className="h-auto min-h-16 w-full min-w-0 justify-start whitespace-normal px-4 py-3 text-left" disabled>
-          <Bell className="mr-3 mt-0.5 h-5 w-5 shrink-0 self-start" />
-          <span className="min-w-0 flex-1 break-words"><span className="block font-semibold">Pengingat</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Hal yang perlu diingat: tagih toko, follow up pelanggan, kirim barang, cek stok.</span></span>
-        </Button>
+        {canUsePersonalNotes ? (
+          <Link to="/reminders" className="block min-w-0">
+            <Button type="button" variant="outline" className="h-auto min-h-16 w-full min-w-0 justify-start whitespace-normal px-4 py-3 text-left">
+              <Bell className="mr-3 mt-0.5 h-5 w-5 shrink-0 self-start" />
+              <span className="min-w-0 flex-1 break-words"><span className="block font-semibold">Pengingat</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Catat tagih toko, follow up, kirim barang, cek stok, dan hal lainnya.</span></span>
+            </Button>
+          </Link>
+        ) : (
+          <Button type="button" variant="outline" className="h-auto min-h-16 w-full min-w-0 justify-start whitespace-normal px-4 py-3 text-left" disabled>
+            <Bell className="mr-3 mt-0.5 h-5 w-5 shrink-0 self-start" />
+            <span className="min-w-0 flex-1 break-words"><span className="block font-semibold">Pengingat</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Catatan pribadi akun.</span></span>
+          </Button>
+        )}
       </section>
 
       <div className="mt-6 rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
-        {isSuperAdmin ? "Super Admin memiliki akses penuh untuk pengujian. Pengeluaran Sales aktif; Pemasukan Lain dan Pengingat belum aktif." : "Pengeluaran Sales sudah aktif untuk Owner dan Sales. Pemasukan Lain dan Pengingat belum aktif."}
+        {isSuperAdmin ? "Super Admin memiliki akses penuh untuk pengujian. Pemasukan Lain dan Pengingat aktif sebagai catatan pribadi." : "Pemasukan Lain dan Pengingat adalah catatan pribadi akun dan tidak tersinkron ke data usaha."}
       </div>
     </main>
   );
