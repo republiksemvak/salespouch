@@ -79,38 +79,38 @@ function Dashboard() {
       {status?.reason === "trial" && status.trialEndsAt && <div className="mt-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">Trial aktif sampai <b>{status.trialEndsAt.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}</b></div>}
 
       {isOwner && <>
-        <section className="mt-4 rounded-xl border bg-card p-3 shadow-sm">
+        <section className="mt-3 rounded-xl border bg-card p-2.5 shadow-sm">
           <div className="grid grid-cols-2 divide-x">
-            <div className="flex items-center gap-2.5 pr-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700"><Store className="h-6 w-6" /></div>
-              <div><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Outlet</div><div className="text-2xl font-bold leading-none">{outletCount}</div><div className="mt-1 text-[11px] text-muted-foreground">Total toko aktif</div></div>
+            <div className="flex items-center gap-2.5 pr-2.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700"><Store className="h-5 w-5" /></div>
+              <div><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Outlet</div><div className="text-xl font-bold leading-none">{outletCount}</div><div className="mt-1 text-[11px] text-muted-foreground">Total toko aktif</div></div>
             </div>
-            <div className="flex items-center gap-2.5 pl-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><ClipboardCheck className="h-6 w-6" /></div>
-              <div><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Kunjungan</div><div className="text-2xl font-bold leading-none">{todayVisits}</div><div className="mt-1 text-[11px] text-muted-foreground">Hari ini</div></div>
+            <div className="flex items-center gap-2.5 pl-2.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><ClipboardCheck className="h-5 w-5" /></div>
+              <div><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Kunjungan</div><div className="text-xl font-bold leading-none">{todayVisits}</div><div className="mt-1 text-[11px] text-muted-foreground">Hari ini</div></div>
             </div>
+          </div>
+        </section>
+
+        <section className="mt-3">
+          <Button asChild className="h-12 w-full rounded-lg text-base font-semibold shadow-sm"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-2.5 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button>
+          <div className="mt-2 grid grid-cols-2 gap-2.5">
+            <Button asChild variant="outline" className="h-[68px] rounded-lg justify-between px-3"><Link to="/outlets/new"><span className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-100 text-orange-700"><Plus className="h-4 w-4" /></span><span className="text-left text-[14px] font-semibold leading-tight">Tambah<br />Outlet</span></span><span className="text-lg text-orange-700">›</span></Link></Button>
+            <Button asChild variant="outline" className="h-[68px] rounded-lg justify-between px-3"><Link to="/transactions"><span className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-800"><History className="h-4 w-4" /></span><span className="text-left text-[14px] font-semibold leading-tight">Riwayat<br />Transaksi</span></span><span className="text-lg text-orange-700">›</span></Link></Button>
           </div>
         </section>
 
         <section className="mt-4">
-          <Button asChild className="h-14 w-full rounded-lg text-base font-semibold shadow-sm"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-3 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button>
-          <div className="mt-2.5 grid grid-cols-2 gap-2.5">
-            <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3.5"><Link to="/outlets/new"><span className="flex items-center gap-2.5"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-700"><Plus className="h-5 w-5" /></span><span className="text-left text-[15px] font-semibold leading-tight">Tambah<br />Outlet</span></span><span className="text-xl text-orange-700">›</span></Link></Button>
-            <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3.5"><Link to="/transactions"><span className="flex items-center gap-2.5"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-800"><History className="h-5 w-5" /></span><span className="text-left text-[15px] font-semibold leading-tight">Riwayat<br />Transaksi</span></span><span className="text-xl text-orange-700">›</span></Link></Button>
-          </div>
-        </section>
-
-        <section className="mt-5">
           <div className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Menu Utama</div>
           <div className="grid grid-cols-2 gap-2.5">
-            <Button asChild variant="outline" className="h-[92px] rounded-lg justify-between px-3.5"><Link to="/products"><span className="flex items-center gap-2.5"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700"><Package className="h-7 w-7" /></span><span className="text-left text-[15px] font-semibold leading-tight">Master<br />Produk</span></span><span className="text-xl text-orange-700">›</span></Link></Button>
-            <Button asChild variant="outline" className="h-[92px] rounded-lg justify-between px-3.5"><Link to="/stock-opening"><span className="flex items-center gap-2.5"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Boxes className="h-7 w-7" /></span><span className="text-left text-[15px] font-semibold leading-tight">Stok<br />Pembukaan</span></span><span className="text-xl text-blue-700">›</span></Link></Button>
-            <Button asChild variant="outline" className="h-[92px] rounded-lg justify-between px-3.5"><Link to="/profile"><span className="flex items-center gap-2.5"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><Building2 className="h-7 w-7" /></span><span className="text-left text-[15px] font-semibold leading-tight">Profil<br />Usaha</span></span><span className="text-xl text-emerald-700">›</span></Link></Button>
-            <Button asChild variant="outline" className="h-[92px] rounded-lg justify-between px-3.5"><Link to="/reports"><span className="flex items-center gap-2.5"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700"><BarChart3 className="h-7 w-7" /></span><span className="text-left text-[15px] font-semibold leading-tight">Laporan</span></span><span className="text-xl text-purple-700">›</span></Link></Button>
+            <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3"><Link to="/products"><span className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700"><Package className="h-6 w-6" /></span><span className="text-left text-[14px] font-semibold leading-tight">Master<br />Produk</span></span><span className="text-lg text-orange-700">›</span></Link></Button>
+            <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3"><Link to="/stock-opening"><span className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Boxes className="h-6 w-6" /></span><span className="text-left text-[14px] font-semibold leading-tight">Stok<br />Pembukaan</span></span><span className="text-lg text-blue-700">›</span></Link></Button>
+            <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3"><Link to="/profile"><span className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><Building2 className="h-6 w-6" /></span><span className="text-left text-[14px] font-semibold leading-tight">Profil<br />Usaha</span></span><span className="text-lg text-emerald-700">›</span></Link></Button>
+            <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3"><Link to="/reports"><span className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700"><BarChart3 className="h-6 w-6" /></span><span className="text-left text-[14px] font-semibold leading-tight">Laporan</span></span><span className="text-lg text-purple-700">›</span></Link></Button>
           </div>
         </section>
 
-        <section className="mt-5">
+        <section className="mt-4">
           <div className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Manajemen</div>
           <Button type="button" variant="outline" className="h-12 w-full rounded-lg justify-between px-3.5" onClick={() => setTeamOpen((open) => !open)} aria-expanded={teamOpen}><span className="flex items-center gap-2.5"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50 text-orange-700"><Users className="h-5 w-5" /></span><span className="font-semibold">Manajemen Tim</span></span><ChevronDown className={`h-5 w-5 transition-transform ${teamOpen ? "rotate-180" : ""}`} /></Button>
           {teamOpen && <section className="mt-2 rounded-lg border bg-card p-3"><div className="flex items-center gap-2 px-1"><UserRoundCog className="h-4 w-4 text-muted-foreground" /><div><h2 className="text-sm font-semibold">Manajemen Tim</h2><p className="text-xs text-muted-foreground">Kelola Sales dan kebutuhan tim.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2">{teamFeatures.map(previewButton)}</div></section>}
