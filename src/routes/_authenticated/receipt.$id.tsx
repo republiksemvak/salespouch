@@ -355,7 +355,7 @@ function ReceiptPage() {
     }
 
     if (!num) {
-      toasreceipt.info(
+      toast.info(
         "Nomor toko belum diisi — pilih kontak di WhatsApp"
       );
     }
@@ -618,11 +618,11 @@ function ReceiptPage() {
       );
 
       if (how === "downloaded") {
-        toasreceipt.success("Gambar nota diunduh");
+        toast.success("Gambar nota diunduh");
       }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
-        toasreceipt.error("Gagal membagikan gambar nota");
+        toast.error("Gagal membagikan gambar nota");
       }
     } finally {
       setBusy(null);
@@ -634,12 +634,12 @@ function ReceiptPage() {
 
     try {
       await printReceiptBluetooth(asLines());
-      toasreceipt.success("Nota terkirim ke printer");
+      toast.success("Nota terkirim ke printer");
     } catch (e) {
       const err = e as Error;
 
       if (err.name !== "NotFoundError") {
-        toasreceipt.error(
+        toast.error(
           err.message || "Gagal mencetak via Bluetooth"
         );
       }
