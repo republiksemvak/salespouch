@@ -24,11 +24,17 @@ export const getAdminUsers = createServerFn({ method: "GET" })
     if (memberError) throw new Error(memberError.message);
     if (roleError) throw new Error(roleError.message);
 
-    // Sales adalah bawahan Owner. Tampilkan profil bisnis yang bukan Sales
-    // (tidak punya team_members.user_id) dan bukan Super Admin.
+    // Super Admin hanya menampilkan akun Owner/bisnis.
+    // Sales tidak boleh menjadi baris bisnis tersendiri. Ini juga menutup Sales lama/orphan
+    // yang belum tercatat di team_members, karena akun Sales dibuat dengan domain khusus.
     const salesIds = new Set((members ?? []).map((m: { user_id: string }) => m.user_id));
     const adminIds = new Set((adminRoles ?? []).map((r: { user_id: string }) => r.user_id));
-    const owners = (profiles ?? []).filter((p: { id: string }) => !salesIds.has(p.id) && !adminIds.has(p.id));
+    const owners = (profiles ?? []).filter((p: { id: string; role?: string; user_email?: string | null }) => {
+      const email = (p.user_email ?? "").trim().toLowerCase();
+      const isSalesAccount = salesIds.has(p.id) || p.role === "sales" || email.endsWith("@salespouch.local");
+      return !isSalesAccount && !adminIds.has(p.id);
+    });
+
     const salesCountByOwner: Record<string, number> = {};
     for (const member of members ?? []) {
       salesCountByOwner[member.owner_id] = (salesCountByOwner[member.owner_id] ?? 0) + 1;
