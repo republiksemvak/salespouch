@@ -57,7 +57,12 @@ function Dashboard() {
   const isOwner = !!isAdmin || p?.role === "owner";
   const teamFeatures = LOCKED_FEATURES.filter((feature) => ["sales", "sales-kpi", "uang-jalan", "payroll"].includes(feature.id));
   const outletFeatures = LOCKED_FEATURES.filter((feature) => ["schedule-route"].includes(feature.id));
-  const previewButton = (feature: (typeof LOCKED_FEATURES)[number]) => isOwner ? <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/feature-preview/$feature" params={{ feature: feature.id }}><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Link></Button> : <Button key={feature.id} type="button" variant="outline" disabled className="h-11 justify-between px-3 opacity-70"><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button>;
+  const previewButton = (feature: (typeof LOCKED_FEATURES)[number]) => {
+    if (feature.id === "sales") {
+      return <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/team"><span>{feature.label}</span><Users className="h-4 w-4 text-muted-foreground" /></Link></Button>;
+    }
+    return isOwner ? <Button key={feature.id} asChild variant="outline" className="h-11 justify-between px-3"><Link to="/feature-preview/$feature" params={{ feature: feature.id }}><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Link></Button> : <Button key={feature.id} type="button" variant="outline" disabled className="h-11 justify-between px-3 opacity-70"><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button>;
+  };
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-28 pt-6">
