@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, Loader2, Plus, ReceiptText } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -34,24 +34,10 @@ function SalesExpenses() {
   const [note, setNote] = useState("");
   const [spentAt, setSpentAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [newCategory, setNewCategory] = useState("");
+  const [localCategories, setLocalCategories] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [addingCategory, setAddingCategory] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  const categoriesQuery = useQuery({
-    queryKey: ["expense-categories", userId, ownerId],
-    enabled: Boolean(ownerId && userId),
-    queryFn: async () => {
-      const { data, error } = await supabase.from("expense_categories").select("id,name").eq("owner_id", ownerId!).eq("created_by", userId!).eq("is_active", true).order("created_at");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const categories = categoriesQuery.data ?? [];
-  useMemo(() => {
-    if (!category && categories.length) setCategory(categories[0].name);
-  }, [categories, category]);
 
   const expensesQuery = useQuery({
     queryKey: ["sales-expenses", ownerId, role],
@@ -63,30 +49,49 @@ function SalesExpenses() {
     },
   });
 
+  // Categories are intentionally derived from saved expenses.
+  // This keeps each Sales account flexible without requiring a separate categories table.
+  const savedCategories = useMemo(() => {
+    const seen = new Set<string>();
+    return (expensesQuery.data ?? [])
+      .map((item) => item.category.trim())
+      .filter((name) => name && !seen.has(name) && seen.add(name));
+  }, [expensesQuery.data]);
+
+  const categories = useMemo(() => {
+    const seen = new Set<string>();
+    return [...localCategories, ...savedCategories].filter((name) => name && !seen.has(name) && seen.add(name));
+  }, [localCategories, savedCategories]);
+
+  useEffect(() => {
+    if (!category && categories.length) setCategory(categories[0]);
+  }, [categories, category]);
+
   const total = useMemo(() => (expensesQuery.data ?? []).reduce((sum, item) => sum + Number(item.amount), 0), [expensesQuery.data]);
 
-  async function handleAddCategory() {
+  function handleAddCategory() {
     const name = newCategory.trim();
-    if (!name || !ownerId || !userId || addingCategory) return;
+    if (!name || addingCategory) return;
     setErrorMessage("");
     setAddingCategory(true);
-    const { error } = await supabase.from("expense_categories").insert({ owner_id: ownerId, created_by: userId, name });
-    setAddingCategory(false);
-    if (error) return setErrorMessage(error.message);
 
+    const existing = categories.find((item) => item.toLowerCase() === name.toLowerCase());
+    const selectedName = existing ?? name;
+    if (!existing) setLocalCategories((current) => [...current, name]);
+    setCategory(selectedName);
     setNewCategory("");
-    setCategory(name);
-    await queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
+    setAddingCategory(false);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
     const numericAmount = Number(amount);
+    if (!category.trim()) return setErrorMessage("Pilih atau tambahkan keperluan terlebih dahulu.");
     if (!numericAmount || numericAmount <= 0) return setErrorMessage("Nominal harus lebih dari 0.");
     if (!profileData?.ownerId || !userId) return setErrorMessage("Profil belum siap. Coba lagi.");
     setSaving(true);
-    const { error } = await supabase.from("sales_expenses").insert({ owner_id: profileData.ownerId, sales_id: userId, category, amount: numericAmount, note: note.trim() || null, spent_at: spentAt });
+    const { error } = await supabase.from("sales_expenses").insert({ owner_id: profileData.ownerId, sales_id: userId, category: category.trim(), amount: numericAmount, note: note.trim() || null, spent_at: spentAt });
     setSaving(false);
     if (error) return setErrorMessage(error.message);
     setAmount(""); setNote(""); setSpentAt(new Date().toISOString().slice(0, 10));
@@ -109,7 +114,7 @@ function SalesExpenses() {
         <div className="space-y-2">
           <Label>Keperluan</Label>
           <div className="flex flex-wrap gap-2">
-            {categories.map((item) => <button key={item.id} type="button" onClick={() => setCategory(item.name)} className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${category === item.name ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>{item.name}</button>)}
+            {categories.map((item) => <button key={item} type="button" onClick={() => setCategory(item)} className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${category === item ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}>{item}</button>)}
           </div>
           <div className="flex gap-2">
             <Input id="new-expense-category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Kategori baru, misalnya Pulsa" className="mt-2" />
@@ -117,7 +122,7 @@ function SalesExpenses() {
               {addingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tambah"}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Kategori yang ditambahkan akan otomatis muncul sebagai tombol di atas.</p>
+          <p className="text-xs text-muted-foreground">Ketik keperluan baru lalu tekan Tambah. Tombolnya langsung muncul di atas.</p>
         </div>
         <div className="space-y-2"><Label htmlFor="amount">Nominal</Label><Input id="amount" type="number" min="1" inputMode="numeric" placeholder="Contoh: 50000" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
         <div className="space-y-2"><Label htmlFor="spentAt">Tanggal</Label><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="spentAt" type="date" className="pl-9" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} required /></div></div>
