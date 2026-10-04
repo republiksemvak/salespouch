@@ -125,30 +125,36 @@ export type Database = {
           business_name: string | null
           business_phone: string | null
           created_at: string
+          display_name: string | null
           id: string
           license_until: string | null
           stock_scheme: string
           user_email: string | null
+          username: string | null
         }
         Insert: {
           business_address?: string | null
           business_name?: string | null
           business_phone?: string | null
           created_at?: string
+          display_name?: string | null
           id: string
           license_until?: string | null
           stock_scheme?: string
           user_email?: string | null
+          username?: string | null
         }
         Update: {
           business_address?: string | null
           business_name?: string | null
           business_phone?: string | null
           created_at?: string
+          display_name?: string | null
           id?: string
           license_until?: string | null
           stock_scheme?: string
           user_email?: string | null
+          username?: string | null
         }
         Relationships: []
       }
