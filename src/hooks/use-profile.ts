@@ -14,50 +14,22 @@ export function useProfile() {
     queryFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Not signed in");
-
-      const { data, error } = await supabase
-        .from("profiles")
-        .select(profileFields)
-        .eq("id", u.user.id)
-        .maybeSingle();
+      const { data, error } = await supabase.from("profiles").select(profileFields).eq("id", u.user.id).maybeSingle();
       if (error) throw error;
+      if (isSuperAdminEmail(u.user.email)) return { profile: data as Profile | null, email: u.user.email ?? null, role: "owner" as const, ownerId: u.user.id };
 
-      const superAdmin = isSuperAdminEmail(u.user.email);
-
-      // Super Admin is the web owner and must never be downgraded to Sales
-      // because of a team_members record left in the business data.
-      if (superAdmin) {
-        return {
-          profile: data as Profile | null,
-          email: u.user.email ?? null,
-          role: "owner" as const,
-          ownerId: u.user.id,
-        };
-      }
-
-      const { data: membership, error: teamError } = await supabase
-        .from("team_members")
-        .select("owner_id")
-        .eq("user_id", u.user.id)
-        .maybeSingle();
+      const { data: membership, error: teamError } = await supabase.from("team_members").select("owner_id,position").eq("user_id", u.user.id).maybeSingle();
       if (teamError) throw teamError;
-
       let profile = data as Profile | null;
-
       if (membership) {
-        const { data: business, error: ownerError } = await supabase
-          .from("profiles")
-          .select(profileFields)
-          .eq("id", membership.owner_id)
-          .single();
+        const { data: business, error: ownerError } = await supabase.from("profiles").select(profileFields).eq("id", membership.owner_id).single();
         if (ownerError) throw ownerError;
         profile = business as Profile;
       }
-
       return {
         profile,
         email: u.user.email ?? null,
-        role: membership ? ("sales" as const) : ("owner" as const),
+        role: membership ? (membership.position === "manager" ? ("manager" as const) : ("sales" as const)) : ("owner" as const),
         ownerId: membership?.owner_id ?? u.user.id,
       };
     },
