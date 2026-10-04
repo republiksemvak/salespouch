@@ -58,7 +58,7 @@ function Dashboard() {
 
   const previewButton = (feature: (typeof LOCKED_FEATURES)[number]) => {
     if (feature.id === "sales") return <Button key={feature.id} asChild variant="outline" className="h-10 justify-between px-3 rounded-lg"><Link to="/team"><span>{feature.label}</span><Users className="h-4 w-4 text-muted-foreground" /></Link></Button>;
-    if (feature.id === "uang-jalan") return <Button key={feature.id} asChild variant="outline" className="h-10 justify-between px-3 rounded-lg"><Link to="/travel-funds"><span>{feature.label}</span><Wallet className="h-4 w-4 text-muted-foreground" /></Link></Button>;
+    if (feature.id === "uang-jalan") return <Button key={feature.id} asChild variant="outline" className="h-10 justify-between px-3 rounded-lg"><Link to="/operations"><span>{feature.label}</span><Wallet className="h-4 w-4 text-muted-foreground" /></Link></Button>;
     return isOwner ? <Button key={feature.id} asChild variant="outline" className="h-10 justify-between px-3 rounded-lg"><Link to="/feature-preview/$feature" params={{ feature: feature.id }}><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Link></Button> : <Button key={feature.id} type="button" variant="outline" disabled className="h-10 justify-between px-3 rounded-lg opacity-70"><span>{feature.label}</span><LockKeyhole className="h-4 w-4 text-muted-foreground" /></Button>;
   };
 
