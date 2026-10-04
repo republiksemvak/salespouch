@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Boxes, Building2, Package, Plus, Search, Store, Users, Warehouse } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
+import { getOwnerProducts } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -23,6 +25,7 @@ type Movement = { product_id: string; from_location_id: string | null; to_locati
 function MasterStockPage() {
   const { data: account, isLoading: accountLoading } = useProfile();
   const queryClient = useQueryClient();
+  const fetchOwnerProducts = useServerFn(getOwnerProducts);
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState<"all" | "warehouse" | "outlet" | "sales">("all");
   const [showProduction, setShowProduction] = useState(false);
@@ -54,13 +57,14 @@ function MasterStockPage() {
     },
   });
 
+  // Use the same Owner product source as Master Produk. The previous query
+  // filtered products by user_id, which could exclude products belonging to the business owner.
   const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["master-stock-products", account?.ownerId],
+    queryKey: ["master-stock-production-products", account?.ownerId],
     enabled: !!account?.ownerId && setup?.status === "finalized",
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("products").select("id,name").eq("user_id", account!.ownerId).eq("is_active", true).order("name");
-      if (error) throw error;
-      return data ?? [];
+      const data = await fetchOwnerProducts();
+      return (data ?? []).filter((p: any) => p.is_active !== false).map((p: any) => ({ id: p.id, name: p.name }));
     },
   });
 
