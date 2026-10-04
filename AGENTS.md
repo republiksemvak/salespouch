@@ -21,3 +21,4 @@
 - The transactions section uses an Outlet-only parent route and a separate index leaf for its list. Why: nested transaction edit pages must render through the parent route.
 - Outlet profile edits remain owner-only while sales retain read and visit access. Why: storefront identity and route details are business-managed data.
 - Each consignment snapshots the Owner's stock scheme; `remaining` means shelf stock and `returned` means physical stock returned to the warehouse. Why: stock history and revisions must remain stable when settings change.
+- Keep index-signature dot-access checking disabled in TypeScript because the generated cloud client uses dot access for injected environment variables and must not be edited. Why: generated files remain regenerable without failing project checks.
