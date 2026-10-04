@@ -2,25 +2,21 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Boxes, Building2, Package, Plus, Search, Store, Users, Warehouse } from "lucide-react";
-
+import { ArrowLeft, Boxes, Building2, Package, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { getOwnerProducts } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export const Route = createFileRoute("/_authenticated/master-stock")({
-  head: () => ({ meta: [{ title: "Master Stok — Sales Pouch" }] }),
-  component: MasterStockPage,
-});
-
+export const Route = createFileRoute("/_authenticated/master-stock")({ head: () => ({ meta: [{ title: "Master Stok — Sales Pouch" }] }), component: MasterStockPage });
 type Setup = { id: string; mode: "migration" | "from_start"; status: "active" | "finalized" };
 type ProductStock = { product_id: string; product_name: string; global_quantity: number };
 type Product = { id: string; name: string };
 type Location = { id: string; name: string; location_type: "warehouse" | "outlet" | "sales" };
 type Opening = { product_id: string; location_id: string; quantity: number };
 type Movement = { product_id: string; from_location_id: string | null; to_location_id: string | null; quantity: number };
+const locationLabel = (type: Location["location_type"]) => type === "warehouse" ? "Gudang" : type === "outlet" ? "Toko" : "Sales";
 
 function MasterStockPage() {
   const { data: account, isLoading: accountLoading } = useProfile();
@@ -37,172 +33,44 @@ function MasterStockPage() {
   const [savingProduction, setSavingProduction] = useState(false);
   const [productionMessage, setProductionMessage] = useState("");
 
-  const { data: setup, isLoading: setupLoading } = useQuery<Setup | null>({
-    queryKey: ["master-stock-setup", account?.ownerId],
-    enabled: !!account?.ownerId,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("stock_setups").select("id,mode,status").eq("owner_id", account!.ownerId).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: setup, isLoading: setupLoading } = useQuery<Setup | null>({ queryKey: ["master-stock-setup", account?.ownerId], enabled: !!account?.ownerId, queryFn: async () => { const { data, error } = await (supabase as any).from("stock_setups").select("id,mode,status").eq("owner_id", account!.ownerId).maybeSingle(); if (error) throw error; return data; } });
+  const { data: global = [] } = useQuery<ProductStock[]>({ queryKey: ["master-stock-global", account?.ownerId], enabled: !!account?.ownerId && setup?.status === "finalized", queryFn: async () => { const { data, error } = await (supabase as any).from("master_stock_global").select("product_id,product_name,global_quantity").eq("owner_id", account!.ownerId).order("product_name"); if (error) throw error; return data ?? []; } });
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["master-stock-products", account?.ownerId], enabled: !!account?.ownerId && setup?.status === "finalized", queryFn: async () => { const data = await fetchOwnerProducts(); return (data ?? []).filter((p: any) => p.is_active !== false).map((p: any) => ({ id: p.id, name: p.name })); } });
+  const { data: locations = [] } = useQuery<Location[]>({ queryKey: ["master-stock-locations", account?.ownerId], enabled: !!account?.ownerId && setup?.status === "finalized", queryFn: async () => { const { data, error } = await (supabase as any).from("stock_locations").select("id,name,location_type").eq("owner_id", account!.ownerId).eq("is_active", true).order("location_type").order("name"); if (error) throw error; return data ?? []; } });
+  const { data: openings = [] } = useQuery<Opening[]>({ queryKey: ["master-stock-openings", setup?.id], enabled: !!setup?.id && setup.status === "finalized", queryFn: async () => { const { data, error } = await (supabase as any).from("stock_opening_items").select("product_id,location_id,quantity").eq("setup_id", setup!.id); if (error) throw error; return data ?? []; } });
+  const { data: movements = [] } = useQuery<Movement[]>({ queryKey: ["master-stock-movements", account?.ownerId], enabled: !!account?.ownerId && setup?.status === "finalized", queryFn: async () => { const { data, error } = await (supabase as any).from("stock_movements").select("product_id,from_location_id,to_location_id,quantity").eq("owner_id", account!.ownerId); if (error) throw error; return data ?? []; } });
 
-  const { data: global = [] } = useQuery<ProductStock[]>({
-    queryKey: ["master-stock-global", account?.ownerId],
-    enabled: !!account?.ownerId && setup?.status === "finalized",
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("master_stock_global").select("product_id,product_name,global_quantity").eq("owner_id", account!.ownerId).order("product_name");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  // Use the same Owner product source as Master Produk. The previous query
-  // filtered products by user_id, which could exclude products belonging to the business owner.
-  const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["master-stock-production-products", account?.ownerId],
-    enabled: !!account?.ownerId && setup?.status === "finalized",
-    queryFn: async () => {
-      const data = await fetchOwnerProducts();
-      return (data ?? []).filter((p: any) => p.is_active !== false).map((p: any) => ({ id: p.id, name: p.name }));
-    },
-  });
-
-  const { data: locations = [] } = useQuery<Location[]>({
-    queryKey: ["master-stock-locations", account?.ownerId],
-    enabled: !!account?.ownerId && setup?.status === "finalized",
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("stock_locations").select("id,name,location_type").eq("owner_id", account!.ownerId).eq("is_active", true).order("location_type").order("name");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const { data: openings = [] } = useQuery<Opening[]>({
-    queryKey: ["master-stock-openings", setup?.id],
-    enabled: !!setup?.id && setup.status === "finalized",
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("stock_opening_items").select("product_id,location_id,quantity").eq("setup_id", setup!.id);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const { data: movements = [] } = useQuery<Movement[]>({
-    queryKey: ["master-stock-movements", account?.ownerId],
-    enabled: !!account?.ownerId && setup?.status === "finalized",
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("stock_movements").select("product_id,from_location_id,to_location_id,quantity").eq("owner_id", account!.ownerId);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const productCount = global.length;
-  const globalTotal = useMemo(() => global.reduce((sum, row) => sum + Math.max(0, Number(row.global_quantity) || 0), 0), [global]);
-
-  const locationTotals = useMemo(() => {
-    const totals = new Map<string, number>();
-    locations.forEach((l) => totals.set(l.id, 0));
-    openings.forEach((x) => totals.set(x.location_id, (totals.get(x.location_id) ?? 0) + Number(x.quantity || 0)));
-    movements.forEach((x) => {
-      if (x.from_location_id) totals.set(x.from_location_id, (totals.get(x.from_location_id) ?? 0) - Number(x.quantity || 0));
-      if (x.to_location_id) totals.set(x.to_location_id, (totals.get(x.to_location_id) ?? 0) + Number(x.quantity || 0));
-    });
-    return locations.map((l) => ({ ...l, quantity: Math.max(0, totals.get(l.id) ?? 0) }));
-  }, [locations, openings, movements]);
-
-  const visibleProducts = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return global.filter((p) => {
-      if (q && !p.product_name.toLowerCase().includes(q)) return false;
-      if (locationFilter === "all") return true;
-      const ids = new Set(locationTotals.filter((l) => l.location_type === locationFilter).map((l) => l.id));
-      const openingQty = openings.filter((x) => x.product_id === p.product_id && ids.has(x.location_id)).reduce((s, x) => s + Number(x.quantity || 0), 0);
-      const movementQty = movements.filter((x) => x.product_id === p.product_id).reduce((s, x) => s + (x.to_location_id && ids.has(x.to_location_id) ? Number(x.quantity || 0) : 0) - (x.from_location_id && ids.has(x.from_location_id) ? Number(x.quantity || 0) : 0), 0);
-      return openingQty + movementQty > 0;
-    });
-  }, [global, search, locationFilter, locationTotals, openings, movements]);
+  const stockByProduct = useMemo(() => { const result = new Map<string, number>(); global.forEach((row) => result.set(row.product_id, Math.max(0, Number(row.global_quantity) || 0))); return result; }, [global]);
+  const productCount = products.length;
+  const globalTotal = useMemo(() => products.reduce((sum, p) => sum + (stockByProduct.get(p.id) ?? 0), 0), [products, stockByProduct]);
+  const productLocationStock = useMemo(() => { const result = new Map<string, Map<string, number>>(); const add = (productId: string, locationId: string, amount: number) => { if (!result.has(productId)) result.set(productId, new Map()); const byLocation = result.get(productId)!; byLocation.set(locationId, (byLocation.get(locationId) ?? 0) + amount); }; openings.forEach((x) => add(x.product_id, x.location_id, Number(x.quantity) || 0)); movements.forEach((x) => { if (x.from_location_id) add(x.product_id, x.from_location_id, -(Number(x.quantity) || 0)); if (x.to_location_id) add(x.product_id, x.to_location_id, Number(x.quantity) || 0); }); return result; }, [openings, movements]);
+  const visibleProducts = useMemo(() => { const q = search.trim().toLowerCase(); return products.filter((p) => { if (q && !p.name.toLowerCase().includes(q)) return false; if (locationFilter === "all") return true; const byLocation = productLocationStock.get(p.id); return locations.filter((l) => l.location_type === locationFilter).some((l) => (byLocation?.get(l.id) ?? 0) > 0); }); }, [products, search, locationFilter, productLocationStock, locations]);
 
   const saveProduction = async () => {
     setProductionMessage("");
     const quantity = Number(productionQuantity);
-    if (!productionLocation || !productionProduct || !Number.isFinite(quantity) || quantity <= 0) {
-      setProductionMessage("Pilih lokasi, produk, dan isi jumlah pcs lebih dari 0.");
-      return;
-    }
-
+    if (!productionLocation || !productionProduct || !Number.isFinite(quantity) || quantity <= 0) { setProductionMessage("Pilih lokasi, produk, dan isi jumlah pcs lebih dari 0."); return; }
     setSavingProduction(true);
-    const { error } = await (supabase as any).from("stock_movements").insert({
-      owner_id: account!.ownerId,
-      product_id: productionProduct,
-      movement_type: "production",
-      from_location_id: null,
-      to_location_id: productionLocation,
-      quantity,
-      reference_type: "production",
-      notes: productionNote.trim() || null,
-      occurred_at: new Date(`${productionDate}T12:00:00`).toISOString(),
-    });
+    const { error } = await (supabase as any).from("stock_movements").insert({ owner_id: account!.ownerId, product_id: productionProduct, movement_type: "production", from_location_id: null, to_location_id: productionLocation, quantity, reference_type: "production", notes: productionNote.trim() || null, occurred_at: new Date(`${productionDate}T12:00:00`).toISOString() });
     setSavingProduction(false);
-
-    if (error) {
-      setProductionMessage(error.message || "Gagal menyimpan stok masuk.");
-      return;
-    }
-
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["master-stock-global", account?.ownerId] }),
-      queryClient.invalidateQueries({ queryKey: ["master-stock-movements", account?.ownerId] }),
-    ]);
-    setProductionQuantity("");
-    setProductionNote("");
-    setProductionMessage("Stok masuk berhasil ditambahkan.");
+    if (error) { setProductionMessage(error.message || "Gagal menyimpan stok masuk."); return; }
+    await Promise.all([queryClient.invalidateQueries({ queryKey: ["master-stock-global", account?.ownerId] }), queryClient.invalidateQueries({ queryKey: ["master-stock-movements", account?.ownerId] })]);
+    setProductionQuantity(""); setProductionNote(""); setProductionMessage("Stok masuk berhasil ditambahkan.");
   };
 
   if (accountLoading || setupLoading) return <main className="mx-auto max-w-md px-4 pt-12 text-center text-sm text-muted-foreground">Memuat Master Stok…</main>;
   if (account?.role !== "owner") return <main className="mx-auto max-w-md px-4 pt-12 text-center text-destructive">Master Stok hanya dapat dilihat Owner.</main>;
+  if (!setup) return <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-5"><Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link><header className="mt-5 flex items-start gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-700"><Boxes className="h-6 w-6" /></div><div><h1 className="text-2xl font-bold tracking-tight">Master Stok</h1><p className="mt-1 text-sm text-muted-foreground">Mulai dari Stok Pembukaan sebelum melihat stok global.</p></div></header><section className="mt-6 rounded-2xl border bg-card p-5 text-center shadow-sm"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-700"><Boxes className="h-7 w-7" /></div><h2 className="mt-4 text-lg font-bold">Stok Pembukaan</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Tentukan mode usaha dan catat stok fisik awal per Gudang, Toko, atau Sales. Setelah final, halaman ini otomatis berubah menjadi monitoring Stok Global.</p><Button asChild className="mt-5 h-11 w-full rounded-xl"><Link to="/stock-opening">Mulai Stok Pembukaan</Link></Button></section></main>;
+  if (setup.status === "active") return <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-5"><Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link><header className="mt-5"><div className="font-mono text-[11px] uppercase tracking-[0.2em] text-blue-700">Master Stok</div><h1 className="mt-1 text-2xl font-bold tracking-tight">Stok Pembukaan</h1><p className="mt-1 text-sm text-muted-foreground">Setup sedang berjalan. Lanjutkan pengisian, lalu setelah final Master Stok akan menampilkan stok global.</p></header><section className="mt-5 rounded-2xl border bg-card p-5 shadow-sm"><div className="flex items-center gap-3"><div className="rounded-xl bg-orange-100 p-3 text-orange-700"><Boxes className="h-5 w-5" /></div><div><div className="text-xs text-muted-foreground">Mode</div><b>{setup.mode === "migration" ? "Migrasi Usaha" : "Mulai dari Awal"}</b></div></div><Button asChild className="mt-5 h-11 w-full rounded-xl"><Link to="/stock-opening">Lanjutkan Stok Pembukaan</Link></Button></section></main>;
 
-  if (!setup) return (
-    <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-5">
-      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
-      <header className="mt-5 flex items-start gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-700"><Boxes className="h-6 w-6" /></div><div><h1 className="text-2xl font-bold tracking-tight">Master Stok</h1><p className="mt-1 text-sm text-muted-foreground">Mulai dari Stok Pembukaan sebelum melihat stok global.</p></div></header>
-      <section className="mt-6 rounded-2xl border bg-card p-5 text-center shadow-sm"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-700"><Boxes className="h-7 w-7" /></div><h2 className="mt-4 text-lg font-bold">Stok Pembukaan</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Tentukan mode usaha dan catat stok fisik awal per Gudang, Toko, atau Sales. Setelah final, halaman ini otomatis berubah menjadi monitoring Stok Global.</p><Button asChild className="mt-5 h-11 w-full rounded-xl"><Link to="/stock-opening">Mulai Stok Pembukaan</Link></Button></section>
-    </main>
-  );
-
-  if (setup.status === "active") return (
-    <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-5">
-      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
-      <header className="mt-5"><div className="font-mono text-[11px] uppercase tracking-[0.2em] text-blue-700">Master Stok</div><h1 className="mt-1 text-2xl font-bold tracking-tight">Stok Pembukaan</h1><p className="mt-1 text-sm text-muted-foreground">Setup sedang berjalan. Lanjutkan pengisian, lalu setelah final Master Stok akan menampilkan stok global.</p></header>
-      <section className="mt-5 rounded-2xl border bg-card p-5 shadow-sm"><div className="flex items-center gap-3"><div className="rounded-xl bg-orange-100 p-3 text-orange-700"><Boxes className="h-5 w-5" /></div><div><div className="text-xs text-muted-foreground">Mode</div><b>{setup.mode === "migration" ? "Migrasi Usaha" : "Mulai dari Awal"}</b></div></div><Button asChild className="mt-5 h-11 w-full rounded-xl"><Link to="/stock-opening">Lanjutkan Stok Pembukaan</Link></Button></section>
-    </main>
-  );
-
-  return (
-    <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-5">
-      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
-      <header className="mt-5 flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-700"><Boxes className="h-6 w-6" /></div><div><div className="font-mono text-[11px] uppercase tracking-[0.2em] text-blue-700">Master Stok</div><h1 className="text-2xl font-bold tracking-tight">Stok Global</h1></div></header>
-
-      <section className="mt-5 rounded-2xl border bg-card p-5 shadow-sm"><div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Total semua lokasi</div><div className="mt-1 text-4xl font-bold tracking-tight">{globalTotal.toLocaleString("id-ID")} <span className="text-lg font-medium text-muted-foreground">pcs</span></div><div className="mt-1 text-sm text-muted-foreground">{productCount} produk tercatat</div></section>
-
-      <section className="mt-3 rounded-2xl border bg-orange-50/70 p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div><div className="text-sm font-bold">Produksi / Stok Masuk</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Tambahkan stok baru hasil produksi ke Gudang, Toko, atau Sales.</p></div><Button type="button" className="shrink-0 rounded-xl" onClick={() => { setShowProduction((v) => !v); setProductionMessage(""); }}>{showProduction ? "Tutup" : <><Plus className="mr-1 h-4 w-4" /> Tambah Stok</>}</Button></div>
-        {showProduction && <div className="mt-4 space-y-3 border-t pt-4">
-          <div><label className="mb-1 block text-xs font-medium">Lokasi tujuan</label><select value={productionLocation} onChange={(e) => setProductionLocation(e.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 text-sm"><option value="">Pilih lokasi…</option>{locations.map((l) => <option key={l.id} value={l.id}>{l.name} — {l.location_type === "warehouse" ? "Gudang" : l.location_type === "outlet" ? "Toko" : "Sales"}</option>)}</select></div>
-          <div><label className="mb-1 block text-xs font-medium">Produk</label><select value={productionProduct} onChange={(e) => setProductionProduct(e.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 text-sm"><option value="">Pilih produk…</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-          <div><label className="mb-1 block text-xs font-medium">Jumlah stok</label><div className="relative"><Input type="number" min="1" step="1" value={productionQuantity} onChange={(e) => setProductionQuantity(e.target.value)} placeholder="Contoh: 100" className="h-11 rounded-xl pr-12" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">pcs</span></div></div>
-          <div><label className="mb-1 block text-xs font-medium">Tanggal</label><Input type="date" value={productionDate} onChange={(e) => setProductionDate(e.target.value)} className="h-11 rounded-xl" /></div>
-          <div><label className="mb-1 block text-xs font-medium">Catatan <span className="font-normal text-muted-foreground">(opsional)</span></label><Input value={productionNote} onChange={(e) => setProductionNote(e.target.value)} placeholder="Contoh: Produksi batch pagi" className="h-11 rounded-xl" /></div>
-          {productionMessage && <div className={`rounded-xl px-3 py-2 text-xs ${productionMessage.includes("berhasil") ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{productionMessage}</div>}
-          <Button type="button" disabled={savingProduction} className="h-11 w-full rounded-xl" onClick={saveProduction}>{savingProduction ? "Menyimpan…" : "Simpan Stok Masuk"}</Button>
-        </div>}
-      </section>
-
-      <section className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-xl border bg-card p-3"><Warehouse className="h-5 w-5 text-orange-700" /><div className="mt-2 text-[11px] text-muted-foreground">Gudang</div><b>{locationTotals.filter((l) => l.location_type === "warehouse").reduce((s, l) => s + l.quantity, 0).toLocaleString("id-ID")}</b></div><div className="rounded-xl border bg-card p-3"><Store className="h-5 w-5 text-emerald-700" /><div className="mt-2 text-[11px] text-muted-foreground">Toko</div><b>{locationTotals.filter((l) => l.location_type === "outlet").reduce((s, l) => s + l.quantity, 0).toLocaleString("id-ID")}</b></div><div className="rounded-xl border bg-card p-3"><Users className="h-5 w-5 text-blue-700" /><div className="mt-2 text-[11px] text-muted-foreground">Sales</div><b>{locationTotals.filter((l) => l.location_type === "sales").reduce((s, l) => s + l.quantity, 0).toLocaleString("id-ID")}</b></div></section>
-
-      <section className="mt-5"><div className="mb-2 px-1 text-sm font-semibold">Stok per Produk</div><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari produk…" className="h-11 rounded-xl pl-9" /></div><div className="mt-2 flex gap-2 overflow-x-auto pb-1">{([["all", "Semua"], ["warehouse", "Gudang"], ["outlet", "Toko"], ["sales", "Sales"]] as const).map(([value, label]) => <Button key={value} type="button" variant={locationFilter === value ? "default" : "outline"} size="sm" className="shrink-0 rounded-full" onClick={() => setLocationFilter(value)}>{label}</Button>)}</div><div className="mt-3 space-y-2">{visibleProducts.map((p) => <div key={p.product_id} className="rounded-xl border bg-card p-3"><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Package className="h-5 w-5" /></div><div className="min-w-0"><div className="truncate text-sm font-semibold">{p.product_name}</div><div className="text-xs text-muted-foreground">Stok global</div></div></div><div className="text-right"><div className="text-lg font-bold">{Number(p.global_quantity).toLocaleString("id-ID")}</div><div className="text-[10px] text-muted-foreground">pcs</div></div></div></div>)}{visibleProducts.length === 0 && <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Tidak ada produk yang cocok.</div>}</div></section>
-
-      <section className="mt-5 rounded-xl border bg-muted/40 p-3 text-xs leading-5 text-muted-foreground"><div className="flex items-center gap-2 font-semibold text-foreground"><Building2 className="h-4 w-4" /> Monitoring stok</div><p className="mt-1">Master Stok adalah pusat monitoring. Produksi / Stok Masuk menambah stok ke lokasi tujuan dan langsung masuk perhitungan Stok Global.</p></section>
-    </main>
-  );
+  return <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-5">
+    <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
+    <header className="mt-5 flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-700"><Boxes className="h-6 w-6" /></div><div><div className="font-mono text-[11px] uppercase tracking-[0.2em] text-blue-700">Master Stok</div><h1 className="text-2xl font-bold tracking-tight">Stok Produk</h1></div></header>
+    <section className="mt-5 rounded-2xl border bg-card p-5 shadow-sm"><div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Ringkasan usaha</div><div className="mt-2 flex items-end justify-between gap-3"><div><div className="text-3xl font-bold tracking-tight">{productCount.toLocaleString("id-ID")}</div><div className="text-sm text-muted-foreground">produk</div></div><div className="text-right"><div className="text-xl font-bold">{globalTotal.toLocaleString("id-ID")} pcs</div><div className="text-xs text-muted-foreground">total stok semua produk</div></div></div></section>
+    <section className="mt-3 rounded-2xl border bg-orange-50/70 p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div><div className="text-sm font-bold">Produksi / Stok Masuk</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Tambahkan stok baru hasil produksi ke Gudang, Toko, atau Sales.</p></div><Button type="button" className="shrink-0 rounded-xl" onClick={() => { setShowProduction((v) => !v); setProductionMessage(""); }}>{showProduction ? "Tutup" : <><Plus className="mr-1 h-4 w-4" /> Tambah Stok</>}</Button></div>
+      {showProduction && <div className="mt-4 space-y-3 border-t pt-4"><div><label className="mb-1 block text-xs font-medium">Lokasi tujuan</label><select value={productionLocation} onChange={(e) => setProductionLocation(e.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 text-sm"><option value="">Pilih lokasi…</option>{locations.map((l) => <option key={l.id} value={l.id}>{l.name} — {locationLabel(l.location_type)}</option>)}</select></div><div><label className="mb-1 block text-xs font-medium">Produk</label><select value={productionProduct} onChange={(e) => setProductionProduct(e.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 text-sm"><option value="">Pilih produk…</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div><div><label className="mb-1 block text-xs font-medium">Jumlah stok</label><div className="relative"><Input type="number" min="1" step="1" value={productionQuantity} onChange={(e) => setProductionQuantity(e.target.value)} placeholder="Contoh: 100" className="h-11 rounded-xl pr-12" /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">pcs</span></div></div><div><label className="mb-1 block text-xs font-medium">Tanggal</label><Input type="date" value={productionDate} onChange={(e) => setProductionDate(e.target.value)} className="h-11 rounded-xl" /></div><div><label className="mb-1 block text-xs font-medium">Catatan <span className="font-normal text-muted-foreground">(opsional)</span></label><Input value={productionNote} onChange={(e) => setProductionNote(e.target.value)} placeholder="Contoh: Produksi batch pagi" className="h-11 rounded-xl" /></div>{productionMessage && <div className={`rounded-xl px-3 py-2 text-xs ${productionMessage.includes("berhasil") ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{productionMessage}</div>}<Button type="button" disabled={savingProduction} className="h-11 w-full rounded-xl" onClick={saveProduction}>{savingProduction ? "Menyimpan…" : "Simpan Stok Masuk"}</Button></div>}
+    </section>
+    <section className="mt-5"><div className="mb-2 px-1 text-sm font-semibold">Daftar Stok Produk</div><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari produk…" className="h-11 rounded-xl pl-9" /></div><div className="mt-2 flex gap-2 overflow-x-auto pb-1">{([["all", "Semua"], ["warehouse", "Gudang"], ["outlet", "Toko"], ["sales", "Sales"]] as const).map(([value, label]) => <Button key={value} type="button" variant={locationFilter === value ? "default" : "outline"} size="sm" className="shrink-0 rounded-full" onClick={() => setLocationFilter(value)}>{label}</Button>)}</div><div className="mt-3 space-y-2">{visibleProducts.map((p) => { const total = stockByProduct.get(p.id) ?? 0; const byLocation = productLocationStock.get(p.id); const details = locations.map((l) => ({ ...l, quantity: Math.max(0, byLocation?.get(l.id) ?? 0) })).filter((l) => l.quantity > 0); return <div key={p.id} className="rounded-xl border bg-card p-3"><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Package className="h-5 w-5" /></div><div className="min-w-0"><div className="truncate text-sm font-semibold">{p.name}</div><div className="text-xs text-muted-foreground">Total stok</div></div></div><div className="text-right"><div className="text-lg font-bold">{total.toLocaleString("id-ID")}</div><div className="text-[10px] text-muted-foreground">pcs</div></div></div><div className="mt-3 flex flex-wrap gap-1.5">{details.length > 0 ? details.map((l) => <span key={l.id} className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">{locationLabel(l.location_type)}: <b className="text-foreground">{l.quantity.toLocaleString("id-ID")}</b></span>) : <span className="text-[11px] text-muted-foreground">Belum ada stok</span>}</div></div>; })}{visibleProducts.length === 0 && <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Tidak ada produk yang cocok.</div>}</div></section>
+    <section className="mt-5 rounded-xl border bg-muted/40 p-3 text-xs leading-5 text-muted-foreground"><div className="flex items-center gap-2 font-semibold text-foreground"><Building2 className="h-4 w-4" /> Monitoring stok</div><p className="mt-1">Setiap jumlah stok selalu ditampilkan bersama nama produknya. Rincian Gudang, Toko, dan Sales ada di dalam kartu produk.</p></section>
+  </main>;
 }
