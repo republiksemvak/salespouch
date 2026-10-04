@@ -15,6 +15,13 @@
       "when": 1791074429165,
       "tag": "0001_add_sales_profile_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791074506453,
+      "tag": "0002_apply_business_profile_fields",
+      "breakpoints": true
     }
   ]
 }
