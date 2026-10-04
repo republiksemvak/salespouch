@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FileText, Bell, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { Bell, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/notes")({
   head: () => ({
     meta: [
       { title: "Catatan — Sales Pouch" },
-      { name: "description", content: "Catatan usaha, pengeluaran, pemasukan, dan pengingat." },
+      { name: "description", content: "Catatan pengeluaran sales, pemasukan lain, dan pengingat." },
     ],
   }),
   component: Notes,
@@ -18,30 +18,28 @@ function Notes() {
       <header>
         <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Sales Pouch</div>
         <h1 className="mt-1 text-2xl font-bold">Catatan</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Simpan catatan dan kelola transaksi tambahan usaha.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Catat hal penting dalam kegiatan usaha.</p>
       </header>
 
-      <section className="mt-6 grid gap-2">
-        <Button type="button" variant="outline" className="h-12 justify-start" disabled>
-          <FileText className="mr-3 h-5 w-5" />
-          <span>Catatan Biasa</span>
+      <section className="mt-6 grid gap-3">
+        <Button type="button" variant="outline" className="h-auto min-h-16 justify-start px-4 py-3 text-left" disabled>
+          <ArrowDownCircle className="mr-3 h-5 w-5 shrink-0" />
+          <span className="min-w-0"><span className="block font-semibold">Pengeluaran Sales</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Biaya operasional: bensin, parkir, tol, tambal ban, ganti oli.</span></span>
         </Button>
-        <Button type="button" variant="outline" className="h-12 justify-start" disabled>
-          <ArrowDownCircle className="mr-3 h-5 w-5" />
-          <span>Pengeluaran Lain</span>
+
+        <Button type="button" variant="outline" className="h-auto min-h-16 justify-start px-4 py-3 text-left" disabled>
+          <ArrowUpCircle className="mr-3 h-5 w-5 shrink-0" />
+          <span className="min-w-0"><span className="block font-semibold">Pemasukan Lain</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Pemasukan di luar transaksi penjualan: bonus, komisi, atau pemasukan lainnya.</span></span>
         </Button>
-        <Button type="button" variant="outline" className="h-12 justify-start" disabled>
-          <ArrowUpCircle className="mr-3 h-5 w-5" />
-          <span>Pemasukan Lain</span>
-        </Button>
-        <Button type="button" variant="outline" className="h-12 justify-start" disabled>
-          <Bell className="mr-3 h-5 w-5" />
-          <span>Pengingat</span>
+
+        <Button type="button" variant="outline" className="h-auto min-h-16 justify-start px-4 py-3 text-left" disabled>
+          <Bell className="mr-3 h-5 w-5 shrink-0" />
+          <span className="min-w-0"><span className="block font-semibold">Pengingat</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">Hal yang perlu diingat: tagih toko, follow up pelanggan, kirim barang, cek stok.</span></span>
         </Button>
       </section>
 
       <div className="mt-6 rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
-        Fitur Catatan sedang disiapkan. Menu dan transaksi akan ditambahkan pada tahap berikutnya.
+        Pengeluaran Sales nantinya akan mengurangi Uang Jalan. Pemasukan Lain untuk sementara hanya dicatat dan tidak tersinkron ke fitur lain.
       </div>
     </main>
   );
