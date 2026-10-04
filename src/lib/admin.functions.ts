@@ -24,10 +24,11 @@ export const getAdminUsers = createServerFn({ method: "GET" })
     if (memberError) throw new Error(memberError.message);
     if (roleError) throw new Error(roleError.message);
 
+    // Sales adalah bawahan Owner. Tampilkan profil bisnis yang bukan Sales
+    // (tidak punya team_members.user_id) dan bukan Super Admin.
+    const salesIds = new Set((members ?? []).map((m: { user_id: string }) => m.user_id));
     const adminIds = new Set((adminRoles ?? []).map((r: { user_id: string }) => r.user_id));
-    // Super Admin hanya menampilkan akun Owner. Sales adalah bawahan Owner dan tidak menjadi baris bisnis tersendiri.
-    // Filter berdasarkan role agar Sales lama/orphan yang belum tercatat di team_members tetap tidak muncul.
-    const owners = (profiles ?? []).filter((p: { id: string; role?: string }) => p.role === "owner" && !adminIds.has(p.id));
+    const owners = (profiles ?? []).filter((p: { id: string }) => !salesIds.has(p.id) && !adminIds.has(p.id));
     const salesCountByOwner: Record<string, number> = {};
     for (const member of members ?? []) {
       salesCountByOwner[member.owner_id] = (salesCountByOwner[member.owner_id] ?? 0) + 1;
