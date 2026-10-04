@@ -5,6 +5,7 @@ export const ADMIN_WHATSAPP = "https://wa.me/6285783797770";
 export const SUPER_ADMIN_EMAILS = [
   "candraprinting@gmail.com",
   "ganlapor@gmail.com",
+  "republiksemvak@gmail.com",
 ] as const;
 
 export function isSuperAdminEmail(email?: string | null): boolean {
