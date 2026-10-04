@@ -47,17 +47,35 @@ export const listTeam = createServerFn({ method: "GET" })
     const { data: authUser } = await context.supabase.auth.getUser();
     const isSuperAdmin = !!authUser.user && isSuperAdminEmail(authUser.user.email);
     const ownerId = isSuperAdmin ? data.ownerId : context.userId;
-    if (!ownerId) throw new Error("Pilih bisnis Owner terlebih dahulu.");
-    if (isSuperAdmin) {
+
+    if (isSuperAdmin && ownerId) {
       const { data: owner, error: ownerError } = await supabaseAdmin.from("profiles").select("id,role").eq("id", ownerId).maybeSingle();
       if (ownerError) throw ownerError;
       if (!owner || owner.role !== "owner") throw new Error("Owner bisnis tidak ditemukan.");
     }
-    const { data: members, error } = await supabaseAdmin.from("team_members")
-      .select("user_id,created_at,profiles!team_members_user_id_fkey(user_email,username,display_name)")
-      .eq("owner_id", ownerId).order("created_at", { ascending: false });
+
+    let query = supabaseAdmin.from("team_members")
+      .select("user_id,owner_id,created_at,profiles!team_members_user_id_fkey(user_email,username,display_name)")
+      .order("created_at", { ascending: false });
+    if (ownerId) query = query.eq("owner_id", ownerId);
+
+    const { data: members, error } = await query;
     if (error) throw error;
-    return members;
+    if (!members?.length || !isSuperAdmin) return members ?? [];
+
+    const ownerIds = [...new Set(members.map((member) => member.owner_id).filter(Boolean))];
+    if (!ownerIds.length) return members;
+    const { data: ownerProfiles, error: ownerProfilesError } = await supabaseAdmin
+      .from("profiles")
+      .select("id,business_name,display_name,user_email")
+      .in("id", ownerIds);
+    if (ownerProfilesError) throw ownerProfilesError;
+
+    const ownerMap = new Map((ownerProfiles ?? []).map((owner) => [owner.id, owner]));
+    return members.map((member) => ({
+      ...member,
+      owner: ownerMap.get(member.owner_id) ?? null,
+    }));
   });
 
 export const createSales = createServerFn({ method: "POST" })
