@@ -23,18 +23,15 @@ DO UPDATE SET
 -- are physical stock movements too. Older transactions remain part of the
 -- pre-foundation legacy balance and are intentionally not double-counted.
 DO $$
-DECLARE
-  tx public.transactions%ROWTYPE;
 BEGIN
-  FOR tx IN
-    SELECT t.*
-    FROM public.transactions t
-    JOIN public.stock_setups ss
-      ON ss.owner_id = t.user_id
-     AND t.created_at >= ss.started_at
-  LOOP
-    PERFORM public.sync_transaction_stock_movements();
-  END LOOP;
+  UPDATE public.transactions t
+  SET line_items = t.line_items
+  WHERE EXISTS (
+    SELECT 1
+    FROM public.stock_setups ss
+    WHERE ss.owner_id = t.user_id
+      AND t.created_at >= ss.started_at
+  );
 END;
 $$;
 
