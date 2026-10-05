@@ -231,4 +231,4 @@ WITH CHECK (
 -- Keep the global stock view subject to the base-table RLS policies.
 ALTER VIEW public.master_stock_global SET (security_invoker = true);
 
-NOTIFY pgrST, 'reload schema';
+NOTIFY pgrst, 'reload schema';
