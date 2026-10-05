@@ -21,17 +21,21 @@ export type NewItem = {
 export const rp = (n: number) =>
   "Rp " + Math.round(n || 0).toLocaleString("id-ID");
 
+type VisitRow = {
+  line_items: LineItem[] | null;
+  new_consignment_items: NewItem[] | null;
+  remaining_debt: number;
+  stock_scheme: "accumulation" | "clean_pull";
+};
+
 /**
- * Mengambil stok yang masih berada di outlet dari kunjungan terakhir.
+ * Mengambil stok fisik yang menjadi dasar kunjungan berikutnya.
  *
- * Jika outlet belum pernah punya kunjungan konsinyasi, gunakan stok
- * pembukaan yang dimasukkan Owner sebagai snapshot stok fisik awal.
- *
- * Untuk AKUMULASI, stok yang dibawa ke kunjungan berikutnya adalah
- * sisa rak + konsinyasi baru.
- * Untuk TARIK BERSIH, stok yang dibawa ke kunjungan berikutnya adalah
- * konsinyasi baru dari kunjungan terakhir, karena stok lama harus ditarik
- * habis pada kunjungan berikutnya.
+ * Blueprint Sales Pouch memperlakukan kunjungan tanpa titipan baru sebagai
+ * kunjungan administratif/debt-only bila tidak ada perubahan fisik baru.
+ * Karena itu, bila kunjungan konsinyasi terakhir tidak mempunyai titipan
+ * aktif, kita telusuri mundur sampai menemukan kunjungan terakhir yang masih
+ * mempunyai titipan aktif.
  */
 export async function loadLastVisit(outletId: string) {
   const { data, error } = await supabase
@@ -43,13 +47,80 @@ export async function loadLastVisit(outletId: string) {
     .eq("transaction_type", "Consignment")
     .order("visit_date", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(50);
 
   if (error) throw error;
 
-  const last = data?.[0];
+  const visits = (data ?? []) as VisitRow[];
 
-  if (!last) {
+  const stockFromVisit = (visit: VisitRow) => {
+    const stock = new Map<
+      string,
+      {
+        name: string;
+        price: number;
+        qty: number;
+        pcs_per_pack: number;
+      }
+    >();
+
+    const add = (
+      name: string,
+      price: number,
+      qty: number,
+      pcs_per_pack = 1
+    ) => {
+      if (!name || qty <= 0) return;
+
+      const key = name.trim().toLowerCase();
+      const current = stock.get(key);
+
+      stock.set(key, {
+        name: name.trim(),
+        price: price || current?.price || 0,
+        qty: (current?.qty ?? 0) + qty,
+        pcs_per_pack,
+      });
+    };
+
+    if (visit.stock_scheme === "accumulation") {
+      for (const item of visit.line_items ?? []) {
+        add(
+          item.name,
+          item.price,
+          Number(item.remaining) || 0,
+          item.pcs_per_pack
+        );
+      }
+    }
+
+    for (const item of visit.new_consignment_items ?? []) {
+      add(
+        item.name,
+        item.price,
+        Number(item.qty) || 0,
+        item.pcs_per_pack
+      );
+    }
+
+    return [...stock.values()];
+  };
+
+  // First try the latest visit. If it is a debt-only visit / has no active
+  // physical consignment, walk backwards to the latest visit that does.
+  let selected: VisitRow | null = null;
+  let selectedStock: ReturnType<typeof stockFromVisit> = [];
+
+  for (const visit of visits) {
+    const stock = stockFromVisit(visit);
+    if (stock.length > 0) {
+      selected = visit;
+      selectedStock = stock;
+      break;
+    }
+  }
+
+  if (!selected) {
     const { data: opening, error: openingError } = await (supabase as any)
       .from("outlet_opening_stock")
       .select("product_id,quantity,products:product_id(name,price,pcs_per_pack)")
@@ -71,73 +142,12 @@ export async function loadLastVisit(outletId: string) {
         pcs_per_pack: Number(row.products?.pcs_per_pack) || 1,
       }));
 
-    return { stock, previousDebt: 0 };
-  }
-
-  const stock = new Map<
-    string,
-    {
-      name: string;
-      price: number;
-      qty: number;
-      pcs_per_pack: number;
-    }
-  >();
-
-  const add = (
-    name: string,
-    price: number,
-    qty: number,
-    pcs_per_pack = 1
-  ) => {
-    if (!name || qty <= 0) return;
-
-    const key = name.trim().toLowerCase();
-    const current = stock.get(key);
-
-    stock.set(key, {
-      name: name.trim(),
-      price: price || current?.price || 0,
-      qty: (current?.qty ?? 0) + qty,
-      pcs_per_pack,
-    });
-  };
-
-  if (last.stock_scheme === "accumulation") {
-    for (const item of (last.line_items as LineItem[]) ?? []) {
-      add(
-        item.name,
-        item.price,
-        Number(item.remaining) || 0,
-        item.pcs_per_pack
-      );
-    }
-
-    for (const item of (last.new_consignment_items as NewItem[]) ?? []) {
-      add(
-        item.name,
-        item.price,
-        Number(item.qty) || 0,
-        item.pcs_per_pack
-      );
-    }
-  } else {
-    // Tarik Bersih: stok lama ditarik habis pada kunjungan berikutnya.
-    // Yang benar-benar menjadi stok awal kunjungan berikutnya adalah
-    // konsinyasi BARU yang ditinggalkan pada kunjungan terakhir.
-    for (const item of (last.new_consignment_items as NewItem[]) ?? []) {
-      add(
-        item.name,
-        item.price,
-        Number(item.qty) || 0,
-        item.pcs_per_pack
-      );
-    }
+    return { stock, previousDebt: visits[0] ? Number(visits[0].remaining_debt) || 0 : 0 };
   }
 
   return {
-    stock: [...stock.values()],
-    previousDebt: Number(last.remaining_debt) || 0,
+    stock: selectedStock,
+    previousDebt: Number(visits[0]?.remaining_debt) || 0,
   };
 }
 
