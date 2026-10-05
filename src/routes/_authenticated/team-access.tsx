@@ -5,8 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Check, ChevronDown, ShieldCheck, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
-import { useIsAdmin } from "@/hooks/use-is-admin";
-import { listTeam, replaceTeamPermissions, setTeamMemberRole } from "@/lib/team.functions";
+import { listTeam, setTeamMemberAccess } from "@/lib/team.functions";
 import { levelDefaults, permissionGroups, type JobLevel } from "@/lib/team-permissions";
 import { Button } from "@/components/ui/button";
 
@@ -24,20 +23,18 @@ type TeamMember = {
 
 function TeamAccessPage() {
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const fetchTeam = useServerFn(listTeam);
-  const saveRole = useServerFn(setTeamMemberRole);
-  const savePermissions = useServerFn(replaceTeamPermissions);
+  const saveAccess = useServerFn(setTeamMemberAccess);
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState("");
   const [level, setLevel] = useState<JobLevel>("sales");
   const [permissions, setPermissions] = useState<string[]>(levelDefaults.sales);
   const [saving, setSaving] = useState(false);
-  const canManage = !!isAdmin || profile?.role === "owner";
+  const isOwner = profile?.role === "owner";
 
   const { data: members = [], isLoading: teamLoading } = useQuery({
     queryKey: ["team-access", profile?.ownerId],
-    enabled: canManage,
+    enabled: isOwner,
     queryFn: () => fetchTeam({ data: {} }),
   });
 
@@ -70,8 +67,7 @@ function TeamAccessPage() {
     }
     setSaving(true);
     try {
-      await saveRole({ data: { userId: selectedId, position: level } });
-      await savePermissions({ data: { userId: selectedId, permissionKeys: permissions } });
+      await saveAccess({ data: { userId: selectedId, position: level, permissionKeys: permissions } });
       await qc.invalidateQueries({ queryKey: ["team-access", profile?.ownerId] });
       await qc.invalidateQueries({ queryKey: ["team", profile?.ownerId] });
       toast.success("Jabatan dan akses berhasil disimpan.");
@@ -82,8 +78,8 @@ function TeamAccessPage() {
     }
   }
 
-  if (profileLoading || adminLoading || teamLoading) return <main className="p-10 text-center">Memuat…</main>;
-  if (!canManage) return <main className="mx-auto max-w-md px-5 py-10 text-sm text-destructive">Hanya Owner yang dapat mengatur jabatan dan akses tim.</main>;
+  if (profileLoading || (isOwner && teamLoading)) return <main className="p-10 text-center">Memuat…</main>;
+  if (!isOwner) return <main className="mx-auto max-w-md px-5 py-10 text-sm text-destructive">Hanya Owner yang dapat mengatur jabatan dan akses tim.</main>;
 
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
     <Link to="/team" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali ke Tim</Link>
