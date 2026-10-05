@@ -34,7 +34,7 @@ function OperationsPage() {
     queryKey: ["operations-team", ownerId],
     enabled: !!ownerId && canManage,
     queryFn: async () => {
-      const { data, error } = await supabase.from("team_members").select("user_id,profiles!team_members_user_id_fkey(display_name,username,user_email)").eq("owner_id", ownerId).order("created_at", { ascending: true });
+      const { data, error } = await supabase.from("team_members").select("user_id,profiles!team_members_user_id_fkey(display_name,username,user_email)").eq("owner_id", ownerId ?? "").order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Member[];
     },

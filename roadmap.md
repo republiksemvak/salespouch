@@ -10,3 +10,6 @@
 - [x] Pisahkan daftar transaksi menjadi rute indeks agar halaman revisi nota dapat dirender.
 - [x] Tambahkan edit profil toko untuk Owner: nama, pemilik, telepon, alamat, lokasi, dan catatan rute.
 - [x] Tambahkan skema stok toko Akumulasi/Tarik Bersih dengan sisa rak dan retur fisik terpisah.
+- [x] Catat mutasi sale dari outlet untuk konsinyasi terjual.
+- [x] Tambahkan akses Stok Sales Harian dan Direct Selling Gudang di Dashboard.
+- [x] Batasi titipan dan jual langsung dari Sales sesuai saldo stok Sales.

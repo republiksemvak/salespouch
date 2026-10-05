@@ -46,7 +46,7 @@ function TravelFundsPage() {
       const { data, error } = await supabase
         .from("team_members")
         .select("user_id,profiles!team_members_user_id_fkey(display_name,username,user_email)")
-        .eq("owner_id", ownerId)
+        .eq("owner_id", ownerId ?? "")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Member[];
@@ -101,7 +101,7 @@ function TravelFundsPage() {
   }, [funds, expenses]);
 
   const selectedMember = members.find((m) => m.user_id === salesId);
-  const ownBalance = profile?.id ? balances.get(profile.id) : undefined;
+  const ownBalance = profile?.userId ? balances.get(profile.userId) : undefined;
   const totalIn = funds.filter((item) => item.transaction_type !== "out").reduce((sum, item) => sum + Number(item.amount), 0);
   const totalOwnerOut = funds.filter((item) => item.transaction_type === "out").reduce((sum, item) => sum + Number(item.amount), 0);
   const totalExpenseOut = expenses.reduce((sum, item) => sum + Number(item.amount), 0);

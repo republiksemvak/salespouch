@@ -13,16 +13,27 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAdminStockResetRouteImport } from './routes/_authenticated/admin-stock-reset'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
+import { Route as AuthenticatedMasterStockRouteImport } from './routes/_authenticated/master-stock'
+import { Route as AuthenticatedNotesRouteImport } from './routes/_authenticated/notes'
+import { Route as AuthenticatedOperasionalSalesRouteImport } from './routes/_authenticated/operasional-sales'
+import { Route as AuthenticatedOperationsRouteImport } from './routes/_authenticated/operations'
+import { Route as AuthenticatedOtherIncomeRouteImport } from './routes/_authenticated/other-income'
 import { Route as AuthenticatedOutletsRouteImport } from './routes/_authenticated/outlets'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedRemindersRouteImport } from './routes/_authenticated/reminders'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
+import { Route as AuthenticatedSalesStockDayRouteImport } from './routes/_authenticated/sales-stock-day'
+import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
 import { Route as AuthenticatedStockOpeningRouteImport } from './routes/_authenticated/stock-opening'
-import { Route as AuthenticatedSupportRouteImport } from './routes/_authenticated/support'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
+import { Route as AuthenticatedTravelFundsRouteImport } from './routes/_authenticated/travel-funds'
 import { Route as AuthenticatedVisitRouteImport } from './routes/_authenticated/visit'
+import { Route as AuthenticatedWarehouseDirectSaleRouteImport } from './routes/_authenticated/warehouse-direct-sale'
 import { Route as AuthenticatedFeaturePreviewFeatureRouteImport } from './routes/_authenticated/feature-preview.$feature'
 import { Route as AuthenticatedOutletsNewRouteImport } from './routes/_authenticated/outlets.new'
 import { Route as AuthenticatedReceiptIdRouteImport } from './routes/_authenticated/receipt.$id'
@@ -49,11 +60,50 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminStockResetRoute =
+  AuthenticatedAdminStockResetRouteImport.update({
+    id: '/admin-stock-reset',
+    path: '/admin-stock-reset',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedExpensesRoute = AuthenticatedExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMasterStockRoute =
+  AuthenticatedMasterStockRouteImport.update({
+    id: '/master-stock',
+    path: '/master-stock',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedNotesRoute = AuthenticatedNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOperasionalSalesRoute =
+  AuthenticatedOperasionalSalesRouteImport.update({
+    id: '/operasional-sales',
+    path: '/operasional-sales',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedOperationsRoute = AuthenticatedOperationsRouteImport.update({
+  id: '/operations',
+  path: '/operations',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOtherIncomeRoute =
+  AuthenticatedOtherIncomeRouteImport.update({
+    id: '/other-income',
+    path: '/other-income',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedOutletsRoute = AuthenticatedOutletsRouteImport.update({
   id: '/outlets',
   path: '/outlets',
@@ -69,9 +119,25 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRemindersRoute = AuthenticatedRemindersRouteImport.update({
+  id: '/reminders',
+  path: '/reminders',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSalesStockDayRoute =
+  AuthenticatedSalesStockDayRouteImport.update({
+    id: '/sales-stock-day',
+    path: '/sales-stock-day',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedStockOpeningRoute =
@@ -80,11 +146,6 @@ const AuthenticatedStockOpeningRoute =
     path: '/stock-opening',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedSupportRoute = AuthenticatedSupportRouteImport.update({
-  id: '/support',
-  path: '/support',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
   id: '/team',
   path: '/team',
@@ -96,11 +157,23 @@ const AuthenticatedTransactionsRoute =
     path: '/transactions',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTravelFundsRoute =
+  AuthenticatedTravelFundsRouteImport.update({
+    id: '/travel-funds',
+    path: '/travel-funds',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedVisitRoute = AuthenticatedVisitRouteImport.update({
   id: '/visit',
   path: '/visit',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWarehouseDirectSaleRoute =
+  AuthenticatedWarehouseDirectSaleRouteImport.update({
+    id: '/warehouse-direct-sale',
+    path: '/warehouse-direct-sale',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFeaturePreviewFeatureRoute =
   AuthenticatedFeaturePreviewFeatureRouteImport.update({
     id: '/feature-preview/$feature',
@@ -140,16 +213,27 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/admin-stock-reset': typeof AuthenticatedAdminStockResetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/expenses': typeof AuthenticatedExpensesRoute
+  '/master-stock': typeof AuthenticatedMasterStockRoute
+  '/notes': typeof AuthenticatedNotesRoute
+  '/operasional-sales': typeof AuthenticatedOperasionalSalesRoute
+  '/operations': typeof AuthenticatedOperationsRoute
+  '/other-income': typeof AuthenticatedOtherIncomeRoute
   '/outlets': typeof AuthenticatedOutletsRouteWithChildren
   '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/reminders': typeof AuthenticatedRemindersRoute
   '/reports': typeof AuthenticatedReportsRoute
+  '/sales-stock-day': typeof AuthenticatedSalesStockDayRoute
+  '/schedule': typeof AuthenticatedScheduleRoute
   '/stock-opening': typeof AuthenticatedStockOpeningRoute
-  '/support': typeof AuthenticatedSupportRoute
   '/team': typeof AuthenticatedTeamRoute
   '/transactions': typeof AuthenticatedTransactionsRouteWithChildren
+  '/travel-funds': typeof AuthenticatedTravelFundsRoute
   '/visit': typeof AuthenticatedVisitRoute
+  '/warehouse-direct-sale': typeof AuthenticatedWarehouseDirectSaleRoute
   '/feature-preview/$feature': typeof AuthenticatedFeaturePreviewFeatureRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
@@ -161,15 +245,26 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/admin-stock-reset': typeof AuthenticatedAdminStockResetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/expenses': typeof AuthenticatedExpensesRoute
+  '/master-stock': typeof AuthenticatedMasterStockRoute
+  '/notes': typeof AuthenticatedNotesRoute
+  '/operasional-sales': typeof AuthenticatedOperasionalSalesRoute
+  '/operations': typeof AuthenticatedOperationsRoute
+  '/other-income': typeof AuthenticatedOtherIncomeRoute
   '/outlets': typeof AuthenticatedOutletsRouteWithChildren
   '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/reminders': typeof AuthenticatedRemindersRoute
   '/reports': typeof AuthenticatedReportsRoute
+  '/sales-stock-day': typeof AuthenticatedSalesStockDayRoute
+  '/schedule': typeof AuthenticatedScheduleRoute
   '/stock-opening': typeof AuthenticatedStockOpeningRoute
-  '/support': typeof AuthenticatedSupportRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/travel-funds': typeof AuthenticatedTravelFundsRoute
   '/visit': typeof AuthenticatedVisitRoute
+  '/warehouse-direct-sale': typeof AuthenticatedWarehouseDirectSaleRoute
   '/feature-preview/$feature': typeof AuthenticatedFeaturePreviewFeatureRoute
   '/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/receipt/$id': typeof AuthenticatedReceiptIdRoute
@@ -183,16 +278,27 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/admin-stock-reset': typeof AuthenticatedAdminStockResetRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
+  '/_authenticated/master-stock': typeof AuthenticatedMasterStockRoute
+  '/_authenticated/notes': typeof AuthenticatedNotesRoute
+  '/_authenticated/operasional-sales': typeof AuthenticatedOperasionalSalesRoute
+  '/_authenticated/operations': typeof AuthenticatedOperationsRoute
+  '/_authenticated/other-income': typeof AuthenticatedOtherIncomeRoute
   '/_authenticated/outlets': typeof AuthenticatedOutletsRouteWithChildren
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/reminders': typeof AuthenticatedRemindersRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
+  '/_authenticated/sales-stock-day': typeof AuthenticatedSalesStockDayRoute
+  '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/stock-opening': typeof AuthenticatedStockOpeningRoute
-  '/_authenticated/support': typeof AuthenticatedSupportRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRouteWithChildren
+  '/_authenticated/travel-funds': typeof AuthenticatedTravelFundsRoute
   '/_authenticated/visit': typeof AuthenticatedVisitRoute
+  '/_authenticated/warehouse-direct-sale': typeof AuthenticatedWarehouseDirectSaleRoute
   '/_authenticated/feature-preview/$feature': typeof AuthenticatedFeaturePreviewFeatureRoute
   '/_authenticated/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/_authenticated/receipt/$id': typeof AuthenticatedReceiptIdRoute
@@ -206,16 +312,27 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/admin'
+    | '/admin-stock-reset'
     | '/dashboard'
+    | '/expenses'
+    | '/master-stock'
+    | '/notes'
+    | '/operasional-sales'
+    | '/operations'
+    | '/other-income'
     | '/outlets'
     | '/products'
     | '/profile'
+    | '/reminders'
     | '/reports'
+    | '/sales-stock-day'
+    | '/schedule'
     | '/stock-opening'
-    | '/support'
     | '/team'
     | '/transactions'
+    | '/travel-funds'
     | '/visit'
+    | '/warehouse-direct-sale'
     | '/feature-preview/$feature'
     | '/outlets/new'
     | '/receipt/$id'
@@ -227,15 +344,26 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/admin'
+    | '/admin-stock-reset'
     | '/dashboard'
+    | '/expenses'
+    | '/master-stock'
+    | '/notes'
+    | '/operasional-sales'
+    | '/operations'
+    | '/other-income'
     | '/outlets'
     | '/products'
     | '/profile'
+    | '/reminders'
     | '/reports'
+    | '/sales-stock-day'
+    | '/schedule'
     | '/stock-opening'
-    | '/support'
     | '/team'
+    | '/travel-funds'
     | '/visit'
+    | '/warehouse-direct-sale'
     | '/feature-preview/$feature'
     | '/outlets/new'
     | '/receipt/$id'
@@ -248,16 +376,27 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/admin'
+    | '/_authenticated/admin-stock-reset'
     | '/_authenticated/dashboard'
+    | '/_authenticated/expenses'
+    | '/_authenticated/master-stock'
+    | '/_authenticated/notes'
+    | '/_authenticated/operasional-sales'
+    | '/_authenticated/operations'
+    | '/_authenticated/other-income'
     | '/_authenticated/outlets'
     | '/_authenticated/products'
     | '/_authenticated/profile'
+    | '/_authenticated/reminders'
     | '/_authenticated/reports'
+    | '/_authenticated/sales-stock-day'
+    | '/_authenticated/schedule'
     | '/_authenticated/stock-opening'
-    | '/_authenticated/support'
     | '/_authenticated/team'
     | '/_authenticated/transactions'
+    | '/_authenticated/travel-funds'
     | '/_authenticated/visit'
+    | '/_authenticated/warehouse-direct-sale'
     | '/_authenticated/feature-preview/$feature'
     | '/_authenticated/outlets/new'
     | '/_authenticated/receipt/$id'
@@ -302,11 +441,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin-stock-reset': {
+      id: '/_authenticated/admin-stock-reset'
+      path: '/admin-stock-reset'
+      fullPath: '/admin-stock-reset'
+      preLoaderRoute: typeof AuthenticatedAdminStockResetRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/expenses': {
+      id: '/_authenticated/expenses'
+      path: '/expenses'
+      fullPath: '/expenses'
+      preLoaderRoute: typeof AuthenticatedExpensesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/master-stock': {
+      id: '/_authenticated/master-stock'
+      path: '/master-stock'
+      fullPath: '/master-stock'
+      preLoaderRoute: typeof AuthenticatedMasterStockRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/notes': {
+      id: '/_authenticated/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof AuthenticatedNotesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/operasional-sales': {
+      id: '/_authenticated/operasional-sales'
+      path: '/operasional-sales'
+      fullPath: '/operasional-sales'
+      preLoaderRoute: typeof AuthenticatedOperasionalSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/operations': {
+      id: '/_authenticated/operations'
+      path: '/operations'
+      fullPath: '/operations'
+      preLoaderRoute: typeof AuthenticatedOperationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/other-income': {
+      id: '/_authenticated/other-income'
+      path: '/other-income'
+      fullPath: '/other-income'
+      preLoaderRoute: typeof AuthenticatedOtherIncomeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/outlets': {
@@ -330,6 +518,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reminders': {
+      id: '/_authenticated/reminders'
+      path: '/reminders'
+      fullPath: '/reminders'
+      preLoaderRoute: typeof AuthenticatedRemindersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/reports': {
       id: '/_authenticated/reports'
       path: '/reports'
@@ -337,18 +532,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sales-stock-day': {
+      id: '/_authenticated/sales-stock-day'
+      path: '/sales-stock-day'
+      fullPath: '/sales-stock-day'
+      preLoaderRoute: typeof AuthenticatedSalesStockDayRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/schedule': {
+      id: '/_authenticated/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof AuthenticatedScheduleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/stock-opening': {
       id: '/_authenticated/stock-opening'
       path: '/stock-opening'
       fullPath: '/stock-opening'
       preLoaderRoute: typeof AuthenticatedStockOpeningRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/support': {
-      id: '/_authenticated/support'
-      path: '/support'
-      fullPath: '/support'
-      preLoaderRoute: typeof AuthenticatedSupportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/team': {
@@ -365,11 +567,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTransactionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/travel-funds': {
+      id: '/_authenticated/travel-funds'
+      path: '/travel-funds'
+      fullPath: '/travel-funds'
+      preLoaderRoute: typeof AuthenticatedTravelFundsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/visit': {
       id: '/_authenticated/visit'
       path: '/visit'
       fullPath: '/visit'
       preLoaderRoute: typeof AuthenticatedVisitRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/warehouse-direct-sale': {
+      id: '/_authenticated/warehouse-direct-sale'
+      path: '/warehouse-direct-sale'
+      fullPath: '/warehouse-direct-sale'
+      preLoaderRoute: typeof AuthenticatedWarehouseDirectSaleRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/feature-preview/$feature': {
@@ -448,32 +664,54 @@ const AuthenticatedTransactionsRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminStockResetRoute: typeof AuthenticatedAdminStockResetRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
+  AuthenticatedMasterStockRoute: typeof AuthenticatedMasterStockRoute
+  AuthenticatedNotesRoute: typeof AuthenticatedNotesRoute
+  AuthenticatedOperasionalSalesRoute: typeof AuthenticatedOperasionalSalesRoute
+  AuthenticatedOperationsRoute: typeof AuthenticatedOperationsRoute
+  AuthenticatedOtherIncomeRoute: typeof AuthenticatedOtherIncomeRoute
   AuthenticatedOutletsRoute: typeof AuthenticatedOutletsRouteWithChildren
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedRemindersRoute: typeof AuthenticatedRemindersRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
+  AuthenticatedSalesStockDayRoute: typeof AuthenticatedSalesStockDayRoute
+  AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
   AuthenticatedStockOpeningRoute: typeof AuthenticatedStockOpeningRoute
-  AuthenticatedSupportRoute: typeof AuthenticatedSupportRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
   AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRouteWithChildren
+  AuthenticatedTravelFundsRoute: typeof AuthenticatedTravelFundsRoute
   AuthenticatedVisitRoute: typeof AuthenticatedVisitRoute
+  AuthenticatedWarehouseDirectSaleRoute: typeof AuthenticatedWarehouseDirectSaleRoute
   AuthenticatedFeaturePreviewFeatureRoute: typeof AuthenticatedFeaturePreviewFeatureRoute
   AuthenticatedReceiptIdRoute: typeof AuthenticatedReceiptIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminStockResetRoute: AuthenticatedAdminStockResetRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
+  AuthenticatedMasterStockRoute: AuthenticatedMasterStockRoute,
+  AuthenticatedNotesRoute: AuthenticatedNotesRoute,
+  AuthenticatedOperasionalSalesRoute: AuthenticatedOperasionalSalesRoute,
+  AuthenticatedOperationsRoute: AuthenticatedOperationsRoute,
+  AuthenticatedOtherIncomeRoute: AuthenticatedOtherIncomeRoute,
   AuthenticatedOutletsRoute: AuthenticatedOutletsRouteWithChildren,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedRemindersRoute: AuthenticatedRemindersRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
+  AuthenticatedSalesStockDayRoute: AuthenticatedSalesStockDayRoute,
+  AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
   AuthenticatedStockOpeningRoute: AuthenticatedStockOpeningRoute,
-  AuthenticatedSupportRoute: AuthenticatedSupportRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
   AuthenticatedTransactionsRoute: AuthenticatedTransactionsRouteWithChildren,
+  AuthenticatedTravelFundsRoute: AuthenticatedTravelFundsRoute,
   AuthenticatedVisitRoute: AuthenticatedVisitRoute,
+  AuthenticatedWarehouseDirectSaleRoute: AuthenticatedWarehouseDirectSaleRoute,
   AuthenticatedFeaturePreviewFeatureRoute:
     AuthenticatedFeaturePreviewFeatureRoute,
   AuthenticatedReceiptIdRoute: AuthenticatedReceiptIdRoute,
