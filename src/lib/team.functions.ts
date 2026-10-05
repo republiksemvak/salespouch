@@ -77,9 +77,25 @@ export const setTeamMemberRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ userId: z.string().uuid(), position: z.enum(["admin", "manager", "sales"]) }).parse(input))
   .handler(async ({ context, data }) => {
-    await assertOwner(context);
+    const actor = await assertOwner(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.rpc("set_team_member_role", { _user_id: data.userId, _position: data.position });
+    const { data: target, error: targetError } = await supabaseAdmin
+      .from("team_members")
+      .select("user_id,owner_id,position")
+      .eq("user_id", data.userId)
+      .eq("owner_id", actor.ownerId)
+      .maybeSingle();
+    if (targetError) throw targetError;
+    if (!target) throw new Error("Anggota tim tidak ditemukan di bisnis Owner ini.");
+
+    const { error } = await supabaseAdmin
+      .from("team_members")
+      .update({
+        position: data.position,
+        manager_id: data.position === "sales" ? undefined : null,
+      })
+      .eq("user_id", data.userId)
+      .eq("owner_id", actor.ownerId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -88,10 +104,37 @@ export const replaceTeamPermissions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ userId: z.string().uuid(), permissionKeys: z.array(z.string().trim().min(1)).max(100) }).parse(input))
   .handler(async ({ context, data }) => {
-    await assertOwner(context);
+    const actor = await assertOwner(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.rpc("replace_team_permissions", { _user_id: data.userId, _permission_keys: data.permissionKeys });
-    if (error) throw new Error(error.message);
+
+    const { data: target, error: targetError } = await supabaseAdmin
+      .from("team_members")
+      .select("user_id,owner_id")
+      .eq("user_id", data.userId)
+      .eq("owner_id", actor.ownerId)
+      .maybeSingle();
+    if (targetError) throw targetError;
+    if (!target) throw new Error("Anggota tim tidak ditemukan di bisnis Owner ini.");
+
+    const { error: deleteError } = await supabaseAdmin
+      .from("team_permissions")
+      .delete()
+      .eq("owner_id", actor.ownerId)
+      .eq("user_id", data.userId);
+    if (deleteError) throw deleteError;
+
+    if (data.permissionKeys.length) {
+      const rows = data.permissionKeys.map((permission_key) => ({
+        owner_id: actor.ownerId,
+        user_id: data.userId,
+        permission_key,
+      }));
+      const { error: insertError } = await supabaseAdmin
+        .from("team_permissions")
+        .insert(rows);
+      if (insertError) throw insertError;
+    }
+
     return { ok: true };
   });
 
