@@ -1,0 +1,133 @@
+import { Link } from "@tanstack/react-router";
+import { BarChart3, Building2, ClipboardCheck, FileText, History, Package, Play, Store, Truck, Users, Warehouse, Wallet, CalendarDays, Settings2, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ModeSwitcher } from "@/components/mode-switcher";
+import type { Profile } from "@/lib/access";
+
+type DashboardProps = {
+  profile: Profile | null;
+  businessName?: string | null;
+};
+
+function Header({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <header className="flex items-start justify-between gap-3">
+      <div>
+        <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Sales Pouch</div>
+        <h1 className="mt-1 text-[27px] font-bold tracking-tight">{title}</h1>
+        <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+      </div>
+      <ModeSwitcher />
+    </header>
+  );
+}
+
+function MenuButton({ to, icon: Icon, label, tone = "orange" }: { to: string; icon: typeof Store; label: string; tone?: "orange" | "blue" | "purple" | "green" }) {
+  const toneClass = {
+    orange: "bg-orange-100 text-orange-700",
+    blue: "bg-blue-100 text-blue-700",
+    purple: "bg-purple-100 text-purple-700",
+    green: "bg-emerald-100 text-emerald-700",
+  }[tone];
+  return (
+    <Button asChild variant="outline" className="h-[76px] rounded-xl justify-between px-3">
+      <Link to={to as never}>
+        <span className="flex items-center gap-2.5">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></span>
+          <span className="text-left text-[14px] font-semibold leading-tight">{label}</span>
+        </span>
+        <span className="text-lg text-muted-foreground">›</span>
+      </Link>
+    </Button>
+  );
+}
+
+export function SuperAdminDashboard() {
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-5">
+      <Header title="Super Admin" subtitle="Panel kontrol sistem Sales Pouch" />
+      <section className="mt-5 rounded-2xl border bg-card p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShieldCheck className="h-6 w-6" /></div>
+          <div><h2 className="font-bold">Kontrol Super Admin</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Kelola akun, lisensi, promo, dan alat administrasi sistem.</p></div>
+        </div>
+        <Button asChild className="mt-4 h-12 w-full rounded-xl"><Link to="/admin">Buka Dashboard Super Admin</Link></Button>
+      </section>
+      <section className="mt-5">
+        <div className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Alat Sistem</div>
+        <div className="grid grid-cols-2 gap-2.5">
+          <MenuButton to="/admin" icon={ShieldCheck} label="Kontrol Admin" tone="orange" />
+          <MenuButton to="/admin-stock-reset" icon={Settings2} label="Reset Stok" tone="blue" />
+        </div>
+      </section>
+      <p className="mt-5 rounded-xl border border-dashed p-3 text-center text-xs text-muted-foreground">Gunakan tombol Mode di atas untuk menguji tampilan Owner, Manager, dan Sales.</p>
+    </main>
+  );
+}
+
+export function OwnerDashboard({ profile, businessName }: DashboardProps) {
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-5">
+      <Header title={businessName || profile?.business_name || "Owner"} subtitle="Panel utama pemilik usaha" />
+      <section className="mt-4 rounded-2xl border bg-card p-3 shadow-sm">
+        <div className="grid grid-cols-2 divide-x">
+          <div className="px-2"><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Outlet</div><div className="mt-1 text-2xl font-bold">—</div><div className="text-[11px] text-muted-foreground">Kelola outlet</div></div>
+          <div className="px-3"><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Kunjungan</div><div className="mt-1 text-2xl font-bold">—</div><div className="text-[11px] text-muted-foreground">Pantau aktivitas</div></div>
+        </div>
+      </section>
+      <section className="mt-4">
+        <Button asChild className="h-12 w-full rounded-xl text-base font-semibold"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-2 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button>
+      </section>
+      <section className="mt-5">
+        <div className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Kendali Owner</div>
+        <div className="grid grid-cols-2 gap-2.5">
+          <MenuButton to="/products" icon={Package} label="Master Produk" tone="orange" />
+          <MenuButton to="/master-stock" icon={Package} label="Master Stok" tone="blue" />
+          <MenuButton to="/outlets" icon={Store} label="Outlet" tone="orange" />
+          <MenuButton to="/team" icon={Users} label="Tim" tone="green" />
+          <MenuButton to="/reports" icon={BarChart3} label="Laporan" tone="purple" />
+          <MenuButton to="/profile" icon={Building2} label="Profil Usaha" tone="green" />
+          <MenuButton to="/sales-stock-day" icon={Truck} label="Stok Sales Harian" tone="blue" />
+          <MenuButton to="/warehouse-direct-sale" icon={Warehouse} label="Direct Selling Gudang" tone="orange" />
+          <MenuButton to="/transactions" icon={History} label="Riwayat Transaksi" tone="purple" />
+          <MenuButton to="/notes" icon={FileText} label="Catatan & Pengeluaran" tone="orange" />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+export function ManagerDashboard({ businessName }: DashboardProps) {
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-5">
+      <Header title="Manager" subtitle={businessName || "Operasional tim"} />
+      <section className="mt-4 rounded-2xl border bg-card p-4 shadow-sm"><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Users className="h-6 w-6" /></div><div><h2 className="font-bold">Panel Manager</h2><p className="text-xs text-muted-foreground">Fokus pada tim, outlet, jadwal, dan operasional.</p></div></div></section>
+      <section className="mt-5"><div className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Operasional Manager</div><div className="grid grid-cols-2 gap-2.5">
+        <MenuButton to="/team" icon={Users} label="Manajemen Tim" tone="blue" />
+        <MenuButton to="/outlets" icon={Store} label="Outlet" tone="orange" />
+        <MenuButton to="/schedule" icon={CalendarDays} label="Jadwal Toko" tone="purple" />
+        <MenuButton to="/reports" icon={BarChart3} label="Laporan" tone="green" />
+        <MenuButton to="/operations" icon={Settings2} label="Operasional" tone="blue" />
+        <MenuButton to="/sales-stock-day" icon={Truck} label="Stok Sales" tone="orange" />
+        <MenuButton to="/transactions" icon={History} label="Riwayat Transaksi" tone="purple" />
+        <MenuButton to="/travel-funds" icon={Wallet} label="Uang Jalan" tone="green" />
+      </div></section>
+    </main>
+  );
+}
+
+export function SalesDashboard({ businessName }: DashboardProps) {
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-5">
+      <Header title="Sales" subtitle={businessName || "Panel kerja Sales"} />
+      <section className="mt-4 rounded-2xl border bg-card p-4 shadow-sm"><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-100 text-orange-700"><Truck className="h-6 w-6" /></div><div><h2 className="font-bold">Panel Sales</h2><p className="text-xs text-muted-foreground">Fokus pada stok harian, kunjungan, penjualan, dan uang jalan.</p></div></div></section>
+      <section className="mt-5"><Button asChild className="h-12 w-full rounded-xl text-base font-semibold"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-2 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button></section>
+      <section className="mt-5"><div className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Pekerjaan Sales</div><div className="grid grid-cols-2 gap-2.5">
+        <MenuButton to="/sales-stock-day" icon={Truck} label="Stok Sales Harian" tone="blue" />
+        <MenuButton to="/transactions" icon={History} label="Riwayat Transaksi" tone="purple" />
+        <MenuButton to="/travel-funds" icon={Wallet} label="Uang Jalan" tone="green" />
+        <MenuButton to="/notes" icon={FileText} label="Catatan" tone="orange" />
+      </div></section>
+    </main>
+  );
+}
