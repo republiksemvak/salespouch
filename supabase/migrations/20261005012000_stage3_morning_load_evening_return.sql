@@ -156,6 +156,13 @@ BEGIN
     ) THEN
       RAISE EXCEPTION 'Hari stok Sales sudah ditutup.';
     END IF;
+
+    IF EXISTS (
+      SELECT 1 FROM public.sales_stock_day_loads
+      WHERE day_id = _day_id
+    ) THEN
+      RAISE EXCEPTION 'Muatan pagi untuk Sales dan tanggal ini sudah dicatat.';
+    END IF;
   END IF;
 
   IF jsonb_typeof(_items) <> 'array' OR jsonb_array_length(_items) = 0 THEN
@@ -219,9 +226,7 @@ BEGIN
       day_id, owner_id, product_id, quantity, movement_id
     ) VALUES (
       _day_id, _owner_id, _product_id, _quantity, _movement_id
-    )
-    ON CONFLICT (day_id, product_id)
-    DO UPDATE SET quantity = EXCLUDED.quantity, movement_id = EXCLUDED.movement_id;
+    );
   END LOOP;
 
   RETURN _day_id;
