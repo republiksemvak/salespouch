@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { listTeam, replaceTeamPermissions, setTeamMemberRole } from "@/lib/team.functions";
+import { levelDefaults, permissionGroups, type JobLevel } from "@/lib/team-permissions";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/team-access")({
@@ -14,46 +15,11 @@ export const Route = createFileRoute("/_authenticated/team-access")({
   component: TeamAccessPage,
 });
 
-type JobLevel = "admin" | "manager" | "sales";
-type PermissionGroup = { title: string; items: { key: string; label: string; description: string }[] };
-
 type TeamMember = {
   user_id: string;
   position: JobLevel;
   permissions?: string[];
   profiles: { display_name?: string; username?: string } | null;
-};
-
-const groups: PermissionGroup[] = [
-  { title: "Operasional", items: [
-    { key: "team", label: "Tim", description: "Melihat dan mengelola tim sesuai kewenangan." },
-    { key: "outlets", label: "Outlet", description: "Melihat dan mengelola data outlet." },
-    { key: "schedule", label: "Jadwal Toko", description: "Mengatur jadwal kunjungan outlet." },
-    { key: "sales_stock", label: "Stok Sales", description: "Melihat dan mengelola stok Sales." },
-    { key: "transactions", label: "Transaksi", description: "Melihat transaksi Sales." },
-    { key: "operations", label: "Operasional", description: "Melihat uang jalan, pengeluaran, saldo, dan rekap operasional." },
-    { key: "direct_selling", label: "Direct Selling", description: "Mengelola penjualan langsung dari gudang." },
-  ] },
-  { title: "Analitik", items: [
-    { key: "reports", label: "Laporan", description: "Melihat laporan bisnis dan penjualan." },
-    { key: "kpi", label: "KPI", description: "Akses KPI dan penilaian kinerja." },
-  ] },
-  { title: "Keuangan & SDM", items: [
-    { key: "travel_funds", label: "Uang Jalan", description: "Melihat dan mengelola uang jalan Sales." },
-    { key: "notes", label: "Catatan", description: "Melihat dan mengelola catatan operasional." },
-    { key: "payroll", label: "Payroll", description: "Akses penggajian dan data payroll." },
-  ] },
-  { title: "Master", items: [
-    { key: "products", label: "Master Produk", description: "Mengelola produk bisnis." },
-    { key: "master_stock", label: "Master Stok", description: "Mengelola stok gudang." },
-    { key: "profile", label: "Profil Usaha", description: "Mengelola profil dan pengaturan usaha." },
-  ] },
-];
-
-const levelDefaults: Record<JobLevel, string[]> = {
-  admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
-  manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
-  sales: ["outlets", "sales_stock", "transactions", "travel_funds", "notes"],
 };
 
 function TeamAccessPage() {
@@ -90,8 +56,6 @@ function TeamAccessPage() {
 
   function changeLevel(next: JobLevel) {
     setLevel(next);
-    // A role change starts from that role's recommended baseline, then the
-    // Owner can customize individual menus before saving.
     setPermissions(levelDefaults[next]);
   }
 
@@ -104,7 +68,6 @@ function TeamAccessPage() {
       toast.error("Pilih anggota tim terlebih dahulu.");
       return;
     }
-
     setSaving(true);
     try {
       await saveRole({ data: { userId: selectedId, position: level } });
@@ -124,11 +87,10 @@ function TeamAccessPage() {
 
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
     <Link to="/team" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali ke Tim</Link>
-
     <header className="mt-4 rounded-2xl border bg-card p-4 shadow-sm">
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><ShieldCheck className="h-6 w-6" /></div>
-        <div><h1 className="text-xl font-bold">Jabatan & Akses</h1><p className="mt-1 text-xs leading-5 text-muted-foreground">Owner menentukan level jabatan dan menu yang boleh diakses setiap anggota.</p></div>
+        <div><h1 className="text-xl font-bold">Jabatan & Akses</h1><p className="mt-1 text-xs leading-5 text-muted-foreground">Owner menentukan jabatan dan hak akses. Jabatan memberi baseline, Owner dapat menambah atau mengurangi akses per orang.</p></div>
       </div>
     </header>
 
@@ -151,19 +113,19 @@ function TeamAccessPage() {
     {selectedMember && <>
       <section className="mt-4 rounded-2xl border bg-card p-4">
         <h2 className="text-sm font-semibold">Level Jabatan</h2>
-        <p className="mt-1 text-xs text-muted-foreground">Bisa dinaikkan atau diturunkan kapan saja oleh Owner tanpa membuat akun baru.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Jabatan dan permission adalah dua hal berbeda. Owner tetap menjadi satu-satunya pihak yang dapat mengubah jabatan.</p>
         <div className="mt-3 grid grid-cols-3 gap-2">
-          {(["sales", "manager", "admin"] as JobLevel[]).map((item) => <button key={item} type="button" onClick={() => changeLevel(item)} className={`rounded-xl border px-2 py-3 text-sm font-semibold transition ${level === item ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}><span className="block">{item === "sales" ? "Sales" : item === "manager" ? "Manajer" : "Admin"}</span><span className={`mt-1 block text-[10px] font-normal ${level === item ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{item === "sales" ? "Lapangan" : item === "manager" ? "Pimpin tim" : "Administrasi"}</span></button>)}
+          {(["sales", "manager", "admin"] as JobLevel[]).map((item) => <button key={item} type="button" onClick={() => changeLevel(item)} className={`rounded-xl border px-2 py-3 text-sm font-semibold transition ${level === item ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}><span className="block">{item === "sales" ? "Sales" : item === "manager" ? "Manajer" : "Admin"}</span><span className={`mt-1 block text-[10px] font-normal ${level === item ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{item === "sales" ? "Lapangan" : item === "manager" ? "SDM & Operasional" : "Data & Administrasi"}</span></button>)}
         </div>
       </section>
 
       <section className="mt-5 space-y-5">
-        <div className="rounded-xl border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">Level <strong className="text-foreground">{level === "manager" ? "Manajer" : level === "admin" ? "Admin" : "Sales"}</strong> hanya menjadi jabatan. Owner tetap menentukan hak akses menu di bawah.</div>
-        {groups.map((group) => <div key={group.title}><h2 className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h2><div className="overflow-hidden rounded-2xl border bg-card">{group.items.map((item, index) => { const checked = permissions.includes(item.key); return <button type="button" key={item.key} onClick={() => toggle(item.key)} className={`flex w-full items-center gap-3 p-3 text-left ${index ? "border-t" : ""}`}><span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}>{checked && <Check className="h-4 w-4" />}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">{item.description}</span></span></button>; })}</div></div>)}
+        <div className="rounded-xl border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">Baseline <strong className="text-foreground">{level === "manager" ? "Manajer = SDM & Operasional" : level === "admin" ? "Admin = Data, Laporan & Keuangan" : "Sales = Eksekusi Lapangan"}</strong>. Owner dapat menyesuaikan akses di bawah.</div>
+        {permissionGroups.map((group) => <div key={group.title}><h2 className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h2><div className="overflow-hidden rounded-2xl border bg-card">{group.items.map((item, index) => { const checked = permissions.includes(item.key); return <button type="button" key={item.key} onClick={() => toggle(item.key)} className={`flex w-full items-center gap-3 p-3 text-left ${index ? "border-t" : ""}`}><span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}>{checked && <Check className="h-4 w-4" />}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">{item.description}</span></span></button>; })}</div></div>)}
       </section>
 
       <Button disabled={saving} onClick={save} className="mt-6 h-12 w-full rounded-xl">{saving ? "Menyimpan…" : "Simpan Jabatan & Akses"}</Button>
-      <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">Perubahan disimpan ke database dan berlaku pada akses tim setelah login/refresh berikutnya.</p>
+      <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">Perubahan permission berlaku pada pemeriksaan akses berikutnya; UI dapat memerlukan login/refresh untuk memuat ulang menu.</p>
     </>}
   </main>;
 }
