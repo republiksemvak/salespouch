@@ -32,7 +32,11 @@ export function useProfile() {
         } as const;
       }
 
-      const { data: membership, error: teamError } = await supabase.from("team_members").select("owner_id,position").eq("user_id", u.user.id).maybeSingle();
+      const { data: membership, error: teamError } = await supabase
+        .from("team_members")
+        .select("owner_id,position")
+        .eq("user_id", u.user.id)
+        .maybeSingle();
       if (teamError) throw teamError;
 
       let profile = data as Profile | null;
@@ -42,11 +46,19 @@ export function useProfile() {
         profile = business as Profile;
       }
 
+      const role = membership
+        ? membership.position === "manager"
+          ? ("manager" as const)
+          : membership.position === "admin"
+            ? ("admin" as const)
+            : ("sales" as const)
+        : ("owner" as const);
+
       return {
         userId: u.user.id,
         profile,
         email,
-        role: membership ? (membership.position === "manager" ? ("manager" as const) : ("sales" as const)) : ("owner" as const),
+        role,
         ownerId: membership?.owner_id ?? u.user.id,
         testMode: null,
       } as const;
