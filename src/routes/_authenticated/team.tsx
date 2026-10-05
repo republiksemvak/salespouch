@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/team")({
-  head: () => ({ meta: [{ title: "Manajemen Tim — Sales Pouch" }, { name: "description", content: "Kelola Manager dan Sales usaha Anda." }] }),
+  head: () => ({ meta: [{ title: "Manajemen Tim — Sales Pouch" }, { name: "description", content: "Kelola Admin, Manager dan Sales usaha Anda." }] }),
   component: TeamPage,
 });
 
@@ -20,8 +20,9 @@ function TeamPage() {
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const owner = profile?.role === "owner";
   const manager = profile?.role === "manager";
+  const admin = profile?.role === "admin";
   const superAdmin = !!isAdmin;
-  const canManage = owner || manager || superAdmin;
+  const canManage = owner || manager || admin || superAdmin;
   const fetchTeam = useServerFn(listTeam);
   const create = useServerFn(createSales);
   const remove = useServerFn(removeSales);
@@ -29,7 +30,7 @@ function TeamPage() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [position, setPosition] = useState<"manager" | "sales">("sales");
+  const [position, setPosition] = useState<"admin" | "manager" | "sales">("sales");
   const [managerId, setManagerId] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -43,7 +44,7 @@ function TeamPage() {
   const managers = useMemo(() => (members ?? []).filter((member) => member.position === "manager"), [members]);
 
   if (profileLoading || adminLoading) return <div className="p-10 text-center">Memuat…</div>;
-  if (!canManage) return <div className="p-10 text-center text-destructive">Hanya Owner atau Manager yang dapat mengelola tim.</div>;
+  if (!canManage) return <div className="p-10 text-center text-destructive">Hanya Owner, Admin atau Manager yang dapat mengelola tim.</div>;
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -52,25 +53,28 @@ function TeamPage() {
     try {
       await create({ data: { name, username, password, position: finalPosition, managerId: finalPosition === "sales" ? (manager ? null : (managerId || null)) : null } });
       setName(""); setUsername(""); setPassword(""); setManagerId("");
-      toast.success(`${finalPosition === "manager" ? "Manager" : "Sales"} berhasil dibuat`);
+      toast.success(`${finalPosition === "admin" ? "Admin" : finalPosition === "manager" ? "Manager" : "Sales"} berhasil dibuat`);
       qc.invalidateQueries({ queryKey: ["team", activeOwnerId] });
     } catch (err) { toast.error((err as Error).message); }
     finally { setBusy(false); }
   }
 
+  const roleLabel = position === "admin" ? "Admin" : position === "manager" ? "Manager" : "Sales";
+
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
     <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
-    <div className="mt-4 flex items-start justify-between gap-3"><div><h1 className="text-2xl font-bold">Manajemen Tim</h1><p className="mt-1 text-sm text-muted-foreground">Owner → Manager → Sales</p></div>{owner && <Button asChild variant="outline" className="shrink-0"><Link to="/team-access"><ShieldCheck className="mr-2 h-4 w-4" />Atur Akses</Link></Button>}</div>
+    <div className="mt-4 flex items-start justify-between gap-3"><div><h1 className="text-2xl font-bold">Manajemen Tim</h1><p className="mt-1 text-sm text-muted-foreground">Owner → Admin / Manager → Sales</p></div>{owner && <Button asChild variant="outline" className="shrink-0"><Link to="/team-access"><ShieldCheck className="mr-2 h-4 w-4" />Atur Akses</Link></Button>}</div>
 
     <form onSubmit={add} className="mt-6 space-y-3">
       <label className="text-sm font-medium">Jabatan</label>
-      <select value={manager ? "sales" : position} onChange={(e) => setPosition(e.target.value as "manager" | "sales")} disabled={manager} className="h-12 w-full rounded-md border bg-background px-3 text-sm">
+      <select value={manager ? "sales" : position} onChange={(e) => setPosition(e.target.value as "admin" | "manager" | "sales")} disabled={manager} className="h-12 w-full rounded-md border bg-background px-3 text-sm">
         <option value="sales">Sales</option>
         {!manager && <option value="manager">Manager</option>}
+        {owner && <option value="admin">Admin</option>}
       </select>
 
-      <label className="text-sm font-medium">Nama {manager ? "Sales" : position === "manager" ? "Manager" : "Sales"}</label>
-      <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder={position === "manager" && !manager ? "Andi" : "Budi"} className="h-12" />
+      <label className="text-sm font-medium">Nama {manager ? "Sales" : roleLabel}</label>
+      <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder={position === "manager" && !manager ? "Andi" : position === "admin" ? "Citra" : "Budi"} className="h-12" />
       <label className="text-sm font-medium">Username</label>
       <Input required minLength={3} maxLength={30} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="budi.sales" className="h-12" />
       <label className="text-sm font-medium">Password</label>
@@ -87,7 +91,7 @@ function TeamPage() {
         </select>
       </>}
 
-      <Button disabled={busy} className="h-12 w-full">{busy ? "Membuat akun…" : `Buat Akun ${manager ? "Sales" : position === "manager" ? "Manager" : "Sales"}`}</Button>
+      <Button disabled={busy} className="h-12 w-full">{busy ? "Membuat akun…" : `Buat Akun ${manager ? "Sales" : roleLabel}`}</Button>
     </form>
 
     <h2 className="mt-8 text-sm font-semibold">Struktur tim ({members?.length ?? 0})</h2>
@@ -98,9 +102,10 @@ function TeamPage() {
         const managerProfile = member.manager as { display_name?: string; username?: string } | null;
         const isOwn = member.user_id === profile?.userId;
         const canRemove = !isOwn && (owner || superAdmin || (manager && member.position === "sales" && member.manager_id === profile?.userId));
+        const positionLabel = member.position === "admin" ? "admin" : member.position;
         return <div key={member.user_id} className={`flex items-center justify-between gap-3 rounded border bg-card p-3 ${member.position === "sales" && member.manager_id ? "ml-5" : ""}`}>
           <div className="min-w-0">
-            <div className="flex items-center gap-2 truncate text-sm font-medium"><span>{p?.display_name ?? p?.username ?? p?.user_email ?? "Karyawan"}</span><span className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium uppercase">{member.position}</span></div>
+            <div className="flex items-center gap-2 truncate text-sm font-medium"><span>{p?.display_name ?? p?.username ?? p?.user_email ?? "Karyawan"}</span><span className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium uppercase">{positionLabel}</span></div>
             <div className="truncate text-xs text-muted-foreground">{p?.username ? `@${p.username}` : ""}{member.position === "sales" && managerProfile ? ` · Manager: ${managerProfile.display_name ?? managerProfile.username ?? "Manager"}` : ""}</div>
           </div>
           {canRemove && <Button variant="ghost" size="icon" aria-label="Keluarkan karyawan" title="Keluarkan dari tim" onClick={async () => { if (!confirm("Keluarkan karyawan dari tim?")) return; try { await remove({ data: { userId: member.user_id } }); qc.invalidateQueries({ queryKey: ["team", activeOwnerId] }); toast.success("Karyawan dikeluarkan"); } catch (err) { toast.error((err as Error).message); } }}><UserMinus className="h-4 w-4" /></Button>}
