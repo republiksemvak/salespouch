@@ -310,7 +310,7 @@ function QtyPair({ label, pack, pcs, size, setPack, setPcs }: { label: string; p
   return <div className="mt-3"><div className="text-xs font-medium">{label}</div><div className="mt-1 grid grid-cols-2 gap-2"><label className="text-[11px] text-muted-foreground">{label} (pack)<Input type="number" min={0} step={1} value={pack} placeholder="0" onChange={(e) => setPack(e.target.value)} className="h-11" /></label><label className="text-[11px] text-muted-foreground">{label} (pcs)<Input type="number" min={0} max={size - 1} step={1} value={pcs} placeholder="0" onChange={(e) => setPcs(e.target.value)} className="h-11" /></label></div></div>;
 }
 
-function ItemEditor({ title, items, setItems, qtyLabel, products, tier, stockLabel, stockBalances }: { title: string; items: NewItem[]; setItems: (i: NewItem[]) => void; qtyLabel: string; products: Product[]; tier: PriceTier; stockLabel: string; stockBalances?: Map<string, number> }) {
+function ItemEditor({ title, items, setItems, qtyLabel, products, tier, stockLabel, stockBalances }: { title: string; items: NewItem[]; setItems: (i: NewItem[]) => void; qtyLabel: string; products: Product[]; tier: PriceTier; stockLabel: string; stockBalances?: Map<string, number> | undefined }) {
   const [q, setQ] = useState(""); const [open, setOpen] = useState(false);
   const set = (i: number, patch: Partial<NewItem>) => setItems(items.map((x, j) => j === i ? { ...x, ...patch } : x));
   const taken = new Set(items.map((i) => i.name.toLowerCase()));
