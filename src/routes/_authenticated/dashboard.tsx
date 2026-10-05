@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut, Package, Search, Building2, ShieldCheck, Users, History, LockKeyhole, UserRoundCog, ChevronDown, UsersRound, MessageCircle, FileText, Wallet, Play, BarChart3, ClipboardCheck } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search, Building2, ShieldCheck, Users, History, LockKeyhole, UserRoundCog, ChevronDown, UsersRound, MessageCircle, FileText, Wallet, Play, BarChart3, ClipboardCheck, Truck, Warehouse } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -101,6 +101,8 @@ function Dashboard() {
             <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3"><Link to="/master-stock"><span className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Package className="h-6 w-6" /></span><span className="text-left text-[14px] font-semibold leading-tight">Master<br />Stok</span></span><span className="text-lg text-blue-700">›</span></Link></Button>
             <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3"><Link to="/profile"><span className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><Building2 className="h-6 w-6" /></span><span className="text-left text-[14px] font-semibold leading-tight">Profil<br />Usaha</span></span><span className="text-lg text-emerald-700">›</span></Link></Button>
             <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3"><Link to="/reports"><span className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700"><BarChart3 className="h-6 w-6" /></span><span className="text-left text-[14px] font-semibold leading-tight">Laporan</span></span><span className="text-lg text-purple-700">›</span></Link></Button>
+            <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3"><Link to="/sales-stock-day"><span className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Truck className="h-6 w-6" /></span><span className="text-left text-[14px] font-semibold leading-tight">Stok Sales<br />Harian</span></span><span className="text-lg text-primary">›</span></Link></Button>
+            <Button asChild variant="outline" className="h-[78px] rounded-lg justify-between px-3"><Link to="/warehouse-direct-sale"><span className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Warehouse className="h-6 w-6" /></span><span className="text-left text-[14px] font-semibold leading-tight">Direct Selling<br />Gudang</span></span><span className="text-lg text-primary">›</span></Link></Button>
           </div>
         </section>
 
