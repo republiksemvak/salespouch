@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/sales-stock-day")({
-  head: () => ({ meta: [{ title: "Stok Sales Harian — Sales Pouch" }] }),
+  head: () => ({ meta: [{ title: "Stok Sales Harian — Sales Pouch" }, { name: "description", content: "Catat muatan pagi dan pengembalian stok Sales." }, { property: "og:title", content: "Stok Sales Harian — Sales Pouch" }, { property: "og:description", content: "Catat muatan pagi dan pengembalian stok Sales." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: SalesStockDayPage,
 });
 

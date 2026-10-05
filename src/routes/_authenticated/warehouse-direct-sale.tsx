@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/_authenticated/warehouse-direct-sale")({
-  head: () => ({ meta: [{ title: "Direct Selling Gudang — Sales Pouch" }] }),
+  head: () => ({ meta: [{ title: "Direct Selling Gudang — Sales Pouch" }, { name: "description", content: "Catat penjualan langsung dari stok gudang." }, { property: "og:title", content: "Direct Selling Gudang — Sales Pouch" }, { property: "og:description", content: "Catat penjualan langsung dari stok gudang." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: WarehouseDirectSalePage,
 });
 
