@@ -142,19 +142,17 @@ export async function loadLastVisit(outletId: string) {
 }
 
 export async function nextReceiptNumber(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
+  const receiptDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-  const prefix = `SP-${y}${m}${d}-`;
+  const { data, error } = await (supabase as any).rpc(
+    "next_receipt_number",
+    { _receipt_date: receiptDate }
+  );
 
-  const { count } = await supabase
-    .from("transactions")
-    .select("id", {
-      count: "exact",
-      head: true,
-    })
-    .like("receipt_number", `${prefix}%`);
+  if (error) throw error;
+  if (typeof data !== "string" || !data) {
+    throw new Error("Nomor nota gagal dibuat.");
+  }
 
-  return prefix + String((count ?? 0) + 1).padStart(3, "0");
+  return data;
 }
