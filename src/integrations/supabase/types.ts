@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      expense_categories: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_categories_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_categories_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       license_packages: {
         Row: {
           active: boolean
@@ -79,6 +121,79 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      personal_other_income: {
+        Row: {
+          account_id: string
+          amount: number
+          category: string
+          created_at: string
+          id: string
+          note: string | null
+          received_at: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          category: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          received_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          category?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          received_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_other_income_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personal_reminders: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          note: string | null
+          reminder_date: string | null
+          title: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reminder_date?: string | null
+          title: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reminder_date?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_reminders_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -200,26 +315,578 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          id: string
+          note: string | null
+          owner_id: string
+          sales_id: string
+          spent_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          owner_id: string
+          sales_id: string
+          spent_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          owner_id?: string
+          sales_id?: string
+          spent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_expenses_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_expenses_sales_id_fkey"
+            columns: ["sales_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_stock_day_loads: {
+        Row: {
+          created_at: string
+          day_id: string
+          id: string
+          movement_id: string | null
+          owner_id: string
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          day_id: string
+          id?: string
+          movement_id?: string | null
+          owner_id: string
+          product_id: string
+          quantity: number
+        }
+        Update: {
+          created_at?: string
+          day_id?: string
+          id?: string
+          movement_id?: string | null
+          owner_id?: string
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_stock_day_loads_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "sales_stock_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_stock_day_loads_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_stock_day_loads_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_stock_day_loads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_stock_day_loads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "sales_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_stock_day_loads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_stock_ledger"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      sales_stock_days: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          id: string
+          opened_at: string
+          owner_id: string
+          sales_location_id: string
+          sales_user_id: string
+          status: string
+          stock_date: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          opened_at?: string
+          owner_id: string
+          sales_location_id: string
+          sales_user_id: string
+          status?: string
+          stock_date: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          opened_at?: string
+          owner_id?: string
+          sales_location_id?: string
+          sales_user_id?: string
+          status?: string
+          stock_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_stock_days_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_stock_days_sales_location_id_fkey"
+            columns: ["sales_location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_stock_days_sales_user_id_fkey"
+            columns: ["sales_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_travel_funds: {
+        Row: {
+          amount: number
+          created_at: string
+          given_at: string
+          id: string
+          note: string | null
+          owner_id: string
+          sales_id: string
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          given_at?: string
+          id?: string
+          note?: string | null
+          owner_id: string
+          sales_id: string
+          transaction_type?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          given_at?: string
+          id?: string
+          note?: string | null
+          owner_id?: string
+          sales_id?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_travel_funds_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_travel_funds_sales_id_fkey"
+            columns: ["sales_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_locations: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          location_type: string
+          name: string
+          outlet_id: string | null
+          owner_id: string
+          team_member_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_type: string
+          name: string
+          outlet_id?: string | null
+          owner_id: string
+          team_member_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_type?: string
+          name?: string
+          outlet_id?: string | null
+          owner_id?: string
+          team_member_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_locations_outlet_id_fkey"
+            columns: ["outlet_id"]
+            isOneToOne: false
+            referencedRelation: "outlets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_locations_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_locations_team_member_user_id_fkey"
+            columns: ["team_member_user_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          created_at: string
+          from_location_id: string | null
+          id: string
+          movement_type: string
+          notes: string | null
+          occurred_at: string
+          owner_id: string
+          product_id: string
+          quantity: number
+          reference_id: string | null
+          reference_type: string | null
+          to_location_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          from_location_id?: string | null
+          id?: string
+          movement_type: string
+          notes?: string | null
+          occurred_at?: string
+          owner_id: string
+          product_id: string
+          quantity: number
+          reference_id?: string | null
+          reference_type?: string | null
+          to_location_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          from_location_id?: string | null
+          id?: string
+          movement_type?: string
+          notes?: string | null
+          occurred_at?: string
+          owner_id?: string
+          product_id?: string
+          quantity?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          to_location_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "sales_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_stock_ledger"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_opening_items: {
+        Row: {
+          counted_at: string
+          created_at: string
+          id: string
+          location_id: string
+          owner_id: string
+          product_id: string
+          quantity: number
+          setup_id: string
+          updated_at: string
+        }
+        Insert: {
+          counted_at?: string
+          created_at?: string
+          id?: string
+          location_id: string
+          owner_id: string
+          product_id: string
+          quantity?: number
+          setup_id: string
+          updated_at?: string
+        }
+        Update: {
+          counted_at?: string
+          created_at?: string
+          id?: string
+          location_id?: string
+          owner_id?: string
+          product_id?: string
+          quantity?: number
+          setup_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_opening_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_opening_items_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_opening_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_opening_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "sales_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_opening_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_stock_ledger"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "stock_opening_items_setup_id_fkey"
+            columns: ["setup_id"]
+            isOneToOne: false
+            referencedRelation: "stock_setups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_setups: {
+        Row: {
+          created_at: string
+          finalized_at: string | null
+          id: string
+          mode: string
+          owner_id: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          mode: string
+          owner_id: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          mode?: string
+          owner_id?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_setups_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_schedules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          id: string
+          note: string | null
+          outlet_id: string
+          owner_id: string
+          sales_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          id?: string
+          note?: string | null
+          outlet_id: string
+          owner_id: string
+          sales_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          note?: string | null
+          outlet_id?: string
+          owner_id?: string
+          sales_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_schedules_outlet_id_fkey"
+            columns: ["outlet_id"]
+            isOneToOne: false
+            referencedRelation: "outlets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_schedules_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_schedules_sales_id_fkey"
+            columns: ["sales_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           created_at: string
+          manager_id: string | null
           owner_id: string
+          position: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          manager_id?: string | null
           owner_id: string
+          position?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          manager_id?: string | null
           owner_id?: string
+          position?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "team_members_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "team_members_owner_id_fkey"
             columns: ["owner_id"]
@@ -251,7 +918,9 @@ export type Database = {
           remaining_debt: number
           revised_at: string | null
           sales_name: string
+          sales_user_id: string | null
           stock_scheme: string
+          stock_source: string | null
           total_due: number
           total_sales: number
           transaction_type: string
@@ -272,7 +941,9 @@ export type Database = {
           remaining_debt?: number
           revised_at?: string | null
           sales_name: string
+          sales_user_id?: string | null
           stock_scheme?: string
+          stock_source?: string | null
           total_due?: number
           total_sales?: number
           transaction_type?: string
@@ -293,7 +964,9 @@ export type Database = {
           remaining_debt?: number
           revised_at?: string | null
           sales_name?: string
+          sales_user_id?: string | null
           stock_scheme?: string
+          stock_source?: string | null
           total_due?: number
           total_sales?: number
           transaction_type?: string
@@ -306,6 +979,13 @@ export type Database = {
             columns: ["outlet_id"]
             isOneToOne: false
             referencedRelation: "outlets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_sales_user_id_fkey"
+            columns: ["sales_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -328,8 +1008,83 @@ export type Database = {
         }
         Relationships: []
       }
+      warehouse_direct_sales: {
+        Row: {
+          amount_paid: number
+          buyer_name: string
+          buyer_outlet_id: string | null
+          created_at: string
+          custom_note: string | null
+          discount_amount: number
+          id: string
+          line_items: Json
+          owner_id: string
+          receipt_number: string
+          return_items: Json
+          sale_date: string
+          total_sales: number
+          updated_at: string
+        }
+        Insert: {
+          amount_paid?: number
+          buyer_name: string
+          buyer_outlet_id?: string | null
+          created_at?: string
+          custom_note?: string | null
+          discount_amount?: number
+          id?: string
+          line_items?: Json
+          owner_id: string
+          receipt_number: string
+          return_items?: Json
+          sale_date?: string
+          total_sales?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_paid?: number
+          buyer_name?: string
+          buyer_outlet_id?: string | null
+          created_at?: string
+          custom_note?: string | null
+          discount_amount?: number
+          id?: string
+          line_items?: Json
+          owner_id?: string
+          receipt_number?: string
+          return_items?: Json
+          sale_date?: string
+          total_sales?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_direct_sales_buyer_outlet_id_fkey"
+            columns: ["buyer_outlet_id"]
+            isOneToOne: false
+            referencedRelation: "outlets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_direct_sales_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
+      master_stock_global: {
+        Row: {
+          global_quantity: number | null
+          owner_id: string | null
+          product_id: string | null
+          product_name: string | null
+        }
+        Relationships: []
+      }
       sales_catalog: {
         Row: {
           id: string | null
@@ -363,9 +1118,36 @@ export type Database = {
         }
         Relationships: []
       }
+      warehouse_stock_ledger: {
+        Row: {
+          owner_id: string | null
+          product_id: string | null
+          product_name: string | null
+          warehouse_stock: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       business_owner_id: { Args: never; Returns: string }
+      close_sales_stock_day: {
+        Args: {
+          _occurred_at?: string
+          _sales_user_id: string
+          _stock_date?: string
+        }
+        Returns: string
+      }
+      ensure_stock_location: {
+        Args: {
+          _location_type: string
+          _name: string
+          _outlet_id?: string
+          _owner_id: string
+          _team_member_user_id?: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -373,7 +1155,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_business_manager: { Args: never; Returns: boolean }
       is_business_owner: { Args: never; Returns: boolean }
+      rebuild_product_warehouse_stock: {
+        Args: { _owner_id: string; _product_id: string }
+        Returns: undefined
+      }
+      record_sales_morning_load: {
+        Args: {
+          _items: Json
+          _occurred_at?: string
+          _sales_user_id: string
+          _stock_date?: string
+        }
+        Returns: string
+      }
       revise_transaction: {
         Args: {
           _amount_paid: number
@@ -397,7 +1193,9 @@ export type Database = {
           remaining_debt: number
           revised_at: string | null
           sales_name: string
+          sales_user_id: string | null
           stock_scheme: string
+          stock_source: string | null
           total_due: number
           total_sales: number
           transaction_type: string
@@ -410,6 +1208,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      sales_location_balance: {
+        Args: {
+          _owner_id: string
+          _product_id: string
+          _sales_location_id: string
+        }
+        Returns: number
       }
     }
     Enums: {
