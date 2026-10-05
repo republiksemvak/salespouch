@@ -90,6 +90,20 @@ export const listTeam = createServerFn({ method: "GET" })
     return members.map((member) => ({ ...member, profiles: profileMap.get(member.user_id) ?? null, manager: member.manager_id ? profileMap.get(member.manager_id) ?? null : null, permissions: permissionMap.get(member.user_id) ?? levelDefaults[member.position as TeamPosition] ?? [] }));
   });
 
+export const setTeamMemberAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ userId: z.string().uuid(), position: z.enum(["admin", "manager", "sales"]), permissionKeys: z.array(z.string().trim().min(1)).max(100) }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertOwner(context);
+    const { error } = await context.supabase.rpc("set_team_member_access", {
+      _user_id: data.userId,
+      _position: data.position,
+      _permission_keys: data.permissionKeys,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const setTeamMemberRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ userId: z.string().uuid(), position: z.enum(["admin", "manager", "sales"]) }).parse(input))
