@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Phone, Plus, Store, LogOut, Package, Search, Building2, ShieldCheck, Users, History, LockKeyhole, UserRoundCog, ChevronDown, UsersRound, MessageCircle, FileText, Wallet, Play, BarChart3, ClipboardCheck, Truck, Warehouse } from "lucide-react";
+import { MapPin, Phone, Plus, Store, LogOut, Package, Search, Building2, Users, History, LockKeyhole, UserRoundCog, ChevronDown, UsersRound, MessageCircle, FileText, Wallet, Play, BarChart3, ClipboardCheck, Truck, Warehouse } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -9,6 +9,7 @@ import { accessStatus } from "@/lib/access";
 import { LOCKED_FEATURES } from "@/lib/feature-locks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ModeSwitcher } from "@/components/mode-switcher";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Outlet Saya — Sales Pouch" }, { name: "description", content: "Daftar outlet Anda." }, { property: "og:title", content: "Outlet Saya — Sales Pouch" }, { property: "og:description", content: "Daftar outlet Anda." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -70,7 +71,7 @@ function Dashboard() {
           <h1 className="mt-1 text-[28px] font-bold tracking-tight">{p?.profile?.business_name}</h1>
         </div>
         <div className="flex items-center gap-1 pt-0.5">
-          {isAdmin && <Button asChild variant="ghost" size="icon" aria-label="Dashboard Super Admin"><Link to="/admin"><ShieldCheck className="h-5 w-5" /></Link></Button>}
+          <ModeSwitcher />
           {isOwner && <Button asChild variant="ghost" size="icon" aria-label="Support"><a href="https://wa.me/6285783797770?text=Halo%20Super%20Admin%20Sales%20Pouch" target="_blank" rel="noreferrer"><MessageCircle className="h-5 w-5" /></a></Button>}
           <Button variant="ghost" size="icon" onClick={() => supabase.auth.signOut()} aria-label="Keluar"><LogOut className="h-5 w-5" /></Button>
         </div>
