@@ -26,8 +26,12 @@ export const rp = (n: number) =>
  *
  * Jika outlet belum pernah punya kunjungan konsinyasi, gunakan stok
  * pembukaan yang dimasukkan Owner sebagai snapshot stok fisik awal.
- * Setelah kunjungan konsinyasi pertama, perilaku stok lama tetap berjalan
- * seperti sebelumnya.
+ *
+ * Untuk AKUMULASI, stok yang dibawa ke kunjungan berikutnya adalah
+ * sisa rak + konsinyasi baru.
+ * Untuk TARIK BERSIH, stok yang dibawa ke kunjungan berikutnya adalah
+ * konsinyasi baru dari kunjungan terakhir, karena stok lama harus ditarik
+ * habis pada kunjungan berikutnya.
  */
 export async function loadLastVisit(outletId: string) {
   const { data, error } = await supabase
@@ -99,10 +103,6 @@ export async function loadLastVisit(outletId: string) {
     });
   };
 
-  /**
-   * Hanya AKUMULASI yang membawa stok outlet
-   * ke kunjungan berikutnya.
-   */
   if (last.stock_scheme === "accumulation") {
     for (const item of (last.line_items as LineItem[]) ?? []) {
       add(
@@ -113,6 +113,18 @@ export async function loadLastVisit(outletId: string) {
       );
     }
 
+    for (const item of (last.new_consignment_items as NewItem[]) ?? []) {
+      add(
+        item.name,
+        item.price,
+        Number(item.qty) || 0,
+        item.pcs_per_pack
+      );
+    }
+  } else {
+    // Tarik Bersih: stok lama ditarik habis pada kunjungan berikutnya.
+    // Yang benar-benar menjadi stok awal kunjungan berikutnya adalah
+    // konsinyasi BARU yang ditinggalkan pada kunjungan terakhir.
     for (const item of (last.new_consignment_items as NewItem[]) ?? []) {
       add(
         item.name,
