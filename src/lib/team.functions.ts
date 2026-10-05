@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSuperAdminEmail } from "@/lib/access";
 import { salesAuthEmail, normalizeSalesUsername } from "@/lib/sales-auth";
+import { levelDefaults } from "@/lib/team-permissions";
 
 type TeamPosition = "admin" | "manager" | "sales";
 type TeamActor = { ownerId: string; position: "owner" | TeamPosition };
@@ -27,7 +28,23 @@ async function assertOwner(context: { supabase: any; userId: string }) {
 
 async function assertTeamManager(context: { supabase: any; userId: string }) {
   const actor = await getTeamActor(context);
-  if (actor.position !== "owner" && actor.position !== "manager" && actor.position !== "admin") throw new Error("Hanya Owner, Admin, atau Manager yang dapat mengelola tim.");
+  if (actor.position !== "owner" && actor.position !== "manager") throw new Error("Hanya Owner atau Manager yang dapat mengelola struktur tim.");
+  return actor;
+}
+
+async function assertTeamPermission(context: { supabase: any; userId: string }, permissionKey: string) {
+  const actor = await getTeamActor(context);
+  if (actor.position === "owner") return actor;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("team_permissions")
+    .select("id")
+    .eq("owner_id", actor.ownerId)
+    .eq("user_id", context.userId)
+    .eq("permission_key", permissionKey)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error(`Akses ${permissionKey} tidak diberikan oleh Owner.`);
   return actor;
 }
 
@@ -57,7 +74,7 @@ export const listTeam = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({}).parse(input ?? {}))
   .handler(async ({ context }) => {
-    const actor = await assertTeamManager(context);
+    const actor = await assertTeamPermission(context, "team");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: members, error } = await supabaseAdmin.from("team_members").select("user_id,owner_id,position,manager_id,created_at").eq("owner_id", actor.ownerId).order("created_at", { ascending: false });
     if (error) throw error;
@@ -70,7 +87,7 @@ export const listTeam = createServerFn({ method: "GET" })
     const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
     const permissionMap = new Map<string, string[]>();
     for (const permission of permissions ?? []) permissionMap.set(permission.user_id, [...(permissionMap.get(permission.user_id) ?? []), permission.permission_key]);
-    return members.map((member) => ({ ...member, profiles: profileMap.get(member.user_id) ?? null, manager: member.manager_id ? profileMap.get(member.manager_id) ?? null : null, permissions: permissionMap.get(member.user_id) ?? [] }));
+    return members.map((member) => ({ ...member, profiles: profileMap.get(member.user_id) ?? null, manager: member.manager_id ? profileMap.get(member.manager_id) ?? null : null, permissions: permissionMap.get(member.user_id) ?? levelDefaults[member.position as TeamPosition] ?? [] }));
   });
 
 export const setTeamMemberRole = createServerFn({ method: "POST" })
@@ -142,7 +159,8 @@ export const createSales = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ name: z.string().trim().min(1, "Nama karyawan wajib diisi.").max(100), username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9._-]+$/, "Username hanya boleh berisi huruf, angka, titik, garis bawah, atau tanda minus."), password: z.string().min(6, "Password minimal 6 karakter.").max(72), position: z.enum(["admin", "manager", "sales"]).default("sales"), managerId: z.string().uuid().nullable().optional() }).parse(input))
   .handler(async ({ context, data }) => {
-    const actor = await assertTeamManager(context);
+    const actor = await getTeamActor(context);
+    if (actor.position !== "owner" && actor.position !== "manager") throw new Error("Admin tidak memiliki kewenangan membuat struktur jabatan. Gunakan Owner untuk membuat Admin/Manager, atau Manager untuk membuat Sales.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const position: TeamPosition = actor.position === "manager" ? "sales" : data.position;
     const managerId = actor.position === "manager" ? context.userId : (data.managerId ?? null);
