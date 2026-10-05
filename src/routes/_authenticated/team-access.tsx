@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Check, ChevronDown, ShieldCheck, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { listTeam } from "@/lib/team.functions";
+import { listTeam, replaceTeamPermissions, setTeamMemberRole } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/team-access")({
@@ -16,6 +16,13 @@ export const Route = createFileRoute("/_authenticated/team-access")({
 
 type JobLevel = "admin" | "manager" | "sales";
 type PermissionGroup = { title: string; items: { key: string; label: string; description: string }[] };
+
+type TeamMember = {
+  user_id: string;
+  position: JobLevel;
+  permissions?: string[];
+  profiles: { display_name?: string; username?: string } | null;
+};
 
 const groups: PermissionGroup[] = [
   { title: "Operasional", items: [
@@ -43,7 +50,6 @@ const groups: PermissionGroup[] = [
   ] },
 ];
 
-const allPermissions = groups.flatMap((group) => group.items.map((item) => item.key));
 const levelDefaults: Record<JobLevel, string[]> = {
   admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
   manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
@@ -54,6 +60,9 @@ function TeamAccessPage() {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const fetchTeam = useServerFn(listTeam);
+  const saveRole = useServerFn(setTeamMemberRole);
+  const savePermissions = useServerFn(replaceTeamPermissions);
+  const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState("");
   const [level, setLevel] = useState<JobLevel>("sales");
   const [permissions, setPermissions] = useState<string[]>(levelDefaults.sales);
@@ -66,18 +75,23 @@ function TeamAccessPage() {
     queryFn: () => fetchTeam({ data: {} }),
   });
 
-  const selectedMember = useMemo(() => members.find((member) => member.user_id === selectedId) ?? null, [members, selectedId]);
+  const selectedMember = useMemo(
+    () => (members as TeamMember[]).find((member) => member.user_id === selectedId) ?? null,
+    [members, selectedId],
+  );
 
   function selectMember(userId: string) {
-    const member = members.find((item) => item.user_id === userId);
+    const member = (members as TeamMember[]).find((item) => item.user_id === userId);
     setSelectedId(userId);
-    const memberLevel = member?.position === "manager" ? "manager" : "sales";
-    setLevel(memberLevel);
-    setPermissions(levelDefaults[memberLevel]);
+    if (!member) return;
+    setLevel(member.position);
+    setPermissions(member.permissions?.length ? member.permissions : levelDefaults[member.position]);
   }
 
   function changeLevel(next: JobLevel) {
     setLevel(next);
+    // A role change starts from that role's recommended baseline, then the
+    // Owner can customize individual menus before saving.
     setPermissions(levelDefaults[next]);
   }
 
@@ -86,11 +100,23 @@ function TeamAccessPage() {
   }
 
   async function save() {
-    if (!selectedId) { toast.error("Pilih anggota tim terlebih dahulu."); return; }
+    if (!selectedId) {
+      toast.error("Pilih anggota tim terlebih dahulu.");
+      return;
+    }
+
     setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    setSaving(false);
-    toast.info("UI jabatan & akses sudah siap. Penyimpanan permanen akan dihubungkan ke database pada tahap berikutnya.");
+    try {
+      await saveRole({ data: { userId: selectedId, position: level } });
+      await savePermissions({ data: { userId: selectedId, permissionKeys: permissions } });
+      await qc.invalidateQueries({ queryKey: ["team-access", profile?.ownerId] });
+      await qc.invalidateQueries({ queryKey: ["team", profile?.ownerId] });
+      toast.success("Jabatan dan akses berhasil disimpan.");
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (profileLoading || adminLoading || teamLoading) return <main className="p-10 text-center">Memuat…</main>;
@@ -112,9 +138,10 @@ function TeamAccessPage() {
       <div className="relative mt-2">
         <select value={selectedId} onChange={(e) => selectMember(e.target.value)} className="h-12 w-full appearance-none rounded-xl border bg-background px-3 pr-10 text-sm">
           <option value="">Pilih anggota tim...</option>
-          {members.map((member) => {
-            const p = member.profiles as { display_name?: string; username?: string } | null;
-            return <option key={member.user_id} value={member.user_id}>{p?.display_name ?? p?.username ?? "Karyawan"} — {member.position === "manager" ? "Manajer" : "Sales"}</option>;
+          {(members as TeamMember[]).map((member) => {
+            const p = member.profiles;
+            const label = member.position === "manager" ? "Manajer" : member.position === "admin" ? "Admin" : "Sales";
+            return <option key={member.user_id} value={member.user_id}>{p?.display_name ?? p?.username ?? "Karyawan"} — {label}</option>;
           })}
         </select>
         <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-5 w-5 text-muted-foreground" />
@@ -136,7 +163,7 @@ function TeamAccessPage() {
       </section>
 
       <Button disabled={saving} onClick={save} className="mt-6 h-12 w-full rounded-xl">{saving ? "Menyimpan…" : "Simpan Jabatan & Akses"}</Button>
-      <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">UI sudah disiapkan untuk promosi Sales → Manajer → Admin. Integrasi database/RLS dilakukan setelah UI diverifikasi.</p>
+      <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">Perubahan disimpan ke database dan berlaku pada akses tim setelah login/refresh berikutnya.</p>
     </>}
   </main>;
 }
