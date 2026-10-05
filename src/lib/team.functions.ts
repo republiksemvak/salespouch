@@ -4,19 +4,40 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSuperAdminEmail } from "@/lib/access";
 import { salesAuthEmail, normalizeSalesUsername } from "@/lib/sales-auth";
 
-type TeamPosition = "manager" | "sales";
+type TeamPosition = "admin" | "manager" | "sales";
 type TeamActor = { ownerId: string; position: "owner" | TeamPosition };
 
 async function getTeamActor(context: { supabase: any; userId: string }): Promise<TeamActor> {
   const { data: authUser, error: authError } = await context.supabase.auth.getUser();
-  if (!authError && authUser.user && authUser.user.id === context.userId && isSuperAdminEmail(authUser.user.email)) return { ownerId: context.userId, position: "owner" };
-  const { data, error } = await context.supabase.from("team_members").select("owner_id,position").eq("user_id", context.userId).maybeSingle();
-  if (error) throw error;
-  if (data) return { ownerId: data.owner_id, position: data.position as TeamPosition };
-  const { data: profile, error: profileError } = await context.supabase.from("profiles").select("id,role").eq("id", context.userId).maybeSingle();
+  if (!authError && authUser.user && authUser.user.id === context.userId && isSuperAdminEmail(authUser.user.email)) {
+    return { ownerId: context.userId, position: "owner" };
+  }
+
+  const { data: member, error: memberError } = await context.supabase
+    .from("team_members")
+    .select("owner_id,position")
+    .eq("user_id", context.userId)
+    .maybeSingle();
+  if (memberError) throw memberError;
+
+  if (member) {
+    return {
+      ownerId: member.owner_id,
+      position: member.position as TeamPosition,
+    };
+  }
+
+  // Owner accounts are not stored in team_members. If the authenticated
+  // user has a profile and no team membership, they are the business owner.
+  const { data: profile, error: profileError } = await context.supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", context.userId)
+    .maybeSingle();
   if (profileError) throw profileError;
-  if (profile?.role === "owner") return { ownerId: context.userId, position: "owner" };
-  throw new Error("Hanya Owner atau Manager yang dapat mengelola tim.");
+  if (profile) return { ownerId: context.userId, position: "owner" };
+
+  throw new Error("Hanya Owner, Admin, Manager, atau Sales yang dapat mengelola tim.");
 }
 
 async function assertOwner(context: { supabase: any; userId: string }) {
@@ -27,7 +48,9 @@ async function assertOwner(context: { supabase: any; userId: string }) {
 
 async function assertTeamManager(context: { supabase: any; userId: string }) {
   const actor = await getTeamActor(context);
-  if (actor.position !== "owner" && actor.position !== "manager") throw new Error("Hanya Owner atau Manager yang dapat mengelola tim.");
+  if (actor.position !== "owner" && actor.position !== "manager" && actor.position !== "admin") {
+    throw new Error("Hanya Owner, Admin, atau Manager yang dapat mengelola tim.");
+  }
   return actor;
 }
 
@@ -47,14 +70,76 @@ export const listTeam = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const actor = await assertTeamManager(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: members, error } = await supabaseAdmin.from("team_members").select("user_id,owner_id,position,manager_id,created_at").eq("owner_id", actor.ownerId).order("created_at", { ascending: false });
+    const { data: members, error } = await supabaseAdmin
+      .from("team_members")
+      .select("user_id,owner_id,position,manager_id,created_at")
+      .eq("owner_id", actor.ownerId)
+      .order("created_at", { ascending: false });
     if (error) throw error;
     if (!members?.length) return [];
+
     const ids = [...new Set(members.flatMap((member) => [member.user_id, member.manager_id].filter((id): id is string => typeof id === "string")))];
-    const { data: profiles, error: profilesError } = await supabaseAdmin.from("profiles").select("id,user_email,username,display_name").in("id", ids);
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from("profiles")
+      .select("id,user_email,username,display_name")
+      .in("id", ids);
     if (profilesError) throw profilesError;
+
+    const { data: permissions, error: permissionsError } = await supabaseAdmin
+      .from("team_permissions")
+      .select("user_id,permission_key")
+      .eq("owner_id", actor.ownerId)
+      .in("user_id", members.map((member) => member.user_id));
+    if (permissionsError) throw permissionsError;
+
     const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
-    return members.map((member) => ({ ...member, profiles: profileMap.get(member.user_id) ?? null, manager: member.manager_id ? profileMap.get(member.manager_id) ?? null : null }));
+    const permissionMap = new Map<string, string[]>();
+    for (const permission of permissions ?? []) {
+      const current = permissionMap.get(permission.user_id) ?? [];
+      current.push(permission.permission_key);
+      permissionMap.set(permission.user_id, current);
+    }
+
+    return members.map((member) => ({
+      ...member,
+      profiles: profileMap.get(member.user_id) ?? null,
+      manager: member.manager_id ? profileMap.get(member.manager_id) ?? null : null,
+      permissions: permissionMap.get(member.user_id) ?? [],
+    }));
+  });
+
+export const setTeamMemberRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    userId: z.string().uuid(),
+    position: z.enum(["admin", "manager", "sales"]),
+  }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertOwner(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.rpc("set_team_member_role", {
+      _user_id: data.userId,
+      _position: data.position,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const replaceTeamPermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    userId: z.string().uuid(),
+    permissionKeys: z.array(z.string().trim().min(1)).max(100),
+  }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertOwner(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.rpc("replace_team_permissions", {
+      _user_id: data.userId,
+      _permission_keys: data.permissionKeys,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const createSales = createServerFn({ method: "POST" })
@@ -63,7 +148,7 @@ export const createSales = createServerFn({ method: "POST" })
     name: z.string().trim().min(1, "Nama karyawan wajib diisi.").max(100),
     username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9._-]+$/, "Username hanya boleh berisi huruf, angka, titik, garis bawah, atau tanda minus."),
     password: z.string().min(6, "Password minimal 6 karakter.").max(72),
-    position: z.enum(["manager", "sales"]).default("sales"),
+    position: z.enum(["admin", "manager", "sales"]).default("sales"),
     managerId: z.string().uuid().nullable().optional(),
   }).parse(input))
   .handler(async ({ context, data }) => {
@@ -71,30 +156,53 @@ export const createSales = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const position: TeamPosition = actor.position === "manager" ? "sales" : data.position;
     const managerId = actor.position === "manager" ? context.userId : (data.managerId ?? null);
-    if (position === "manager" && managerId) throw new Error("Manager baru tidak dapat ditempatkan di bawah Manager lain.");
+
+    if (position !== "sales" && managerId) throw new Error("Admin dan Manager tidak dapat ditempatkan di bawah Manager.");
     if (position === "sales" && managerId) {
-      const { data: manager, error: managerError } = await supabaseAdmin.from("team_members").select("user_id,owner_id,position").eq("user_id", managerId).eq("owner_id", actor.ownerId).maybeSingle();
+      const { data: manager, error: managerError } = await supabaseAdmin
+        .from("team_members")
+        .select("user_id,owner_id,position")
+        .eq("user_id", managerId)
+        .eq("owner_id", actor.ownerId)
+        .maybeSingle();
       if (managerError) throw managerError;
       if (!manager || manager.position !== "manager") throw new Error("Manager yang dipilih tidak valid.");
     }
+
     const username = normalizeSalesUsername(data.username);
     const name = data.name.trim();
     const { data: existing, error: lookupError } = await supabaseAdmin.from("profiles").select("id").eq("username", username).maybeSingle();
     if (lookupError) throw lookupError;
     if (existing) throw new Error("Username sudah digunakan. Pilih username lain.");
-    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({ email: salesAuthEmail(username), password: data.password, email_confirm: true, user_metadata: { username, display_name: name, role: "sales", team_position: position } });
+
+    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: salesAuthEmail(username),
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { username, display_name: name, role: "sales", team_position: position },
+    });
     if (createError || !created.user) throw new Error(createError?.message ?? "Akun karyawan gagal dibuat.");
+
     try {
-      const { data: savedProfile, error: profileError } = await supabaseAdmin.from("profiles").update({ username, display_name: name }).eq("id", created.user.id).select("id,username,display_name").single();
+      const { data: savedProfile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .update({ username, display_name: name })
+        .eq("id", created.user.id)
+        .select("id,username,display_name")
+        .single();
       if (profileError) throw profileError;
       if (savedProfile?.username !== username || savedProfile.display_name !== name) throw new Error("Profil karyawan gagal disimpan.");
-      const { error: linkError } = await (supabaseAdmin as any).from("team_members").insert({ owner_id: actor.ownerId, user_id: created.user.id, position, manager_id: managerId });
+
+      const { error: linkError } = await (supabaseAdmin as any)
+        .from("team_members")
+        .insert({ owner_id: actor.ownerId, user_id: created.user.id, position, manager_id: managerId });
       if (linkError) throw linkError;
     } catch (error) {
       await supabaseAdmin.auth.admin.deleteUser(created.user.id);
       if ((error as { code?: string }).code === "23505") throw new Error("Username sudah digunakan. Pilih username lain.");
       throw new Error((error as Error).message ?? "Akun karyawan gagal dihubungkan ke tim.");
     }
+
     return { ok: true, username, name, position, managerId };
   });
 
