@@ -78,7 +78,7 @@ function SalesExpenses() {
   }, [teamMembers]);
   const categories = categoriesQuery.data ?? [];
 
-  useEffect(() => { if (!category && categories.length) setCategory(categories[0].name); }, [categories, category]);
+  useEffect(() => { if (!category && categories[0]) setCategory(categories[0].name); }, [categories, category]);
   const total = useMemo(() => (expensesQuery.data ?? []).reduce((sum, item) => sum + Number(item.amount), 0), [expensesQuery.data]);
   const salesReport = useMemo(() => {
     const grouped = new Map<string, Expense[]>();

@@ -50,7 +50,7 @@ export const listTeam = createServerFn({ method: "GET" })
     const { data: members, error } = await supabaseAdmin.from("team_members").select("user_id,owner_id,position,manager_id,created_at").eq("owner_id", actor.ownerId).order("created_at", { ascending: false });
     if (error) throw error;
     if (!members?.length) return [];
-    const ids = [...new Set(members.flatMap((member) => [member.user_id, member.manager_id].filter(Boolean)))];
+    const ids = [...new Set(members.flatMap((member) => [member.user_id, member.manager_id].filter((id): id is string => typeof id === "string")))];
     const { data: profiles, error: profilesError } = await supabaseAdmin.from("profiles").select("id,user_email,username,display_name").in("id", ids);
     if (profilesError) throw profilesError;
     const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));

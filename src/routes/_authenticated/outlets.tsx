@@ -91,7 +91,7 @@ function AllOutlets() {
   });
 
   const salesOptions = Array.from(
-    new Map(
+    new Map<string, string>(
       schedules.map((item: any) => [
         item.sales_id,
         item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales",

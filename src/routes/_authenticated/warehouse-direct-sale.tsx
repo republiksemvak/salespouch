@@ -51,7 +51,7 @@ function WarehouseDirectSalePage() {
 
   const addSaleRow = () => {
     const product = products.find((p) => !rows.some((r) => r.productId === p.id));
-    if (!product) return toast.error("Semua produk sudah ditambahkan");
+    if (!product) { toast.error("Semua produk sudah ditambahkan"); return; }
     setRows((current) => [...current, {
       productId: product.id,
       name: product.name,
@@ -63,15 +63,15 @@ function WarehouseDirectSalePage() {
 
   const addReturnRow = () => {
     const product = products.find((p) => !returns.some((r) => r.productId === p.id));
-    if (!product) return toast.error("Semua produk sudah ditambahkan ke retur");
+    if (!product) { toast.error("Semua produk sudah ditambahkan ke retur"); return; }
     setReturns((current) => [...current, { productId: product.id, name: product.name, qty: "1", pcsPerPack: product.pcs_per_pack }]);
   };
 
   const save = async () => {
     if (!account) return;
-    if (!buyerName.trim()) return toast.error("Nama pembeli wajib diisi");
-    if (!rows.some((r) => Number(r.qty) > 0)) return toast.error("Tambahkan produk yang dijual");
-    if (returns.some((r) => Number(r.qty) > 0) && !buyerOutletId) return toast.error("Pilih outlet pembeli untuk mencatat retur");
+    if (!buyerName.trim()) { toast.error("Nama pembeli wajib diisi"); return; }
+    if (!rows.some((r) => Number(r.qty) > 0)) { toast.error("Tambahkan produk yang dijual"); return; }
+    if (returns.some((r) => Number(r.qty) > 0) && !buyerOutletId) { toast.error("Pilih outlet pembeli untuk mencatat retur"); return; }
 
     const cleanRows = rows.filter((r) => Number(r.qty) > 0).map((r) => ({
       product_id: r.productId,
@@ -126,7 +126,7 @@ function WarehouseDirectSalePage() {
       <section className="mt-4 space-y-3 rounded-xl border bg-card p-4">
         <div><Label>Pembeli</Label><Input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="Nama pembeli / toko" className="mt-1" /></div>
         <div><Label>Outlet pembeli (untuk retur)</Label><select value={buyerOutletId} onChange={(e) => setBuyerOutletId(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm"><option value="">Tidak ada / belum ditentukan</option>{outlets.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></div>
-        <div><Label>Harga</Label><div className="mt-1 grid grid-cols-3 gap-2">{(["eceran", "grosir", "agen"] as PriceTier[]).map((t) => <Button key={t} type="button" variant={tier === t ? "default" : "outline"} onClick={() => { setTier(t); setRows((current) => current.map((r) => { const p = products.find((x) => x.id === r.productId); return p ? { ...r, price: tierPrice(p, t) } : r; })); }}>{t[0].toUpperCase() + t.slice(1)}</Button>)}</div></div>
+        <div><Label>Harga</Label><div className="mt-1 grid grid-cols-3 gap-2">{(["eceran", "grosir", "agen"] as PriceTier[]).map((t) => <Button key={t} type="button" variant={tier === t ? "default" : "outline"} onClick={() => { setTier(t); setRows((current) => current.map((r) => { const p = products.find((x) => x.id === r.productId); return p ? { ...r, price: tierPrice(p, t) } : r; })); }}>{t.charAt(0).toUpperCase() + t.slice(1)}</Button>)}</div></div>
       </section>
 
       <section className="mt-4 rounded-xl border bg-card p-4">
