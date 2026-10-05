@@ -1,5 +1,6 @@
 -- Team roles + Owner-managed permissions.
 -- Owner remains the only authority that can change employee role/permissions.
+-- Role source of truth: team_members.position. Owner source of truth: is_business_owner().
 
 ALTER TABLE public.team_members
   DROP CONSTRAINT IF EXISTS team_members_position_check;
@@ -63,33 +64,36 @@ AS $$
     WHERE tm.user_id = _user_id
       AND tm.owner_id = auth.uid()
   )
-  AND EXISTS (
-    SELECT 1
-    FROM public.profiles p
-    WHERE p.id = auth.uid()
-      AND p.role = 'owner'
-  );
+  AND public.is_business_owner();
 $$;
 
 REVOKE ALL ON FUNCTION public.is_owner_of_team_member(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_owner_of_team_member(uuid) TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.has_team_permission(_permission_key text, _user_id uuid DEFAULT auth.uid())
+CREATE OR REPLACE FUNCTION public.has_team_permission(
+  _permission_key text,
+  _user_id uuid DEFAULT auth.uid()
+)
 RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.team_members tm
-    JOIN public.team_permissions tp
-      ON tp.owner_id = tm.owner_id
-     AND tp.user_id = tm.user_id
-     AND tp.permission_key = _permission_key
-    WHERE tm.user_id = _user_id
-  );
+  SELECT CASE
+    WHEN _user_id IS NULL OR auth.uid() IS NULL THEN false
+    WHEN _user_id <> auth.uid() THEN false
+    WHEN public.is_business_owner() THEN true
+    ELSE EXISTS (
+      SELECT 1
+      FROM public.team_members tm
+      JOIN public.team_permissions tp
+        ON tp.owner_id = tm.owner_id
+       AND tp.user_id = tm.user_id
+       AND tp.permission_key = _permission_key
+      WHERE tm.user_id = auth.uid()
+    )
+  END;
 $$;
 
 REVOKE ALL ON FUNCTION public.has_team_permission(text, uuid) FROM PUBLIC, anon;
@@ -105,10 +109,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'owner'
-  ) THEN
+  IF NOT public.is_business_owner() THEN
     RAISE EXCEPTION 'Hanya Owner yang dapat mengubah jabatan.';
   END IF;
 
@@ -144,10 +145,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'owner'
-  ) THEN
+  IF NOT public.is_business_owner() THEN
     RAISE EXCEPTION 'Hanya Owner yang dapat mengatur permission.';
   END IF;
 
@@ -163,7 +161,7 @@ BEGIN
     AND user_id = _user_id;
 
   INSERT INTO public.team_permissions(owner_id, user_id, permission_key)
-  SELECT auth.uid(), _user_id, key
+  SELECT auth.uid(), _user_id, trim(key)
   FROM unnest(COALESCE(_permission_keys, ARRAY[]::text[])) AS key
   WHERE trim(key) <> ''
   ON CONFLICT (owner_id, user_id, permission_key) DO NOTHING;
