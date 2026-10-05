@@ -21,7 +21,7 @@ function Dashboard() {
   const { data: access } = useQuery({
     queryKey: ["my-team-permissions", p?.userId],
     enabled: !!p && p.role !== "owner",
-    queryFn: () => fetchPermissions({ data: undefined }),
+    queryFn: () => fetchPermissions({ data: {} }),
   });
 
   if (isLoading || !p) return <div className="min-h-screen p-10 text-center text-muted-foreground">Memuat dashboard…</div>;
