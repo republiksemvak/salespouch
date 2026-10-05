@@ -25,11 +25,26 @@ export function useProducts() {
     staleTime: 60_000,
     queryFn: async () => {
       const data = account?.role === "owner" ? await fetchOwner() : await (async () => {
-        const { data, error } = await supabase.from("sales_catalog").select("id,name,price,price_grosir,price_agen,warehouse_stock,pcs_per_pack").order("name");
+        const { data, error } = await supabase.from("sales_catalog").select("id,name,price,price_grosir,price_agen,pcs_per_pack").order("name");
         if (error) throw error;
         return data;
       })();
-      return data.map((p) => ({ ...p, price: Number(p.price), price_grosir: Number(p.price_grosir), price_agen: Number(p.price_agen), cost_price: "cost_price" in p ? Number(p.cost_price) : 0, warehouse_stock: Number(p.warehouse_stock), pcs_per_pack: packSize(p.pcs_per_pack) })) as Product[];
+
+      const { data: warehouseBalances, error: warehouseError } = await supabase
+        .from("warehouse_stock_ledger")
+        .select("product_id,warehouse_stock");
+      if (warehouseError) throw warehouseError;
+      const warehouseMap = new Map((warehouseBalances ?? []).map((row) => [row.product_id, Number(row.warehouse_stock) || 0]));
+
+      return data.map((p) => ({
+        ...p,
+        price: Number(p.price),
+        price_grosir: Number(p.price_grosir),
+        price_agen: Number(p.price_agen),
+        cost_price: "cost_price" in p ? Number(p.cost_price) : 0,
+        warehouse_stock: warehouseMap.get(p.id) ?? 0,
+        pcs_per_pack: packSize(p.pcs_per_pack),
+      })) as Product[];
     },
   });
 }
