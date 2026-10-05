@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, UserMinus } from "lucide-react";
+import { ArrowLeft, UserMinus, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -60,8 +60,7 @@ function TeamPage() {
 
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
     <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
-    <h1 className="mt-4 text-2xl font-bold">Manajemen Tim</h1>
-    <p className="mt-1 text-sm text-muted-foreground">Owner → Manager → Sales</p>
+    <div className="mt-4 flex items-start justify-between gap-3"><div><h1 className="text-2xl font-bold">Manajemen Tim</h1><p className="mt-1 text-sm text-muted-foreground">Owner → Manager → Sales</p></div>{owner && <Button asChild variant="outline" className="shrink-0"><Link to="/team-access"><ShieldCheck className="mr-2 h-4 w-4" />Atur Akses</Link></Button>}</div>
 
     <form onSubmit={add} className="mt-6 space-y-3">
       <label className="text-sm font-medium">Jabatan</label>
