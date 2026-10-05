@@ -30,11 +30,11 @@ export function useProducts() {
         return data;
       })();
 
-      const { data: warehouseBalances, error: warehouseError } = await supabase
+      const { data: warehouseBalances, error: warehouseError } = await (supabase as any)
         .from("warehouse_stock_ledger")
         .select("product_id,warehouse_stock");
       if (warehouseError) throw warehouseError;
-      const warehouseMap = new Map((warehouseBalances ?? []).map((row) => [row.product_id, Number(row.warehouse_stock) || 0]));
+      const warehouseMap = new Map((warehouseBalances ?? []).map((row: { product_id: string; warehouse_stock: number }) => [row.product_id, Number(row.warehouse_stock) || 0]));
 
       return data.map((p) => ({
         ...p,
