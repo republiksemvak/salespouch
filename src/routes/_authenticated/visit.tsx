@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/visit")({
   validateSearch: (s: Record<string, unknown>) => ({ outlet: typeof s.outlet === "string" ? s.outlet : undefined }),
-  head: () => ({ meta: [{ title: "Kunjungan Outlet — Sales Pouch" }, { name: "description", content: "Catat titipan, penjualan, dan retur outlet." }] }),
+  head: () => ({ meta: [{ title: "Kunjungan Outlet — Sales Pouch" }, { name: "description", content: "Catat titipan, penjualan, dan retur outlet." }, { property: "og:title", content: "Kunjungan Outlet — Sales Pouch" }, { property: "og:description", content: "Catat titipan, penjualan, dan retur outlet." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: VisitPage,
 });
 
@@ -147,9 +147,9 @@ function VisitPage() {
   }
 
   function start() {
-    if (!outletId) return toast.error("Pilih outlet dulu");
-    if (!salesName.trim() || salesName.trim().length > 60) return toast.error("Isi nama sales/operator (maks 60 karakter)");
-    if (type === "Consignment" && !findSalesUser(salesName)) return toast.error("Nama Sales belum terdaftar sebagai anggota tim Sales");
+    if (!outletId) { toast.error("Pilih outlet dulu"); return; }
+    if (!salesName.trim() || salesName.trim().length > 60) { toast.error("Isi nama sales/operator (maks 60 karakter)"); return; }
+    if (type === "Consignment" && !findSalesUser(salesName)) { toast.error("Nama Sales belum terdaftar sebagai anggota tim Sales"); return; }
     localStorage.setItem("sp_sales_name", salesName.trim());
     setStarted(true);
   }
@@ -158,6 +158,29 @@ function VisitPage() {
     const n = name.trim().toLowerCase();
     return members.find((m) => (m.profiles?.display_name ?? "").trim().toLowerCase() === n || (m.profiles?.username ?? "").trim().toLowerCase() === n)?.user_id ?? null;
   }
+
+  const selectedSalesId = findSalesUser(salesName);
+  const salesStock = useQuery({
+    queryKey: ["visit-sales-stock", account?.ownerId, selectedSalesId, products.map((p) => p.id).join(",")],
+    enabled: started && !!account?.ownerId && !!selectedSalesId && products.length > 0,
+    staleTime: 0,
+    queryFn: async () => {
+      if (!account?.ownerId || !selectedSalesId) throw new Error("Sales belum dipilih");
+      const { data: location, error } = await supabase.from("stock_locations")
+        .select("id").eq("owner_id", account.ownerId).eq("location_type", "sales")
+        .eq("team_member_user_id", selectedSalesId).eq("is_active", true).maybeSingle();
+      if (error) throw error;
+      if (!location) return new Map<string, number>();
+      const balances = await Promise.all(products.map(async (product) => {
+        const { data, error: balanceError } = await (supabase as any).rpc("sales_location_balance", {
+          _owner_id: account.ownerId, _sales_location_id: location.id, _product_id: product.id,
+        });
+        if (balanceError) throw balanceError;
+        return [product.id, Number(data) || 0] as const;
+      }));
+      return new Map(balances);
+    },
+  });
 
   function validReturns() {
     const invalid = rows.some((r) => {
@@ -174,23 +197,34 @@ function VisitPage() {
   async function submit() {
     const cleanNew = newItems.filter((i) => i.name.trim() && i.qty > 0).map((i) => ({ ...i, name: i.name.trim() }));
     const valid = z.object({ note: z.string().max(500), sales: z.string().trim().min(1).max(60) }).safeParse({ note, sales: salesName });
-    if (!valid.success) return toast.error("Catatan maks 500 karakter dan nama operator wajib diisi");
-    if (type === "Direct Sale" && lineItems.length === 0) return toast.error("Tambahkan produk yang dijual");
-    if (type === "Consignment" && lineItems.length === 0 && cleanNew.length === 0) return toast.error("Tambahkan barang titipan baru");
+    if (!valid.success) { toast.error("Catatan maks 500 karakter dan nama operator wajib diisi"); return; }
+    if (type === "Direct Sale" && lineItems.length === 0) { toast.error("Tambahkan produk yang dijual"); return; }
+    if (type === "Consignment" && lineItems.length === 0 && cleanNew.length === 0) { toast.error("Tambahkan barang titipan baru"); return; }
     if (type === "Consignment" && !validReturns()) return;
     if (type === "Direct Sale" && stockSource === "warehouse" && directItems.some((item) => {
       const product = products.find((p) => p.name.toLowerCase() === item.name.toLowerCase());
       return product && item.qty > product.warehouse_stock;
-    })) return toast.error("Jumlah jual langsung melebihi stok gudang");
-    if (!/^\d*$/.test(discount) || discountAmount > totalSales) return toast.error("Diskon tidak boleh melebihi total penjualan");
-    if (!account) return toast.error("Akun belum siap.");
+    })) { toast.error("Jumlah jual langsung melebihi stok gudang"); return; }
+    if (!/^\d*$/.test(discount) || discountAmount > totalSales) { toast.error("Diskon tidak boleh melebihi total penjualan"); return; }
+    if (!account) { toast.error("Akun belum siap."); return; }
 
     const salesUserId = findSalesUser(salesName);
-    if (type === "Consignment" && !salesUserId) return toast.error("Sales belum ditemukan di anggota tim");
-    if (type === "Direct Sale" && stockSource === "sales" && !salesUserId) return toast.error("Pilih nama Sales yang terdaftar untuk mengambil stok Sales");
+    if (type === "Consignment" && !salesUserId) { toast.error("Sales belum ditemukan di anggota tim"); return; }
+    if (type === "Direct Sale" && stockSource === "sales" && !salesUserId) { toast.error("Pilih nama Sales yang terdaftar untuk mengambil stok Sales"); return; }
 
     setBusy(true);
     try {
+      if (type === "Consignment" || stockSource === "sales") {
+        const { data: balances, error: stockError } = await salesStock.refetch();
+        if (stockError || !balances) throw stockError ?? new Error("Stok Sales belum dapat diperiksa. Coba lagi.");
+        const outgoing = type === "Consignment" ? cleanNew : directItems.filter((item) => item.qty > 0);
+        for (const item of outgoing) {
+          const product = products.find((p) => p.name.toLowerCase() === item.name.toLowerCase());
+          if (!product || item.qty > (balances.get(product.id) ?? 0)) {
+            throw new Error(`Stok Sales tidak cukup untuk ${item.name}. Periksa muatan Sales terlebih dahulu.`);
+          }
+        }
+      }
       const receipt_number = await nextReceiptNumber();
       const payload = {
         user_id: account.ownerId,
@@ -217,6 +251,7 @@ function VisitPage() {
         qc.invalidateQueries({ queryKey: ["products"] }),
         qc.invalidateQueries({ queryKey: ["stock-summary"] }),
         qc.invalidateQueries({ queryKey: ["last-visit", outletId] }),
+        qc.invalidateQueries({ queryKey: ["visit-sales-stock"] }),
       ]);
       navigate({ to: "/receipt/$id", params: { id: data.id } });
     } catch (e) {
@@ -249,8 +284,10 @@ function VisitPage() {
       {type === "Consignment" && history.isLoading ? <p className="mt-6 text-sm text-muted-foreground">Memuat…</p> : <>
         {type === "Consignment" && !isFirst && <PreviousStockEditor rows={rows} setRows={setRows} lineItems={lineItems} stockScheme={stockScheme} />}
         <div className="mt-6"><h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Tier Harga Nota Ini</h2><div className="mt-2 grid grid-cols-3 rounded-xl border bg-card p-1 text-sm">{TIERS.map((t) => <button key={t.id} type="button" onClick={() => changeTier(t.id)} className={`rounded-lg py-2 font-medium ${tier === t.id ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.label}</button>)}</div></div>
-        {type === "Direct Sale" && <ItemEditor title="Produk Terjual" items={directItems} setItems={setDirectItems} qtyLabel="Terjual" products={products} tier={tier} />}
-        {type === "Consignment" && <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Titip" products={products} tier={tier} />}
+        {type === "Direct Sale" && <ItemEditor title="Produk Terjual" items={directItems} setItems={setDirectItems} qtyLabel="Terjual" products={products} tier={tier} stockLabel={stockSource === "sales" ? "Stok Sales" : "Stok gudang"} stockBalances={stockSource === "sales" ? salesStock.data : undefined} />}
+        {type === "Consignment" && <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Titip" products={products} tier={tier} stockLabel="Stok Sales" stockBalances={salesStock.data} />}
+        {(type === "Consignment" || stockSource === "sales") && salesStock.isPending && <p className="mt-2 text-xs text-muted-foreground">Memeriksa stok Sales…</p>}
+        {(type === "Consignment" || stockSource === "sales") && salesStock.isError && <p className="mt-2 text-xs text-destructive">Stok Sales belum dapat dimuat. Coba lagi sebelum menyimpan.</p>}
         <Button type="button" variant={savedInput ? "secondary" : "outline"} onClick={() => { if (type === "Consignment" && !validReturns()) return; setSavedInput(true); toast.success("Input produk tersimpan"); }} className="mt-4 h-12 w-full">{savedInput ? "✓ Input produk tersimpan" : "Simpan Input Produk"}</Button>
         {(type === "Direct Sale" || !isFirst) && <section className="mt-6 space-y-2 rounded-2xl border bg-card p-4 font-mono text-sm">{type === "Consignment" && <Line k="Utang sebelumnya" v={rp(previousDebt)} />}<Line k="Total penjualan" v={rp(totalSales)} /><div className="pt-2"><Label className="font-sans">Diskon nota (Rp)</Label><Input inputMode="numeric" type="number" min={0} max={totalSales} step={1} value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" className="mt-1 h-12 text-base" /></div><div className="border-t border-dashed pt-2"><Line k="Total tagihan" v={rp(totalDue)} bold /></div><div className="pt-2"><Label className="font-sans">Jumlah dibayar</Label><Input inputMode="numeric" value={paid} onChange={(e) => setPaid(e.target.value)} placeholder="0" className="mt-1 h-12 text-base" /><Button type="button" variant="link" onClick={() => setPaid(String(Math.max(0, totalDue)))} className="mt-1 h-auto p-0 text-xs text-accent">Bayar lunas</Button></div><div className="border-t border-dashed pt-2"><Line k="Sisa utang" v={rp(remainingDebt)} bold /></div></section>}
         {type === "Consignment" && isFirst && <p className="mt-6 rounded-xl bg-secondary p-4 text-sm">Kunjungan pertama — tidak ada perhitungan. Total tagihan: <b>Rp 0</b></p>}
@@ -273,13 +310,13 @@ function QtyPair({ label, pack, pcs, size, setPack, setPcs }: { label: string; p
   return <div className="mt-3"><div className="text-xs font-medium">{label}</div><div className="mt-1 grid grid-cols-2 gap-2"><label className="text-[11px] text-muted-foreground">{label} (pack)<Input type="number" min={0} step={1} value={pack} placeholder="0" onChange={(e) => setPack(e.target.value)} className="h-11" /></label><label className="text-[11px] text-muted-foreground">{label} (pcs)<Input type="number" min={0} max={size - 1} step={1} value={pcs} placeholder="0" onChange={(e) => setPcs(e.target.value)} className="h-11" /></label></div></div>;
 }
 
-function ItemEditor({ title, items, setItems, qtyLabel, products, tier }: { title: string; items: NewItem[]; setItems: (i: NewItem[]) => void; qtyLabel: string; products: Product[]; tier: PriceTier }) {
+function ItemEditor({ title, items, setItems, qtyLabel, products, tier, stockLabel, stockBalances }: { title: string; items: NewItem[]; setItems: (i: NewItem[]) => void; qtyLabel: string; products: Product[]; tier: PriceTier; stockLabel: string; stockBalances?: Map<string, number> }) {
   const [q, setQ] = useState(""); const [open, setOpen] = useState(false);
   const set = (i: number, patch: Partial<NewItem>) => setItems(items.map((x, j) => j === i ? { ...x, ...patch } : x));
   const taken = new Set(items.map((i) => i.name.toLowerCase()));
   const matches = products.filter((p) => !taken.has(p.name.toLowerCase()) && p.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 30);
   const pick = (p: Product) => { setItems([...items, { name: p.name, price: tierPrice(p, tier), qty: 0, pcs_per_pack: p.pcs_per_pack }]); setQ(""); setOpen(false); };
-  return <section className="mt-6"><h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{title}</h2><div className="mt-3 space-y-3">{items.map((it, i) => { const stock = products.find((p) => p.name.toLowerCase() === it.name.toLowerCase())?.warehouse_stock; const size = packSize(it.pcs_per_pack); return <div key={i} className="rounded-2xl border bg-card p-4"><div className="flex items-center justify-between gap-2"><div><b>{it.name}</b>{stock !== undefined && <div className="text-xs text-muted-foreground">Stok gudang: {formatQty(stock, size)}</div>}</div><Button variant="ghost" size="icon" onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button></div><div className="mt-2 grid grid-cols-2 gap-2"><Field label="Harga per pack" value={it.price} onChange={(v) => set(i, { price: v })} /><div className="self-end pb-2 text-xs text-muted-foreground">{rp(it.price / size)} / pcs</div></div>{size === 1 ? <Field label={`${qtyLabel} (pcs)`} value={it.qty} onChange={(v) => set(i, { qty: Math.floor(v) })} /> : <div className="mt-2 grid grid-cols-2 gap-2"><label className="text-[11px] text-muted-foreground">{qtyLabel} (pack)<Input type="number" min={0} step={1} value={Math.floor(it.qty / size) || ""} onChange={(e) => { if (e.target.value === "" || /^\d+$/.test(e.target.value)) set(i, { qty: toPieces(whole(e.target.value), it.qty % size, size) }); }} className="h-11" /></label><label className="text-[11px] text-muted-foreground">{qtyLabel} (pcs)<Input type="number" min={0} max={size - 1} step={1} value={it.qty % size || ""} onChange={(e) => { const v = e.target.value; if (v === "" || (!invalidRemainder(v, size) && /^\d+$/.test(v))) set(i, { qty: toPieces(Math.floor(it.qty / size), whole(v), size) }); }} className="h-11" /></label></div>}</div>; })}{open ? <div className="rounded-2xl border bg-card p-3"><Input autoFocus placeholder="Cari produk master…" value={q} onChange={(e) => setQ(e.target.value)} /> <div className="mt-2 max-h-56 overflow-y-auto divide-y">{matches.map((p) => <button key={p.id} type="button" onClick={() => pick(p)} className="block w-full px-2 py-3 text-left text-sm hover:bg-muted">{p.name}</button>)}{matches.length === 0 && <div className="p-2 text-xs text-muted-foreground">Produk tidak ditemukan.</div>}</div><Button type="button" variant="ghost" onClick={() => setOpen(false)} className="mt-2">Tutup</Button></div> : <Button type="button" variant="outline" onClick={() => setOpen(true)} className="w-full"><Search className="mr-2 h-4 w-4" /> Tambah Produk</Button>}</div></section>;
+  return <section className="mt-6"><h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{title}</h2><div className="mt-3 space-y-3">{items.map((it, i) => { const product = products.find((p) => p.name.toLowerCase() === it.name.toLowerCase()); const stock = stockBalances ? stockBalances.get(product?.id ?? "") ?? 0 : stockLabel === "Stok gudang" ? product?.warehouse_stock : undefined; const size = packSize(it.pcs_per_pack); return <div key={i} className="rounded-2xl border bg-card p-4"><div className="flex items-center justify-between gap-2"><div><b>{it.name}</b>{stock !== undefined && <div className="text-xs text-muted-foreground">{stockLabel}: {formatQty(stock, size)}</div>}{stock !== undefined && it.qty > stock && <div className="text-xs text-destructive">Jumlah melebihi {stockLabel.toLowerCase()}</div>}</div><Button variant="ghost" size="icon" onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button></div><div className="mt-2 grid grid-cols-2 gap-2"><Field label="Harga per pack" value={it.price} onChange={(v) => set(i, { price: v })} /><div className="self-end pb-2 text-xs text-muted-foreground">{rp(it.price / size)} / pcs</div></div>{size === 1 ? <Field label={`${qtyLabel} (pcs)`} value={it.qty} onChange={(v) => set(i, { qty: Math.floor(v) })} /> : <div className="mt-2 grid grid-cols-2 gap-2"><label className="text-[11px] text-muted-foreground">{qtyLabel} (pack)<Input type="number" min={0} step={1} value={Math.floor(it.qty / size) || ""} onChange={(e) => { if (e.target.value === "" || /^\d+$/.test(e.target.value)) set(i, { qty: toPieces(whole(e.target.value), it.qty % size, size) }); }} className="h-11" /></label><label className="text-[11px] text-muted-foreground">{qtyLabel} (pcs)<Input type="number" min={0} max={size - 1} step={1} value={it.qty % size || ""} onChange={(e) => { const v = e.target.value; if (v === "" || (!invalidRemainder(v, size) && /^\d+$/.test(v))) set(i, { qty: toPieces(Math.floor(it.qty / size), whole(v), size) }); }} className="h-11" /></label></div>}</div>; })}{open ? <div className="rounded-2xl border bg-card p-3"><Input autoFocus placeholder="Cari produk master…" value={q} onChange={(e) => setQ(e.target.value)} /> <div className="mt-2 max-h-56 overflow-y-auto divide-y">{matches.map((p) => <button key={p.id} type="button" onClick={() => pick(p)} className="block w-full px-2 py-3 text-left text-sm hover:bg-muted">{p.name}</button>)}{matches.length === 0 && <div className="p-2 text-xs text-muted-foreground">Produk tidak ditemukan.</div>}</div><Button type="button" variant="ghost" onClick={() => setOpen(false)} className="mt-2">Tutup</Button></div> : <Button type="button" variant="outline" onClick={() => setOpen(true)} className="w-full"><Search className="mr-2 h-4 w-4" /> Tambah Produk</Button>}</div></section>;
 }
 
 function Field({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) { return <label className="block"><span className="text-[11px] text-muted-foreground">{label}</span><Input inputMode="numeric" value={value || ""} placeholder="0" onChange={(e) => onChange(num(e.target.value))} className="h-11" /></label>; }
