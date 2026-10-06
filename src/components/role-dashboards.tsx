@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { BarChart3, Building2, FileText, History, Package, Play, Store, Truck, Users, Warehouse, Wallet, CalendarDays, Settings2, ShieldCheck, ChevronRight } from "lucide-react";
+import { BarChart3, Building2, FileText, History, Package, Play, Store, Truck, Users, Warehouse, Wallet, CalendarDays, Settings2, ShieldCheck, ChevronRight, ShoppingCart, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeSwitcher } from "@/components/mode-switcher";
 import type { Profile } from "@/lib/access";
@@ -13,7 +13,7 @@ function Header({ title, subtitle }: { title: string; subtitle: string }) {
 
 function MenuButton({ to, icon: Icon, label, tone = "orange" }: { to: string; icon: typeof Store; label: string; tone?: "orange" | "blue" | "purple" | "green" }) {
   const toneClass = { orange: "bg-orange-100 text-orange-700", blue: "bg-blue-100 text-blue-700", purple: "bg-purple-100 text-purple-700", green: "bg-emerald-100 text-emerald-700" }[tone];
-  return <Button asChild variant="outline" className="h-[72px] rounded-2xl border-border/80 bg-card/80 px-3 shadow-sm transition-colors hover:bg-card"><Link to={to as never}><span className="flex min-w-0 items-center gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></span><span className="truncate text-left text-[14px] font-semibold leading-tight">{label}</span></span><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" /></Link></Button>;
+  return <Button asChild variant="outline" className="h-[68px] rounded-2xl border-border/80 bg-card/90 px-3 shadow-sm transition-colors hover:bg-card"><Link to={to as never}><span className="flex min-w-0 items-center gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></span><span className="truncate text-left text-[14px] font-semibold leading-tight">{label}</span></span><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" /></Link></Button>;
 }
 
 function PermissionMenu({ allowed, ...props }: { allowed: boolean } & Parameters<typeof MenuButton>[0]) {
@@ -25,7 +25,12 @@ function OwnerSection({ title, icon: Icon, children }: { title: string; icon: ty
 }
 
 function OwnerSummary() {
-  return <section className="mt-4 rounded-2xl border bg-card p-3.5 shadow-sm"><div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Ringkasan Hari Ini</div><div className="grid grid-cols-2 divide-x"><div className="px-2"><div className="text-[10px] text-muted-foreground">Outlet</div><div className="mt-0.5 text-xl font-bold">—</div><div className="text-[10px] text-muted-foreground">Outlet aktif</div></div><div className="px-3"><div className="text-[10px] text-muted-foreground">Kunjungan</div><div className="mt-0.5 text-xl font-bold">—</div><div className="text-[10px] text-muted-foreground">Hari ini</div></div></div></section>;
+  return <section className="mt-4 overflow-hidden rounded-3xl border bg-card shadow-sm"><div className="p-4 pb-3"><div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Ringkasan Hari Ini</div><div className="mt-1 flex items-end justify-between gap-3"><div><div className="text-[11px] text-muted-foreground">Omset Hari Ini</div><div className="mt-0.5 text-2xl font-bold tracking-tight">—</div></div><div className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">Belum ada data</div></div></div><div className="grid grid-cols-3 border-t"><div className="px-3 py-3"><div className="text-[10px] text-muted-foreground">Transaksi</div><div className="mt-0.5 text-lg font-bold">—</div></div><div className="border-l px-3 py-3"><div className="text-[10px] text-muted-foreground">Kunjungan</div><div className="mt-0.5 text-lg font-bold">—</div></div><div className="border-l px-3 py-3"><div className="text-[10px] text-muted-foreground">Outlet</div><div className="mt-0.5 text-lg font-bold">—</div></div></div></section>;
+}
+
+function QuickAction({ to, icon: Icon, label, tone = "orange" }: { to: string; icon: typeof Store; label: string; tone?: "orange" | "blue" | "purple" }) {
+  const toneClass = { orange: "bg-orange-100 text-orange-700", blue: "bg-blue-100 text-blue-700", purple: "bg-purple-100 text-purple-700" }[tone];
+  return <Button asChild variant="outline" className="h-16 rounded-2xl border-border/80 bg-card px-3 shadow-sm"><Link to={to as never}><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-4.5 w-4.5" /></span><span className="text-[12px] font-semibold">{label}</span></Link></Button>;
 }
 
 export function SuperAdminDashboard() {
@@ -34,24 +39,42 @@ export function SuperAdminDashboard() {
 
 export function OwnerDashboard({ profile, businessName }: DashboardProps) {
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-5">
-    <Header title={businessName || profile?.business_name || "Owner"} subtitle="Panel utama pemilik usaha" />
+    <Header title={businessName || profile?.business_name || "Owner"} subtitle="Kendali usaha hari ini" />
     <OwnerSummary />
-    <section className="mt-4"><Button asChild className="h-12 w-full rounded-2xl text-base font-semibold shadow-sm"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-2 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button></section>
 
-    <OwnerSection title="Aktivitas Harian" icon={Play}>
-      <MenuButton to="/outlets" icon={Store} label="Outlet" tone="orange" />
-      <MenuButton to="/sales-stock-day" icon={Truck} label="Stok Sales" tone="blue" />
+    <section className="mt-4 rounded-3xl border bg-card p-3 shadow-sm">
+      <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Aksi Utama</div>
+      <Button asChild className="h-12 w-full rounded-2xl text-base font-semibold shadow-sm"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-2 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        <QuickAction to="/transactions" icon={ShoppingCart} label="Penjualan" tone="purple" />
+        <QuickAction to="/sales-stock-day" icon={Truck} label="Stok Sales" tone="blue" />
+        <QuickAction to="/outlets" icon={Store} label="Outlet" tone="orange" />
+      </div>
+    </section>
+
+    <section className="mt-6 rounded-3xl border bg-card p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div><div className="flex items-center gap-2"><Package className="h-4 w-4 text-blue-600" /><h2 className="text-sm font-bold">Persediaan</h2></div><p className="mt-1 text-[11px] text-muted-foreground">Pantau stok tanpa mengubah alur stok yang sudah ada.</p></div>
+        <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2.5">
+        <MenuButton to="/master-stock" icon={Warehouse} label="Stok Gudang" tone="blue" />
+        <MenuButton to="/sales-stock-day" icon={Truck} label="Stok Sales" tone="blue" />
+      </div>
+    </section>
+
+    <OwnerSection title="Penjualan & Aktivitas" icon={Play}>
       <MenuButton to="/warehouse-direct-sale" icon={Warehouse} label="Direct Selling" tone="orange" />
       <MenuButton to="/transactions" icon={History} label="Transaksi" tone="purple" />
       <MenuButton to="/notes" icon={FileText} label="Catatan" tone="orange" />
+      <MenuButton to="/outlets" icon={Store} label="Outlet" tone="orange" />
     </OwnerSection>
 
-    <OwnerSection title="Produk & Stok" icon={Package}>
+    <OwnerSection title="Produk" icon={Package}>
       <MenuButton to="/products" icon={Package} label="Master Produk" tone="orange" />
-      <MenuButton to="/master-stock" icon={Package} label="Stok Gudang" tone="blue" />
     </OwnerSection>
 
-    <OwnerSection title="Laporan" icon={BarChart3}>
+    <OwnerSection title="Laporan & Hasil" icon={BarChart3}>
       <MenuButton to="/reports" icon={BarChart3} label="Laporan & Profit" tone="purple" />
     </OwnerSection>
 
