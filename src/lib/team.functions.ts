@@ -92,7 +92,7 @@ export const setTeamMemberRole = createServerFn({ method: "POST" })
       .from("team_members")
       .update({
         position: data.position,
-        manager_id: data.position === "sales" ? undefined : null,
+        manager_id: null,
       })
       .eq("user_id", data.userId)
       .eq("owner_id", actor.ownerId);
