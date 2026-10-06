@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, profileQueryKey } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -26,12 +27,31 @@ export const Route = createFileRoute("/_authenticated")({
 function Gate() {
   const { data: isAdmin, isLoading: adminLoading, error: adminError } = useIsAdmin();
 
-  // Super Admin never needs a business profile to enter the application.
   if (adminLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
-  if (isAdmin) return <Outlet />;
+  if (isAdmin) return <AuthenticatedShell />;
   if (adminError) return <div className="p-10 text-center text-destructive">Gagal memeriksa akses akun. Silakan muat ulang.</div>;
 
   return <OwnerGate />;
+}
+
+function AuthenticatedShell() {
+  return (
+    <div className="min-h-screen">
+      <Outlet />
+      <div className="fixed bottom-4 right-4 z-50">
+        <Button
+          variant="outline"
+          size="icon"
+          className="rounded-full bg-card shadow-md"
+          onClick={() => supabase.auth.signOut()}
+          aria-label="Keluar"
+          title="Keluar"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function OwnerGate() {
@@ -43,15 +63,11 @@ function OwnerGate() {
   const status = accessStatus(profileData.profile, profileData.email);
   if (!status.allowed) return <Blocked />;
 
-  // Only a new Owner with no business name is sent to the business setup form.
-  // Existing Owners keep the normal app flow, even if the newer optional
-  // business-research fields have not been filled yet.
   if (profileData.role === "owner" && !profileData.profile.business_name) {
     return <Setup profile={profileData.profile} />;
   }
 
-  // Sales/employees always continue directly to the normal application.
-  return <Outlet />;
+  return <AuthenticatedShell />;
 }
 
 function Blocked() {
