@@ -129,11 +129,11 @@ export const resetMyStockOpening = createServerFn({ method: "POST" })
     if (ownerError) throw new Error(ownerError.message);
     if (!isOwner) throw new Error("Reset Stok Awal hanya dapat dilakukan oleh Owner usaha.");
 
-    const { data: movements, error: movementError } = await context.supabase
+    const { count, error: movementError } = await context.supabase
       .from("stock_movements")
       .select("id", { count: "exact", head: true });
     if (movementError) throw new Error(movementError.message);
-    if ((movements as unknown as { count?: number } | null)?.count) {
+    if ((count ?? 0) > 0) {
       throw new Error("Stok sudah memiliki transaksi/pergerakan. Reset Owner hanya tersedia sebelum operasional dimulai. Jika perlu reset setelah operasional, hubungi Super Admin.");
     }
 
