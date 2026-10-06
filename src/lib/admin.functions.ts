@@ -121,3 +121,35 @@ export const resetStockOpening = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, reset: true };
   });
+
+export const resetMyStockOpening = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: isOwner, error: ownerError } = await context.supabase.rpc("is_business_owner");
+    if (ownerError) throw new Error(ownerError.message);
+    if (!isOwner) throw new Error("Reset Stok Awal hanya dapat dilakukan oleh Owner usaha.");
+
+    const { data: movements, error: movementError } = await context.supabase
+      .from("stock_movements")
+      .select("id", { count: "exact", head: true });
+    if (movementError) throw new Error(movementError.message);
+    if ((movements as unknown as { count?: number } | null)?.count) {
+      throw new Error("Stok sudah memiliki transaksi/pergerakan. Reset Owner hanya tersedia sebelum operasional dimulai. Jika perlu reset setelah operasional, hubungi Super Admin.");
+    }
+
+    const { data: setup, error: setupError } = await context.supabase
+      .from("stock_setups")
+      .select("id,owner_id")
+      .eq("owner_id", context.userId)
+      .maybeSingle();
+    if (setupError) throw new Error(setupError.message);
+    if (!setup) return { ok: true, reset: false };
+
+    const { error: deleteError } = await context.supabase
+      .from("stock_setups")
+      .delete()
+      .eq("id", setup.id)
+      .eq("owner_id", context.userId);
+    if (deleteError) throw new Error(deleteError.message);
+    return { ok: true, reset: true };
+  });
