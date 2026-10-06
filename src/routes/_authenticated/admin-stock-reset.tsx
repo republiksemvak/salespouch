@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, RotateCcw, ShieldAlert } from "lucide-react";
+import { ArrowLeft, RotateCcw, Search, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -71,7 +71,7 @@ function SuperAdminResetPanel() {
   const reset = useServerFn(resetStockOpening);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const { data, isLoading } = useQueryCompat(getUsers);
+  const { data, isLoading } = useQuery({ queryKey: ["admin-users-stock-reset"], queryFn: () => getUsers({}) });
   const owners = (data?.owners ?? []) as Array<{ id: string; user_email?: string | null; business_name?: string | null; business_category?: string | null }>;
   const needle = q.trim().toLowerCase();
   const rows = owners.filter((u) => `${u.user_email ?? ""} ${u.business_name ?? ""} ${u.business_category ?? ""}`.toLowerCase().includes(needle));
@@ -101,7 +101,7 @@ function SuperAdminResetPanel() {
       <div className="flex gap-2 font-semibold"><ShieldAlert className="h-5 w-5 shrink-0" /> Reset hanya untuk proses Stok Pembukaan</div>
       <p className="mt-1 leading-5">Reset menghapus pilihan mode dan seluruh data stok pembukaan user tersebut, lalu mengembalikan user ke pilihan awal. Master Produk, Toko/Outlet, Sales, dan data usaha lain tetap aman.</p>
     </div>
-    <div className="relative mt-5"><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari bisnis atau email…" className="h-11" /></div>
+    <div className="relative mt-5"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari bisnis atau email…" className="h-11 pl-9" /></div>
     <section className="mt-4 space-y-3">
       {isLoading && <div className="rounded-xl border p-5 text-center text-sm text-muted-foreground">Memuat user…</div>}
       {!isLoading && rows.map((u) => {
@@ -111,9 +111,4 @@ function SuperAdminResetPanel() {
       {!isLoading && !rows.length && <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">User tidak ditemukan.</div>}
     </section>
   </main>;
-}
-
-function useQueryCompat<T>(getUsers: (args: any) => Promise<T>) {
-  const { useQuery } = require("@tanstack/react-query") as typeof import("@tanstack/react-query");
-  return useQuery({ queryKey: ["admin-users-stock-reset"], queryFn: () => getUsers({}) });
 }
