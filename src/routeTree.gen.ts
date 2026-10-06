@@ -30,6 +30,7 @@ import { Route as AuthenticatedSalesStockDayRouteImport } from './routes/_authen
 import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
 import { Route as AuthenticatedStockOpeningRouteImport } from './routes/_authenticated/stock-opening'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
+import { Route as AuthenticatedTeamAccessRouteImport } from './routes/_authenticated/team-access'
 import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
 import { Route as AuthenticatedTravelFundsRouteImport } from './routes/_authenticated/travel-funds'
 import { Route as AuthenticatedVisitRouteImport } from './routes/_authenticated/visit'
@@ -151,6 +152,11 @@ const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTeamAccessRoute = AuthenticatedTeamAccessRouteImport.update({
+  id: '/team-access',
+  path: '/team-access',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTransactionsRoute =
   AuthenticatedTransactionsRouteImport.update({
     id: '/transactions',
@@ -230,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/schedule': typeof AuthenticatedScheduleRoute
   '/stock-opening': typeof AuthenticatedStockOpeningRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/team-access': typeof AuthenticatedTeamAccessRoute
   '/transactions': typeof AuthenticatedTransactionsRouteWithChildren
   '/travel-funds': typeof AuthenticatedTravelFundsRoute
   '/visit': typeof AuthenticatedVisitRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/schedule': typeof AuthenticatedScheduleRoute
   '/stock-opening': typeof AuthenticatedStockOpeningRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/team-access': typeof AuthenticatedTeamAccessRoute
   '/travel-funds': typeof AuthenticatedTravelFundsRoute
   '/visit': typeof AuthenticatedVisitRoute
   '/warehouse-direct-sale': typeof AuthenticatedWarehouseDirectSaleRoute
@@ -295,6 +303,7 @@ export interface FileRoutesById {
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/stock-opening': typeof AuthenticatedStockOpeningRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
+  '/_authenticated/team-access': typeof AuthenticatedTeamAccessRoute
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRouteWithChildren
   '/_authenticated/travel-funds': typeof AuthenticatedTravelFundsRoute
   '/_authenticated/visit': typeof AuthenticatedVisitRoute
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/schedule'
     | '/stock-opening'
     | '/team'
+    | '/team-access'
     | '/transactions'
     | '/travel-funds'
     | '/visit'
@@ -361,6 +371,7 @@ export interface FileRouteTypes {
     | '/schedule'
     | '/stock-opening'
     | '/team'
+    | '/team-access'
     | '/travel-funds'
     | '/visit'
     | '/warehouse-direct-sale'
@@ -393,6 +404,7 @@ export interface FileRouteTypes {
     | '/_authenticated/schedule'
     | '/_authenticated/stock-opening'
     | '/_authenticated/team'
+    | '/_authenticated/team-access'
     | '/_authenticated/transactions'
     | '/_authenticated/travel-funds'
     | '/_authenticated/visit'
@@ -560,6 +572,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTeamRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/team-access': {
+      id: '/_authenticated/team-access'
+      path: '/team-access'
+      fullPath: '/team-access'
+      preLoaderRoute: typeof AuthenticatedTeamAccessRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/transactions': {
       id: '/_authenticated/transactions'
       path: '/transactions'
@@ -681,6 +700,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
   AuthenticatedStockOpeningRoute: typeof AuthenticatedStockOpeningRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
+  AuthenticatedTeamAccessRoute: typeof AuthenticatedTeamAccessRoute
   AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRouteWithChildren
   AuthenticatedTravelFundsRoute: typeof AuthenticatedTravelFundsRoute
   AuthenticatedVisitRoute: typeof AuthenticatedVisitRoute
@@ -708,6 +728,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
   AuthenticatedStockOpeningRoute: AuthenticatedStockOpeningRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
+  AuthenticatedTeamAccessRoute: AuthenticatedTeamAccessRoute,
   AuthenticatedTransactionsRoute: AuthenticatedTransactionsRouteWithChildren,
   AuthenticatedTravelFundsRoute: AuthenticatedTravelFundsRoute,
   AuthenticatedVisitRoute: AuthenticatedVisitRoute,

@@ -854,6 +854,36 @@ export type Database = {
           },
         ]
       }
+      system_maintenance: {
+        Row: {
+          enabled: boolean
+          eta: string | null
+          id: number
+          message: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          eta?: string | null
+          id?: number
+          message?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          eta?: string | null
+          id?: number
+          message?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           created_at: string
@@ -898,6 +928,45 @@ export type Database = {
             foreignKeyName: "team_members_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          permission_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          permission_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          permission_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_permissions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1155,8 +1224,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_team_permission: {
+        Args: { _permission_key: string; _user_id?: string }
+        Returns: boolean
+      }
       is_business_manager: { Args: never; Returns: boolean }
       is_business_owner: { Args: never; Returns: boolean }
+      is_owner_of_team_member: { Args: { _user_id: string }; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
       rebuild_product_warehouse_stock: {
         Args: { _owner_id: string; _product_id: string }
         Returns: undefined
@@ -1169,6 +1244,10 @@ export type Database = {
           _stock_date?: string
         }
         Returns: string
+      }
+      replace_team_permissions: {
+        Args: { _permission_keys: string[]; _user_id: string }
+        Returns: undefined
       }
       revise_transaction: {
         Args: {
@@ -1216,6 +1295,18 @@ export type Database = {
           _sales_location_id: string
         }
         Returns: number
+      }
+      set_team_member_access: {
+        Args: {
+          _permission_keys: string[]
+          _position: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      set_team_member_role: {
+        Args: { _position: string; _user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
