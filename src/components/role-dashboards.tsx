@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { BarChart3, Building2, FileText, History, Package, Play, Store, Truck, Users, Warehouse, Wallet, CalendarDays, Settings2, ShieldCheck } from "lucide-react";
+import { BarChart3, Building2, FileText, History, Package, Play, Store, Truck, Users, Warehouse, Wallet, CalendarDays, Settings2, ShieldCheck, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeSwitcher } from "@/components/mode-switcher";
 import type { Profile } from "@/lib/access";
@@ -8,20 +8,24 @@ type DashboardProps = { profile: Profile | null; businessName?: string | null };
 type PermissionDashboardProps = DashboardProps & { permissions: string[] };
 
 function Header({ title, subtitle }: { title: string; subtitle: string }) {
-  return <header className="flex items-start justify-between gap-3"><div><div className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Sales Pouch</div><h1 className="mt-1 text-[27px] font-bold tracking-tight">{title}</h1><p className="mt-1 text-xs text-muted-foreground">{subtitle}</p></div><ModeSwitcher /></header>;
+  return <header className="flex items-start justify-between gap-3"><div><div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Sales Pouch</div><h1 className="mt-1 text-[26px] font-bold tracking-tight">{title}</h1><p className="mt-1 text-xs text-muted-foreground">{subtitle}</p></div><ModeSwitcher /></header>;
 }
 
 function MenuButton({ to, icon: Icon, label, tone = "orange" }: { to: string; icon: typeof Store; label: string; tone?: "orange" | "blue" | "purple" | "green" }) {
   const toneClass = { orange: "bg-orange-100 text-orange-700", blue: "bg-blue-100 text-blue-700", purple: "bg-purple-100 text-purple-700", green: "bg-emerald-100 text-emerald-700" }[tone];
-  return <Button asChild variant="outline" className="h-[76px] rounded-xl justify-between px-3"><Link to={to as never}><span className="flex items-center gap-2.5"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></span><span className="text-left text-[14px] font-semibold leading-tight">{label}</span></span><span className="text-lg text-muted-foreground">›</span></Link></Button>;
+  return <Button asChild variant="outline" className="h-[72px] rounded-2xl border-border/80 bg-card/80 px-3 shadow-sm transition-colors hover:bg-card"><Link to={to as never}><span className="flex min-w-0 items-center gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></span><span className="truncate text-left text-[14px] font-semibold leading-tight">{label}</span></span><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" /></Link></Button>;
 }
 
 function PermissionMenu({ allowed, ...props }: { allowed: boolean } & Parameters<typeof MenuButton>[0]) {
   return allowed ? <MenuButton {...props} /> : null;
 }
 
-function OwnerSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="mt-6"><div className="mb-2 px-1 text-[12px] font-bold tracking-wide text-foreground">{title}</div><div className="grid grid-cols-2 gap-2.5">{children}</div></section>;
+function OwnerSection({ title, icon: Icon, children }: { title: string; icon: typeof Package; children: React.ReactNode }) {
+  return <section className="mt-6"><div className="mb-2.5 flex items-center gap-2 px-1"><Icon className="h-4 w-4 text-muted-foreground" /><h2 className="text-[12px] font-bold tracking-wide text-foreground">{title}</h2></div><div className="grid grid-cols-2 gap-2.5">{children}</div></section>;
+}
+
+function OwnerSummary() {
+  return <section className="mt-4 rounded-2xl border bg-card p-3.5 shadow-sm"><div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Ringkasan Hari Ini</div><div className="grid grid-cols-2 divide-x"><div className="px-2"><div className="text-[10px] text-muted-foreground">Outlet</div><div className="mt-0.5 text-xl font-bold">—</div><div className="text-[10px] text-muted-foreground">Outlet aktif</div></div><div className="px-3"><div className="text-[10px] text-muted-foreground">Kunjungan</div><div className="mt-0.5 text-xl font-bold">—</div><div className="text-[10px] text-muted-foreground">Hari ini</div></div></div></section>;
 }
 
 export function SuperAdminDashboard() {
@@ -31,19 +35,10 @@ export function SuperAdminDashboard() {
 export function OwnerDashboard({ profile, businessName }: DashboardProps) {
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-5">
     <Header title={businessName || profile?.business_name || "Owner"} subtitle="Panel utama pemilik usaha" />
+    <OwnerSummary />
+    <section className="mt-4"><Button asChild className="h-12 w-full rounded-2xl text-base font-semibold shadow-sm"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-2 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button></section>
 
-    <section className="mt-4 rounded-2xl border bg-card p-3 shadow-sm">
-      <div className="grid grid-cols-2 divide-x">
-        <div className="px-2"><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Outlet</div><div className="mt-1 text-2xl font-bold">—</div><div className="text-[11px] text-muted-foreground">Kelola outlet</div></div>
-        <div className="px-3"><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Kunjungan</div><div className="mt-1 text-2xl font-bold">—</div><div className="text-[11px] text-muted-foreground">Pantau aktivitas</div></div>
-      </div>
-    </section>
-
-    <section className="mt-4">
-      <Button asChild className="h-12 w-full rounded-xl text-base font-semibold"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-2 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button>
-    </section>
-
-    <OwnerSection title="Aktivitas Harian">
+    <OwnerSection title="Aktivitas Harian" icon={Play}>
       <MenuButton to="/outlets" icon={Store} label="Outlet" tone="orange" />
       <MenuButton to="/sales-stock-day" icon={Truck} label="Stok Sales" tone="blue" />
       <MenuButton to="/warehouse-direct-sale" icon={Warehouse} label="Direct Selling" tone="orange" />
@@ -51,17 +46,16 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
       <MenuButton to="/notes" icon={FileText} label="Catatan" tone="orange" />
     </OwnerSection>
 
-    <OwnerSection title="Produk & Persediaan">
+    <OwnerSection title="Produk & Stok" icon={Package}>
       <MenuButton to="/products" icon={Package} label="Master Produk" tone="orange" />
       <MenuButton to="/master-stock" icon={Package} label="Stok Gudang" tone="blue" />
     </OwnerSection>
 
-    <OwnerSection title="Laporan & Hasil">
-      <MenuButton to="/reports" icon={BarChart3} label="Laporan" tone="purple" />
-      <MenuButton to="/reports" icon={Wallet} label="Profit Usaha" tone="green" />
+    <OwnerSection title="Laporan" icon={BarChart3}>
+      <MenuButton to="/reports" icon={BarChart3} label="Laporan & Profit" tone="purple" />
     </OwnerSection>
 
-    <OwnerSection title="Pengelolaan Usaha">
+    <OwnerSection title="Pengelolaan Usaha" icon={Settings2}>
       <MenuButton to="/team" icon={Users} label="Tim" tone="green" />
       <MenuButton to="/profile" icon={Building2} label="Profil Usaha" tone="green" />
       <MenuButton to="/operations" icon={Settings2} label="Operasional" tone="blue" />
