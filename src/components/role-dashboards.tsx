@@ -20,12 +20,53 @@ function PermissionMenu({ allowed, ...props }: { allowed: boolean } & Parameters
   return allowed ? <MenuButton {...props} /> : null;
 }
 
+function OwnerSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="mt-6"><div className="mb-2 px-1 text-[12px] font-bold tracking-wide text-foreground">{title}</div><div className="grid grid-cols-2 gap-2.5">{children}</div></section>;
+}
+
 export function SuperAdminDashboard() {
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-5"><Header title="Super Admin" subtitle="Panel kontrol sistem Sales Pouch" /><section className="mt-5 rounded-2xl border bg-card p-4 shadow-sm"><div className="flex items-start gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShieldCheck className="h-6 w-6" /></div><div><h2 className="font-bold">Kontrol Super Admin</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Kelola akun, lisensi, promo, dan alat administrasi sistem.</p></div></div><Button asChild className="mt-4 h-12 w-full rounded-xl"><Link to="/admin">Buka Dashboard Super Admin</Link></Button></section><section className="mt-5"><div className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Alat Sistem</div><div className="grid grid-cols-2 gap-2.5"><MenuButton to="/admin" icon={ShieldCheck} label="Kontrol Admin" tone="orange" /><MenuButton to="/admin-stock-reset" icon={Settings2} label="Reset Stok" tone="blue" /></div></section><p className="mt-5 rounded-xl border border-dashed p-3 text-center text-xs text-muted-foreground">Gunakan tombol Mode di atas untuk menguji tampilan Owner, Manager, dan Sales.</p></main>;
 }
 
 export function OwnerDashboard({ profile, businessName }: DashboardProps) {
-  return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-5"><Header title={businessName || profile?.business_name || "Owner"} subtitle="Panel utama pemilik usaha" /><section className="mt-4 rounded-2xl border bg-card p-3 shadow-sm"><div className="grid grid-cols-2 divide-x"><div className="px-2"><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Outlet</div><div className="mt-1 text-2xl font-bold">—</div><div className="text-[11px] text-muted-foreground">Kelola outlet</div></div><div className="px-3"><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Kunjungan</div><div className="mt-1 text-2xl font-bold">—</div><div className="text-[11px] text-muted-foreground">Pantau aktivitas</div></div></div></section><section className="mt-4"><Button asChild className="h-12 w-full rounded-xl text-base font-semibold"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-2 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button></section><section className="mt-5"><div className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Kendali Owner</div><div className="grid grid-cols-2 gap-2.5"><MenuButton to="/products" icon={Package} label="Master Produk" tone="orange" /><MenuButton to="/master-stock" icon={Package} label="Stok Gudang" tone="blue" /><MenuButton to="/outlets" icon={Store} label="Outlet" tone="orange" /><MenuButton to="/team" icon={Users} label="Tim" tone="green" /><MenuButton to="/reports" icon={BarChart3} label="Laporan" tone="purple" /><MenuButton to="/operations" icon={Settings2} label="Operasional" tone="blue" /><MenuButton to="/profile" icon={Building2} label="Profil Usaha" tone="green" /><MenuButton to="/sales-stock-day" icon={Truck} label="Stok Sales" tone="blue" /><MenuButton to="/warehouse-direct-sale" icon={Warehouse} label="Direct Selling" tone="orange" /><MenuButton to="/transactions" icon={History} label="Transaksi" tone="purple" /><MenuButton to="/notes" icon={FileText} label="Catatan" tone="orange" /></div></section></main>;
+  return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-5">
+    <Header title={businessName || profile?.business_name || "Owner"} subtitle="Panel utama pemilik usaha" />
+
+    <section className="mt-4 rounded-2xl border bg-card p-3 shadow-sm">
+      <div className="grid grid-cols-2 divide-x">
+        <div className="px-2"><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Outlet</div><div className="mt-1 text-2xl font-bold">—</div><div className="text-[11px] text-muted-foreground">Kelola outlet</div></div>
+        <div className="px-3"><div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Kunjungan</div><div className="mt-1 text-2xl font-bold">—</div><div className="text-[11px] text-muted-foreground">Pantau aktivitas</div></div>
+      </div>
+    </section>
+
+    <section className="mt-4">
+      <Button asChild className="h-12 w-full rounded-xl text-base font-semibold"><Link to="/visit" search={{ outlet: undefined }}><Play className="mr-2 h-5 w-5 fill-current" />Mulai Kunjungan</Link></Button>
+    </section>
+
+    <OwnerSection title="Aktivitas Harian">
+      <MenuButton to="/outlets" icon={Store} label="Outlet" tone="orange" />
+      <MenuButton to="/sales-stock-day" icon={Truck} label="Stok Sales" tone="blue" />
+      <MenuButton to="/warehouse-direct-sale" icon={Warehouse} label="Direct Selling" tone="orange" />
+      <MenuButton to="/transactions" icon={History} label="Transaksi" tone="purple" />
+      <MenuButton to="/notes" icon={FileText} label="Catatan" tone="orange" />
+    </OwnerSection>
+
+    <OwnerSection title="Produk & Persediaan">
+      <MenuButton to="/products" icon={Package} label="Master Produk" tone="orange" />
+      <MenuButton to="/master-stock" icon={Package} label="Stok Gudang" tone="blue" />
+    </OwnerSection>
+
+    <OwnerSection title="Laporan & Hasil">
+      <MenuButton to="/reports" icon={BarChart3} label="Laporan" tone="purple" />
+      <MenuButton to="/reports" icon={Wallet} label="Profit Usaha" tone="green" />
+    </OwnerSection>
+
+    <OwnerSection title="Pengelolaan Usaha">
+      <MenuButton to="/team" icon={Users} label="Tim" tone="green" />
+      <MenuButton to="/profile" icon={Building2} label="Profil Usaha" tone="green" />
+      <MenuButton to="/operations" icon={Settings2} label="Operasional" tone="blue" />
+    </OwnerSection>
+  </main>;
 }
 
 export function ManagerDashboard({ businessName, permissions }: PermissionDashboardProps) {
