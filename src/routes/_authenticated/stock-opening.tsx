@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 export const Route = createFileRoute("/_authenticated/stock-opening")({ head: () => ({ meta: [{ title: "Stok Pembukaan — Sales Pouch" }] }), component: OpeningStockPage });
 type SetupMode = "migration" | "from_start";
 type Setup = { id: string; mode: SetupMode; status: "active" | "finalized" };
-type Location = { id: string; name: string; location_type: "warehouse" | "outlet" | "sales" };
+type Location = { id: string; name: string; location_type: "warehouse" | "outlet" | "sales"; outlet_id?: string | null; team_member_user_id?: string | null };
 type Opening = { location_id: string; product_id: string; quantity: number };
 
 function OpeningStockPage() {
@@ -36,15 +36,15 @@ function OpeningStockPage() {
   });
   const { data: locations = [], isLoading: locationsLoading } = useQuery<Location[]>({
     queryKey: ["stock-locations", account?.ownerId], enabled: !!account?.ownerId && !!setup,
-    queryFn: async () => { const { data, error } = await (supabase as any).from("stock_locations").select("id,name,location_type").eq("owner_id", account!.ownerId).eq("is_active", true).order("location_type").order("name"); if (error) throw error; return data ?? []; },
+    queryFn: async () => { const { data, error } = await (supabase as any).from("stock_locations").select("id,name,location_type,outlet_id,team_member_user_id").eq("owner_id", account!.ownerId).eq("is_active", true).order("location_type").order("name"); if (error) throw error; return data ?? []; },
   });
   const { data: outlets = [] } = useQuery<{ id: string; name: string }[]>({
     queryKey: ["stock-opening-outlets"], enabled: !!setup,
     queryFn: async () => { const { data, error } = await supabase.from("outlets").select("id,name").order("name"); if (error) throw error; return data ?? []; },
   });
-  const { data: sales = [] } = useQuery<{ user_id: string }[]>({
+  const { data: sales = [] } = useQuery<{ user_id: string; profiles: { display_name: string | null; username: string | null } | null }[]>({
     queryKey: ["stock-opening-sales", account?.ownerId], enabled: !!account?.ownerId && !!setup,
-    queryFn: async () => { const { data, error } = await (supabase as any).from("team_members").select("user_id").eq("owner_id", account!.ownerId).eq("position", "sales"); if (error) throw error; return data ?? []; },
+    queryFn: async () => { const { data, error } = await (supabase as any).from("team_members").select("user_id,profiles!team_members_user_id_fkey(display_name,username)").eq("owner_id", account!.ownerId).eq("position", "sales"); if (error) throw error; return data ?? []; },
   });
   const { data: openings = [] } = useQuery<Opening[]>({
     queryKey: ["stock-openings", setup?.id], enabled: !!setup?.id,
@@ -68,7 +68,7 @@ function OpeningStockPage() {
       if (missingOutlets.length) { const { error } = await (supabase as any).from("stock_locations").insert(missingOutlets.map((o) => ({ owner_id: account.ownerId, location_type: "outlet", name: o.name, outlet_id: o.id }))); if (error) throw error; }
       const existingSalesIds = new Set((locations as any).filter((x: any) => x.location_type === "sales").map((x: any) => x.team_member_user_id));
       const missingSales = sales.filter((s) => !existingSalesIds.has(s.user_id));
-      if (missingSales.length) { const { error } = await (supabase as any).from("stock_locations").insert(missingSales.map((s) => ({ owner_id: account.ownerId, location_type: "sales", name: `Sales ${s.user_id.slice(0, 6)}`, team_member_user_id: s.user_id }))); if (error) throw error; }
+      if (missingSales.length) { const { error } = await (supabase as any).from("stock_locations").insert(missingSales.map((s) => ({ owner_id: account.ownerId, location_type: "sales", name: s.profiles?.display_name?.trim() || s.profiles?.username?.trim() || "Sales", team_member_user_id: s.user_id }))); if (error) throw error; }
       await qc.invalidateQueries({ queryKey: ["stock-locations", account.ownerId] }); toast.success("Lokasi stok sudah siap.");
     } catch (e) { toast.error(`Gagal menyiapkan lokasi: ${(e as Error).message}`); } finally { setPreparing(false); }
   }

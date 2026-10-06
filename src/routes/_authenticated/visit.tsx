@@ -218,11 +218,15 @@ function VisitPage() {
         const { data: balances, error: stockError } = await salesStock.refetch();
         if (stockError || !balances) throw stockError ?? new Error("Stok Sales belum dapat diperiksa. Coba lagi.");
         const outgoing = type === "Consignment" ? cleanNew : directItems.filter((item) => item.qty > 0);
+        const requiredByProduct = new Map<string, { name: string; quantity: number }>();
         for (const item of outgoing) {
           const product = products.find((p) => p.name.toLowerCase() === item.name.toLowerCase());
-          if (!product || item.qty > (balances.get(product.id) ?? 0)) {
-            throw new Error(`Stok Sales tidak cukup untuk ${item.name}. Periksa muatan Sales terlebih dahulu.`);
-          }
+          if (!product) throw new Error(`Produk ${item.name} tidak ditemukan di Master Produk.`);
+          const current = requiredByProduct.get(product.id);
+          requiredByProduct.set(product.id, { name: product.name, quantity: (current?.quantity ?? 0) + item.qty });
+        }
+        for (const [productId, required] of requiredByProduct) {
+          if (required.quantity > (balances.get(productId) ?? 0)) throw new Error(`Stok Sales tidak cukup untuk ${required.name}. Periksa muatan Sales terlebih dahulu.`);
         }
       }
       const receipt_number = await nextReceiptNumber();
