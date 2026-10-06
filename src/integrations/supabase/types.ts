@@ -1236,6 +1236,16 @@ export type Database = {
         Args: { _owner_id: string; _product_id: string }
         Returns: undefined
       }
+      record_physical_opening_snapshot: {
+        Args: {
+          _counted_at?: string
+          _location_id: string
+          _note?: string
+          _physical_quantity: number
+          _product_id: string
+        }
+        Returns: string
+      }
       record_sales_morning_load: {
         Args: {
           _items: Json

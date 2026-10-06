@@ -23,3 +23,4 @@
 - Each consignment snapshots the Owner's stock scheme; `remaining` means shelf stock and `returned` means physical stock returned to the warehouse. Why: stock history and revisions must remain stable when settings change.
 - Keep index-signature dot-access checking disabled in TypeScript because the generated cloud client uses dot access for injected environment variables and must not be edited. Why: generated files remain regenerable without failing project checks.
 - Consignment sales leave the outlet as ledger sale movements, while new deposits transfer Sales stock to the outlet and physical returns transfer outlet stock to Sales. Why: each location's physical balance must reconcile after visits.
+- Post-cutoff physical opening counts are recorded as location stock adjustments, not production or purchases. Why: newly introduced products need an auditable baseline without misclassifying inventory origin.

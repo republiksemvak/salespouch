@@ -32,13 +32,13 @@ function Dashboard() {
   const permissions = access?.permissions ?? [];
 
   if (effectiveRole === "super-admin") return <SuperAdminDashboard />;
-  if (effectiveRole === "manager") return <ManagerDashboard profile={p.profile} businessName={p.profile?.business_name} permissions={permissions} />;
-  if (effectiveRole === "admin") return <AdminDashboard profile={p.profile} businessName={p.profile?.business_name} permissions={permissions} />;
-  if (effectiveRole === "sales") return <SalesDashboard profile={p.profile} businessName={p.profile?.business_name} />;
+  if (effectiveRole === "manager") return <ManagerDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} permissions={permissions} />;
+  if (effectiveRole === "admin") return <AdminDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} permissions={permissions} />;
+  if (effectiveRole === "sales") return <SalesDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} />;
 
   return (
     <>
-      <OwnerDashboard profile={p.profile} businessName={p.profile?.business_name} />
+      <OwnerDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} />
       <div className="fixed bottom-3 right-3">
         <Button variant="outline" size="icon" className="rounded-full bg-card shadow-md" onClick={() => supabase.auth.signOut()} aria-label="Keluar">
           <LogOut className="h-4 w-4" />

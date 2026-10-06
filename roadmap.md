@@ -13,3 +13,6 @@
 - [x] Catat mutasi sale dari outlet untuk konsinyasi terjual.
 - [x] Tambahkan akses Stok Sales Harian dan Direct Selling Gudang di Dashboard.
 - [x] Batasi titipan dan jual langsung dari Sales sesuai saldo stok Sales.
+- [x] Tambahkan snapshot stok awal fisik pasca cut-off per produk dan lokasi di Master Stok.
+- [x] Tampilkan nama lokasi spesifik dan sinkronkan nama lokasi Sales dari profil.
+- [x] Validasi total titipan dan jual langsung terhadap stok fisik Sales.
