@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { BarChart3, Building2, FileText, History, Package, Play, Store, Truck, Users, Warehouse, Wallet, CalendarDays, Settings2, ShieldCheck, ChevronRight, ShoppingCart, AlertTriangle } from "lucide-react";
+import { BarChart3, Building2, FileText, History, Package, Play, Store, Truck, Users, Warehouse, Wallet, CalendarDays, Settings2, ShieldCheck, ChevronRight, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeSwitcher } from "@/components/mode-switcher";
 import type { Profile } from "@/lib/access";
@@ -18,10 +18,6 @@ function MenuButton({ to, icon: Icon, label, tone = "orange" }: { to: string; ic
 
 function PermissionMenu({ allowed, ...props }: { allowed: boolean } & Parameters<typeof MenuButton>[0]) {
   return allowed ? <MenuButton {...props} /> : null;
-}
-
-function OwnerSection({ title, icon: Icon, children }: { title: string; icon: typeof Package; children: React.ReactNode }) {
-  return <section className="mt-6"><div className="mb-2.5 flex items-center gap-2 px-1"><Icon className="h-4 w-4 text-muted-foreground" /><h2 className="text-[12px] font-bold tracking-wide text-foreground">{title}</h2></div><div className="grid grid-cols-2 gap-2.5">{children}</div></section>;
 }
 
 function OwnerSummary() {
@@ -52,37 +48,19 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
       </div>
     </section>
 
-    <section className="mt-6 rounded-3xl border bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div><div className="flex items-center gap-2"><Package className="h-4 w-4 text-blue-600" /><h2 className="text-sm font-bold">Persediaan</h2></div><p className="mt-1 text-[11px] text-muted-foreground">Pantau stok tanpa mengubah alur stok yang sudah ada.</p></div>
-        <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2.5">
+    <section className="mt-6">
+      <div className="mb-2.5 px-1 text-[12px] font-bold tracking-wide text-foreground">Menu Utama</div>
+      <div className="grid grid-cols-2 gap-2.5">
+        <MenuButton to="/products" icon={Package} label="Master Produk" tone="orange" />
         <MenuButton to="/master-stock" icon={Warehouse} label="Stok Gudang" tone="blue" />
-        <MenuButton to="/sales-stock-day" icon={Truck} label="Stok Sales" tone="blue" />
+        <MenuButton to="/warehouse-direct-sale" icon={Warehouse} label="Direct Selling" tone="orange" />
+        <MenuButton to="/team" icon={Users} label="Tim" tone="green" />
+        <MenuButton to="/operations" icon={Settings2} label="Operasional" tone="blue" />
+        <MenuButton to="/profile" icon={Building2} label="Profil" tone="green" />
+        <MenuButton to="/notes" icon={FileText} label="Catatan" tone="orange" />
+        <MenuButton to="/reports" icon={BarChart3} label="Laporan" tone="purple" />
       </div>
     </section>
-
-    <OwnerSection title="Penjualan & Aktivitas" icon={Play}>
-      <MenuButton to="/warehouse-direct-sale" icon={Warehouse} label="Direct Selling" tone="orange" />
-      <MenuButton to="/transactions" icon={History} label="Transaksi" tone="purple" />
-      <MenuButton to="/notes" icon={FileText} label="Catatan" tone="orange" />
-      <MenuButton to="/outlets" icon={Store} label="Outlet" tone="orange" />
-    </OwnerSection>
-
-    <OwnerSection title="Produk" icon={Package}>
-      <MenuButton to="/products" icon={Package} label="Master Produk" tone="orange" />
-    </OwnerSection>
-
-    <OwnerSection title="Laporan & Hasil" icon={BarChart3}>
-      <MenuButton to="/reports" icon={BarChart3} label="Laporan & Profit" tone="purple" />
-    </OwnerSection>
-
-    <OwnerSection title="Pengelolaan Usaha" icon={Settings2}>
-      <MenuButton to="/team" icon={Users} label="Tim" tone="green" />
-      <MenuButton to="/profile" icon={Building2} label="Profil Usaha" tone="green" />
-      <MenuButton to="/operations" icon={Settings2} label="Operasional" tone="blue" />
-    </OwnerSection>
   </main>;
 }
 
