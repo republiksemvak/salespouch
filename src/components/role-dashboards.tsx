@@ -16,6 +16,11 @@ function MenuButton({ to, icon: Icon, label, tone = "orange" }: { to: string; ic
   return <Button asChild variant="outline" className="h-[68px] rounded-2xl border-border/80 bg-card/90 px-3 shadow-sm transition-colors hover:bg-card"><Link to={to as never}><span className="flex min-w-0 items-center gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></span><span className="truncate text-left text-[14px] font-semibold leading-tight">{label}</span></span><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" /></Link></Button>;
 }
 
+function OwnerGridButton({ to, icon: Icon, label, tone = "orange" }: { to: string; icon: typeof Store; label: string; tone?: "orange" | "blue" | "purple" | "green" }) {
+  const toneClass = { orange: "bg-orange-100 text-orange-700", blue: "bg-blue-100 text-blue-700", purple: "bg-purple-100 text-purple-700", green: "bg-emerald-100 text-emerald-700" }[tone];
+  return <Button asChild variant="outline" className="h-[92px] rounded-2xl border-border/80 bg-card px-3 shadow-sm transition-colors hover:bg-card"><Link to={to as never} className="flex h-full flex-col items-start justify-center gap-2"><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></span><span className="text-left text-[13px] font-semibold leading-tight">{label}</span></Link></Button>;
+}
+
 function PermissionMenu({ allowed, ...props }: { allowed: boolean } & Parameters<typeof MenuButton>[0]) {
   return allowed ? <MenuButton {...props} /> : null;
 }
@@ -51,14 +56,14 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
     <section className="mt-6">
       <div className="mb-2.5 px-1 text-[12px] font-bold tracking-wide text-foreground">Menu Utama</div>
       <div className="grid grid-cols-2 gap-2.5">
-        <MenuButton to="/products" icon={Package} label="Master Produk" tone="orange" />
-        <MenuButton to="/master-stock" icon={Warehouse} label="Stok Gudang" tone="blue" />
-        <MenuButton to="/warehouse-direct-sale" icon={Warehouse} label="Direct Selling" tone="orange" />
-        <MenuButton to="/team" icon={Users} label="Tim" tone="green" />
-        <MenuButton to="/operations" icon={Settings2} label="Operasional" tone="blue" />
-        <MenuButton to="/profile" icon={Building2} label="Profil" tone="green" />
-        <MenuButton to="/notes" icon={FileText} label="Catatan" tone="orange" />
-        <MenuButton to="/reports" icon={BarChart3} label="Laporan" tone="purple" />
+        <OwnerGridButton to="/products" icon={Package} label="Master Produk" tone="orange" />
+        <OwnerGridButton to="/master-stock" icon={Warehouse} label="Stok Gudang" tone="blue" />
+        <OwnerGridButton to="/warehouse-direct-sale" icon={Warehouse} label="Direct Selling" tone="orange" />
+        <OwnerGridButton to="/team" icon={Users} label="Tim" tone="green" />
+        <OwnerGridButton to="/operations" icon={Settings2} label="Operasional" tone="blue" />
+        <OwnerGridButton to="/profile" icon={Building2} label="Profil" tone="green" />
+        <OwnerGridButton to="/notes" icon={FileText} label="Catatan" tone="orange" />
+        <OwnerGridButton to="/reports" icon={BarChart3} label="Laporan" tone="purple" />
       </div>
     </section>
   </main>;
