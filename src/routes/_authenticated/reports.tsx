@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, TrendingUp } from "lucide-react";
+import { ArrowLeft, Calendar, Download, Phone, Store, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
@@ -12,23 +12,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/reports")({
-  head: () => ({ meta: [{ title: "Laporan Keuangan — Sales Pouch" }, { name: "description", content: "Omset dan profit penjualan pack dan pcs berdasarkan HPP." }, { property: "og:title", content: "Laporan Keuangan — Sales Pouch" }, { property: "og:description", content: "Omset dan profit penjualan pack dan pcs berdasarkan HPP." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({
+    meta: [
+      { title: "Laporan Keuangan & Piutang — Sales Pouch" },
+      { name: "description", content: "Laporan Laba Rugi, Omset, dan Penuaan Piutang Toko (AR Aging)." },
+    ],
+  }),
   component: ReportsPage,
 });
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
-const k = (n: string) => n.trim().toLowerCase();
-
+const key = (n: string) => n.trim().toLowerCase();
 type ProductReport = { name: string; qty: number; omset: number; hpp: number; profit: number };
+
+type AgingRow = {
+  outlet_id: string;
+  outlet_name: string;
+  phone: string | null;
+  total_debt: number;
+  current_0_7: number;
+  aging_8_14: number;
+  aging_15_30: number;
+  over_30: number;
+  last_transaction_date: string | null;
+};
 
 function ReportsPage() {
   const { data: account, isLoading } = useProfile();
   if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
-  if (account?.role !== "owner") return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat melihat laporan keuangan.</div>;
+  if (account?.role !== "owner") return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat melihat laporan.</div>;
   return <OwnerReportsPage />;
 }
 
 function OwnerReportsPage() {
+  const [tab, setTab] = useState<"finance" | "aging">("finance");
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-5 pb-12 pt-6">
+      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
+      <h1 className="mt-4 text-2xl font-bold">Laporan</h1>
+      <div className="mt-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-xs font-semibold">
+        <button onClick={() => setTab("finance")} className={`rounded-lg py-2 ${tab === "finance" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Laba Rugi & Omset</button>
+        <button onClick={() => setTab("aging")} className={`rounded-lg py-2 ${tab === "aging" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Penuaan Piutang (AR)</button>
+      </div>
+      {tab === "finance" ? <FinancialReportTab /> : <ArAgingTab />}
+    </main>
+  );
+}
+
+function FinancialReportTab() {
   const now = new Date();
   const [from, setFrom] = useState(ymd(new Date(now.getFullYear(), now.getMonth(), 1)));
   const [to, setTo] = useState(ymd(now));
@@ -36,149 +67,95 @@ function OwnerReportsPage() {
   const { data: txs, isLoading } = useQuery({
     queryKey: ["report", from, to],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transactions")
+      const { data, error } = await supabase.from("transactions")
         .select("receipt_number,visit_date,sales_name,transaction_type,line_items,total_sales,discount_amount,amount_paid,remaining_debt,outlets(name)")
-        .gte("visit_date", from + "T00:00:00").lte("visit_date", to + "T23:59:59")
-        .order("visit_date");
+        .gte("visit_date", `${from}T00:00:00`).lte("visit_date", `${to}T23:59:59`).order("visit_date");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
-  const r = useMemo(() => {
-    const cost = new Map((products ?? []).map((p) => [k(p.name), { price: p.cost_price, size: p.pcs_per_pack }]));
+  const report = useMemo(() => {
+    const costs = new Map((products ?? []).map(p => [key(p.name), { price: p.cost_price, size: p.pcs_per_pack }]));
     const hppByProduct = new Map<string, number>();
-    const rows = (txs ?? []).map((t) => {
+    const rows = (txs ?? []).map(t => {
       let hpp = 0;
       const gross = Number(t.total_sales) || 0;
       const discount = Number(t.discount_amount) || 0;
       for (const li of (t.line_items as LineItem[]) ?? []) {
-        const q = Number(li.sold) || 0;
-        if (!q) continue;
-        const productCost = cost.get(k(li.name));
-        const c = (productCost?.price ?? 0) * q / packSize(li.pcs_per_pack ?? productCost?.size);
+        const qty = Number(li.sold) || 0;
+        if (!qty) continue;
+        const p = costs.get(key(li.name));
+        const c = ((p?.price ?? 0) * qty) / packSize(li.pcs_per_pack ?? p?.size);
         hpp += c;
-        hppByProduct.set(k(li.name), (hppByProduct.get(k(li.name)) ?? 0) + c);
+        hppByProduct.set(key(li.name), (hppByProduct.get(key(li.name)) ?? 0) + c);
       }
       const omset = gross - discount;
-      return { nota: t.receipt_number, tanggal: t.visit_date.slice(0, 10), toko: (t.outlets as { name: string } | null)?.name ?? "-", sales: t.sales_name, jenis: t.transaction_type, bruto: gross, diskon: discount, omset, hpp, profit: omset - hpp, dibayar: Number(t.amount_paid), sisa: Number(t.remaining_debt) };
+      return { nota: t.receipt_number, tanggal: t.visit_date.slice(0, 10), toko: (t.outlets as { name: string } | null)?.name ?? "-", sales: t.sales_name, jenis: t.transaction_type, bruto: gross, diskon: discount, omset, hpp, profit: omset - hpp, dibayar: Number(t.amount_paid) || 0, sisa: Number(t.remaining_debt) || 0 };
     });
-    const tot = rows.reduce((a, x) => ({ omset: a.omset + x.omset, hpp: a.hpp + x.hpp, profit: a.profit + x.profit, dibayar: a.dibayar + x.dibayar }), { omset: 0, hpp: 0, profit: 0, dibayar: 0 });
-    const productSales = aggregateProductSales(txs ?? []);
-    const reportProducts: ProductReport[] = productSales
-      .map((p) => ({ ...p, hpp: hppByProduct.get(k(p.name)) ?? 0, profit: p.omset - (hppByProduct.get(k(p.name)) ?? 0) }))
-      .sort((a, b) => b.omset - a.omset);
-    return { rows, tot, products: reportProducts };
+    const totals = rows.reduce((a, x) => ({ omset: a.omset + x.omset, hpp: a.hpp + x.hpp, profit: a.profit + x.profit, dibayar: a.dibayar + x.dibayar }), { omset: 0, hpp: 0, profit: 0, dibayar: 0 });
+    const sales = aggregateProductSales(txs ?? []);
+    const productRows: ProductReport[] = sales.map(p => ({ ...p, hpp: hppByProduct.get(key(p.name)) ?? 0, profit: p.omset - (hppByProduct.get(key(p.name)) ?? 0) })).sort((a, b) => b.omset - a.omset);
+    return { rows, totals, products: productRows };
   }, [txs, products]);
 
   async function download() {
     const XLSX = await import("xlsx");
     const wb = XLSX.utils.book_new();
-    const n1 = r.rows.length + 1;
+    const n1 = report.rows.length + 1;
     const s1 = XLSX.utils.aoa_to_sheet([
       ["Tanggal", "No Nota", "Toko", "Sales", "Jenis", "Penjualan", "Diskon Nota", "Omset Bersih", "HPP", "Profit", "Dibayar", "Sisa Hutang"],
-      ...r.rows.map((x) => [x.tanggal, x.nota, x.toko, x.sales, x.jenis, x.bruto, x.diskon, x.omset, x.hpp, x.profit, x.dibayar, x.sisa]),
-      ["TOTAL", "", "", "", "", ...["F", "G", "H", "I", "J", "K", "L"].map((col) => ({ f: `SUM(${col}2:${col}${n1})` }))],
+      ...report.rows.map(x => [x.tanggal, x.nota, x.toko, x.sales, x.jenis, x.bruto, x.diskon, x.omset, x.hpp, x.profit, x.dibayar, x.sisa]),
+      ["TOTAL", "", "", "", "", ...["F", "G", "H", "I", "J", "K", "L"].map(col => ({ f: `SUM(${col}2:${col}${n1})` }))],
     ]);
-    r.rows.forEach((x, i) => { s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: x.omset }; s1[`J${i + 2}`] = { t: "n", f: `H${i + 2}-I${i + 2}`, v: x.profit }; });
-    s1["!cols"] = [12, 18, 20, 14, 12, 14, 14, 14, 14, 14, 14, 14].map((wch) => ({ wch }));
+    report.rows.forEach((x, i) => { s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: x.omset }; s1[`J${i + 2}`] = { t: "n", f: `H${i + 2}-I${i + 2}`, v: x.profit }; });
+    s1["!cols"] = [12,18,20,14,12,14,14,14,14,14,14,14].map(wch => ({ wch }));
     XLSX.utils.book_append_sheet(wb, s1, "Transaksi");
-    const n2 = r.products.length + 1;
-    const s2 = XLSX.utils.aoa_to_sheet([
-      ["Produk", "Terjual (pcs)", "Omset", "HPP", "Profit"],
-      ...r.products.map((p, i) => [p.name, p.qty, p.omset, p.hpp, { t: "n", f: `C${i + 2}-D${i + 2}`, v: p.omset - p.hpp }]),
-      ["TOTAL", { f: `SUM(B2:B${n2})` }, { f: `SUM(C2:C${n2})` }, { f: `SUM(D2:D${n2})` }, { f: `SUM(E2:E${n2})` }],
-    ]);
-    s2["!cols"] = [24, 14, 14, 14, 14].map((wch) => ({ wch }));
+    const n2 = report.products.length + 1;
+    const s2 = XLSX.utils.aoa_to_sheet([["Produk", "Terjual (pcs)", "Omset", "HPP", "Profit"], ...report.products.map((p, i) => [p.name, p.qty, p.omset, p.hpp, { t: "n", f: `C${i + 2}-D${i + 2}`, v: p.omset - p.hpp }]), ["TOTAL", { f: `SUM(B2:B${n2})` }, { f: `SUM(C2:C${n2})` }, { f: `SUM(D2:D${n2})` }, { f: `SUM(E2:E${n2})` }]]);
+    s2["!cols"] = [24,14,14,14,14].map(wch => ({ wch }));
     XLSX.utils.book_append_sheet(wb, s2, "Per Produk");
     XLSX.writeFile(wb, `Laporan-${from}_sd_${to}.xlsx`);
   }
 
-  const margin = r.tot.omset ? (r.tot.profit / r.tot.omset) * 100 : 0;
-  const topSelling = [...r.products].sort((a, b) => b.qty - a.qty).slice(0, 5);
-  const topRevenue = [...r.products].sort((a, b) => b.omset - a.omset).slice(0, 5);
+  const margin = report.totals.omset ? (report.totals.profit / report.totals.omset) * 100 : 0;
+  const topSelling = [...report.products].sort((a,b) => b.qty - a.qty).slice(0,5);
+  const topRevenue = [...report.products].sort((a,b) => b.omset - a.omset).slice(0,5);
   return (
-    <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
-      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
-      <h1 className="mt-4 text-2xl font-bold">Laporan Keuangan</h1>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <label className="text-xs text-muted-foreground">Dari<Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-11" /></label>
-        <label className="text-xs text-muted-foreground">Sampai<Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-11" /></label>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border bg-card p-4">
-        <Box label="Omset Bersih" v={rp(r.tot.omset)} /><Box label="HPP" v={rp(r.tot.hpp)} />
-        <Box label="Profit" v={rp(r.tot.profit)} strong /><Box label="Margin" v={margin.toFixed(1) + "%"} />
-        <div className="col-span-2 border-t border-dashed pt-2 text-xs text-muted-foreground">Uang diterima: <b className="text-foreground">{rp(r.tot.dibayar)}</b> · {r.rows.length} transaksi</div>
-      </div>
-      <Button onClick={download} disabled={!r.rows.length} className="mt-4 h-12 w-full"><Download className="mr-1 h-4 w-4" />Download Excel</Button>
-      <p className="mt-2 text-[11px] text-muted-foreground">HPP dihitung dari Harga Modal di Master Produk saat ini.</p>
-
+    <div className="mt-4">
+      <div className="grid grid-cols-2 gap-2"><label className="text-xs text-muted-foreground">Dari<Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-11" /></label><label className="text-xs text-muted-foreground">Sampai<Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-11" /></label></div>
+      <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border bg-card p-4"><Box label="Omset Bersih" v={rp(report.totals.omset)} /><Box label="HPP" v={rp(report.totals.hpp)} /><Box label="Profit" v={rp(report.totals.profit)} strong /><Box label="Margin" v={`${margin.toFixed(1)}%`} /><div className="col-span-2 border-t border-dashed pt-2 text-xs text-muted-foreground">Uang diterima: <b className="text-foreground">{rp(report.totals.dibayar)}</b> · {report.rows.length} transaksi</div></div>
+      <Button onClick={download} disabled={!report.rows.length} className="mt-4 h-12 w-full"><Download className="mr-1 h-4 w-4" /> Download Excel</Button>
       <ProductInsights topSelling={topSelling} topRevenue={topRevenue} />
-
-      <h2 className="mt-6 font-semibold">Per Produk</h2>
-      <div className="mt-2 space-y-2">
-        {isLoading && <p className="text-sm text-muted-foreground">Memuat…</p>}
-        {!isLoading && !r.products.length && <p className="text-sm text-muted-foreground">Belum ada penjualan di periode ini.</p>}
-        {r.products.map((p) => (
-          <div key={p.name} className="rounded-xl border bg-card p-3 text-sm">
-            <div className="flex justify-between font-medium"><span className="truncate">{p.name}</span><span>{p.qty} pcs</span></div>
-            <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Omset {rp(p.omset)}</span><span>HPP {rp(p.hpp)}</span><b className={p.omset - p.hpp < 0 ? "text-destructive" : "text-primary"}>{rp(p.omset - p.hpp)}</b></div>
-          </div>
-        ))}
-      </div>
-    </main>
-  );
-}
-
-function ProductInsights({ topSelling, topRevenue }: { topSelling: ProductReport[]; topRevenue: ProductReport[] }) {
-  const maxQty = topSelling[0]?.qty || 1;
-  const maxRevenue = topRevenue[0]?.omset || 1;
-  return (
-    <section className="mt-5 overflow-hidden rounded-2xl border bg-card">
-      <div className="flex items-center justify-between border-b px-3.5 py-3">
-        <div>
-          <div className="text-sm font-bold">Insight Produk</div>
-          <div className="text-[10px] text-muted-foreground">Sesuai rentang tanggal di atas</div>
-        </div>
-        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="grid grid-cols-2 divide-x">
-        <InsightList title="Terlaris" rows={topSelling} max={maxQty} value={(p) => `${p.qty} pcs`} />
-        <InsightList title="Omset Terbesar" rows={topRevenue} max={maxRevenue} value={(p) => rp(p.omset)} revenue />
-      </div>
-      <div className="border-t px-3.5 py-2.5 text-[10px] leading-relaxed text-muted-foreground">
-        <b className="text-foreground">Catatan:</b> Terlaris = pcs terjual. Omset = setelah diskon.
-      </div>
-    </section>
-  );
-}
-
-function InsightList({ title, rows, max, value, revenue }: { title: string; rows: ProductReport[]; max: number; value: (p: ProductReport) => string; revenue?: boolean }) {
-  return (
-    <div className="min-w-0 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
-      <div className="mt-2 space-y-2.5">
-        {!rows.length && <div className="text-[11px] text-muted-foreground">Belum ada data</div>}
-        {rows.map((p) => {
-          const ratio = Math.max(8, Math.round(((revenue ? p.omset : p.qty) / max) * 100));
-          return (
-            <div key={`${title}-${p.name}`} className="min-w-0">
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="truncate font-medium">{p.name}</span>
-                <span className="shrink-0 text-muted-foreground">{value(p)}</span>
-              </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-primary" style={{ width: `${ratio}%` }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <h2 className="mt-6 font-semibold">Performa Produk</h2>
+      <div className="mt-2 space-y-2">{isLoading && <p className="text-sm text-muted-foreground">Memuat data…</p>}{!isLoading && !report.products.length && <p className="text-sm text-muted-foreground">Belum ada transaksi di periode ini.</p>}{report.products.map(p => <div key={p.name} className="rounded-xl border bg-card p-3 text-sm"><div className="flex justify-between font-medium"><span className="truncate">{p.name}</span><span>{p.qty} pcs</span></div><div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Omset {rp(p.omset)}</span><span>HPP {rp(p.hpp)}</span><b className={p.profit < 0 ? "text-destructive" : "text-primary"}>{rp(p.profit)}</b></div></div>)}</div>
     </div>
   );
 }
 
-function Box({ label, v, strong }: { label: string; v: string; strong?: boolean }) {
-  return <div><div className="text-[10px] uppercase text-muted-foreground">{label}</div><div className={strong ? "text-lg font-bold text-primary" : "font-semibold"}>{v}</div></div>;
+function ArAgingTab() {
+  const { data: rows, isLoading, error } = useQuery({
+    queryKey: ["ar-aging-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_outlet_ar_aging");
+      if (error) throw error;
+      return (data ?? []) as AgingRow[];
+    },
+  });
+  const summary = useMemo(() => (rows ?? []).reduce((a, r) => ({ total: a.total + Number(r.total_debt || 0), current: a.current + Number(r.current_0_7 || 0), attention: a.attention + Number(r.aging_8_14 || 0), critical: a.critical + Number(r.aging_15_30 || 0), overdue: a.overdue + Number(r.over_30 || 0) }), { total: 0, current: 0, attention: 0, critical: 0, overdue: 0 }), [rows]);
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="rounded-2xl border bg-card p-4"><div className="text-xs text-muted-foreground">Total Piutang Mengendap di Toko</div><div className="mt-1 text-2xl font-bold text-destructive">{rp(summary.total)}</div><div className="mt-4 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><Bucket label="0–7 Hari (Lancar)" value={summary.current} /><Bucket label="8–14 Hari (Perhatian)" value={summary.attention} /><Bucket label="15–30 Hari (Kritis)" value={summary.critical} /><Bucket label="> 30 Hari (Macet)" value={summary.overdue} /></div></div>
+      {error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Gagal memuat AR Aging: {(error as Error).message}</div>}
+      {isLoading && <p className="text-sm text-muted-foreground">Memuat rincian toko…</p>}
+      {!isLoading && !error && !(rows ?? []).length && <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">🎉 Tidak ada piutang tertunggak saat ini. Semua toko lunas!</div>}
+      <div className="space-y-3">{(rows ?? []).map(o => <div key={o.outlet_id} className="space-y-2 rounded-2xl border bg-card p-4 text-sm shadow-sm"><div className="flex items-start justify-between gap-2"><div><div className="flex items-center gap-1.5 font-bold"><Store className="h-4 w-4 text-muted-foreground" />{o.outlet_name}</div></div><div className="text-right"><div className="text-xs text-muted-foreground">Total Hutang</div><div className="font-bold text-destructive">{rp(Number(o.total_debt))}</div></div></div><div className="grid grid-cols-4 gap-1 rounded-xl bg-muted/60 p-2 text-center text-[10px]"><AgingCell label="0-7" value={o.current_0_7} /><AgingCell label="8-14" value={o.aging_8_14} /><AgingCell label="15-30" value={o.aging_15_30} /><AgingCell label=">30" value={o.over_30} /></div><div className="flex items-center justify-between border-t pt-1 text-xs"><span className="flex items-center gap-1 text-[11px] text-muted-foreground"><Calendar className="h-3 w-3" /> Sejak {o.last_transaction_date?.slice(0,10) ?? "-"}</span>{o.phone ? <a href={`https://wa.me/${o.phone.replace(/^0/, "62").replace(/\D/g, "")}?text=${encodeURIComponent(`Halo ${o.outlet_name}, mengonfirmasi catatan tagihan titip barang di Sales Pouch sebesar ${rp(Number(o.total_debt))}. Mohon konfirmasi jadwal pembayaran saat kunjungan berikutnya ya. Terima kasih 🙏`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline"><Phone className="h-3.5 w-3.5" /> WhatsApp Tagihan</a> : <span className="text-[11px] italic text-muted-foreground">No HP belum diisi</span>}</div></div>)}</div>
+    </div>
+  );
 }
+
+function Bucket({ label, value }: { label: string; value: number }) { return <div className="rounded-lg bg-muted/60 p-2"><div className="text-[10px] uppercase font-semibold">{label}</div><div className="font-bold">{rp(value)}</div></div>; }
+function AgingCell({ label, value }: { label: string; value: number }) { return <div><div className="text-muted-foreground">{label} hr</div><div className="font-semibold">{value ? rp(Number(value)) : "-"}</div></div>; }
+function ProductInsights({ topSelling, topRevenue }: { topSelling: ProductReport[]; topRevenue: ProductReport[] }) { return <section className="mt-5 overflow-hidden rounded-2xl border bg-card"><div className="flex items-center justify-between border-b px-3.5 py-3"><div><div className="text-sm font-bold">Insight Produk</div><div className="text-[10px] text-muted-foreground">Sesuai rentang tanggal di atas</div></div><TrendingUp className="h-4 w-4 text-muted-foreground" /></div><div className="grid grid-cols-2 divide-x"><InsightList title="Terlaris" rows={topSelling} max={topSelling[0]?.qty || 1} value={p => `${p.qty} pcs`} /><InsightList title="Omset Terbesar" rows={topRevenue} max={topRevenue[0]?.omset || 1} value={p => rp(p.omset)} revenue /></div><div className="border-t px-3.5 py-2.5 text-[10px] text-muted-foreground"><b className="text-foreground">Catatan:</b> Terlaris = pcs terjual. Omset = setelah diskon.</div></section>; }
+function InsightList({ title, rows, max, value, revenue }: { title: string; rows: ProductReport[]; max: number; value: (p: ProductReport) => string; revenue?: boolean }) { return <div className="min-w-0 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</div><div className="mt-2 space-y-2.5">{!rows.length && <div className="text-[11px] text-muted-foreground">Belum ada data</div>}{rows.map(p => <div key={`${title}-${p.name}`}><div className="flex items-center justify-between gap-2 text-[11px]"><span className="truncate font-medium">{p.name}</span><span className="shrink-0 text-muted-foreground">{value(p)}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(8, Math.round(((revenue ? p.omset : p.qty) / max) * 100))}%` }} /></div></div>)}</div></div>; }
+function Box({ label, v, strong }: { label: string; v: string; strong?: boolean }) { return <div><div className="text-[10px] uppercase text-muted-foreground">{label}</div><div className={strong ? "text-lg font-bold text-primary" : "font-semibold"}>{v}</div></div>; }
