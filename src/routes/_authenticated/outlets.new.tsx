@@ -42,21 +42,53 @@ function NewOutlet() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (!name.trim()) {
+      toast.error("Nama outlet wajib diisi");
+      return;
+    }
     setBusy(true);
     try {
-      if (!account) throw new Error("Akun belum siap.");
-      const store_photo = file ? await uploadStorePhoto(file) : null;
-      const { error } = await supabase.from("outlets").insert({
-        user_id: account.ownerId, name: name.trim(), owner_name: ownerName.trim() || null,
-        owner_phone: phone.trim() || null, address: address.trim() || null,
-        map_location: map.trim() || null, route_notes: routeNotes.trim() || null, store_photo,
-      });
+      if (!account?.ownerId) throw new Error("Data akun belum siap. Silakan muat ulang.");
+
+      // Upload foto dibuat toleran: jika gagal, outlet tetap bisa disimpan.
+      let store_photo: string | null = null;
+      if (file) {
+        try {
+          store_photo = await uploadStorePhoto(file);
+        } catch (photoErr) {
+          console.warn("Gagal unggah foto:", photoErr);
+          toast.error("Foto gagal diunggah, melanjutkan simpan data outlet.");
+        }
+      }
+
+      const { data: newOutlet, error } = await supabase.from("outlets").insert({
+        user_id: account.ownerId,
+        name: name.trim(),
+        owner_name: ownerName.trim() || null,
+        owner_phone: phone.trim() || null,
+        address: address.trim() || null,
+        map_location: map.trim() || null,
+        route_notes: routeNotes.trim() || null,
+        store_photo,
+      }).select("id").single();
+
       if (error) throw error;
-      toast.success("Outlet ditambahkan");
-      qc.invalidateQueries({ queryKey: ["outlets"] });
-      navigate({ to: "/dashboard" });
-    } catch (err) { toast.error((err as Error).message); }
-    finally { setBusy(false); }
+
+      toast.success("Outlet berhasil ditambahkan");
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["all-outlets"] }),
+        qc.invalidateQueries({ queryKey: ["outlets"] }),
+        qc.invalidateQueries({ queryKey: ["dashboard-outlets"] }),
+        qc.invalidateQueries({ queryKey: ["warehouse-direct-sale-outlets"] }),
+      ]);
+
+      navigate({ to: "/outlets" });
+    } catch (err) {
+      toast.error((err as Error).message || "Gagal menyimpan outlet");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
