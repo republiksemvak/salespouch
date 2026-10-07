@@ -291,8 +291,8 @@ export function SalesDashboard({ businessName, profile }: DashboardProps) {
     <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
       <Header title="Sales Field" subtitle={businessName || "Mode Kunjungan Lapangan"} />
 
-      <div className="mt-3">
-        <Button asChild className="h-12 w-full rounded-lg text-base font-semibold shadow-xs">
+      <div className="mt-4">
+        <Button asChild className="h-12 w-full rounded-xl text-sm font-semibold shadow-sm">
           <Link to="/visit" search={{ outlet: undefined }}>
             <Play className="mr-2 h-5 w-5 fill-current" />
             Mulai Kunjungan
@@ -303,10 +303,10 @@ export function SalesDashboard({ businessName, profile }: DashboardProps) {
       <SalesFinancialSummary salesId={profile?.id} />
 
       <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
-        <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           Menu
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <CompactIconMenu to="/outlets" icon={Store} label="Outlet" badgeColor="bg-amber-500/10 text-amber-600" />
           <CompactIconMenu to="/sales-stock-day" icon={Truck} label="Stok Sales" badgeColor="bg-blue-500/10 text-blue-600" />
           <CompactIconMenu to="/transactions" icon={History} label="Riwayat Nota" badgeColor="bg-purple-500/10 text-purple-600" />
