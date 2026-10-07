@@ -20,7 +20,6 @@ import { Route as AuthenticatedMasterStockRouteImport } from './routes/_authenti
 import { Route as AuthenticatedNotesRouteImport } from './routes/_authenticated/notes'
 import { Route as AuthenticatedOperasionalSalesRouteImport } from './routes/_authenticated/operasional-sales'
 import { Route as AuthenticatedOperationsRouteImport } from './routes/_authenticated/operations'
-import { Route as AuthenticatedOtherIncomeRouteImport } from './routes/_authenticated/other-income'
 import { Route as AuthenticatedOutletsRouteImport } from './routes/_authenticated/outlets'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
@@ -99,10 +98,6 @@ const AuthenticatedOperationsRoute = AuthenticatedOperationsRouteImport.update({
   path: '/operations',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedOtherIncomeRoute =
-  AuthenticatedOtherIncomeRouteImport.update({
-    id: '/other-income',
-    path: '/other-income',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedOutletsRoute = AuthenticatedOutletsRouteImport.update({
@@ -226,7 +221,6 @@ export interface FileRoutesByFullPath {
   '/notes': typeof AuthenticatedNotesRoute
   '/operasional-sales': typeof AuthenticatedOperasionalSalesRoute
   '/operations': typeof AuthenticatedOperationsRoute
-  '/other-income': typeof AuthenticatedOtherIncomeRoute
   '/outlets': typeof AuthenticatedOutletsRouteWithChildren
   '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -259,7 +253,6 @@ export interface FileRoutesByTo {
   '/notes': typeof AuthenticatedNotesRoute
   '/operasional-sales': typeof AuthenticatedOperasionalSalesRoute
   '/operations': typeof AuthenticatedOperationsRoute
-  '/other-income': typeof AuthenticatedOtherIncomeRoute
   '/outlets': typeof AuthenticatedOutletsRouteWithChildren
   '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
@@ -293,7 +286,6 @@ export interface FileRoutesById {
   '/_authenticated/notes': typeof AuthenticatedNotesRoute
   '/_authenticated/operasional-sales': typeof AuthenticatedOperasionalSalesRoute
   '/_authenticated/operations': typeof AuthenticatedOperationsRoute
-  '/_authenticated/other-income': typeof AuthenticatedOtherIncomeRoute
   '/_authenticated/outlets': typeof AuthenticatedOutletsRouteWithChildren
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
@@ -328,7 +320,6 @@ export interface FileRouteTypes {
     | '/notes'
     | '/operasional-sales'
     | '/operations'
-    | '/other-income'
     | '/outlets'
     | '/products'
     | '/profile'
@@ -361,7 +352,6 @@ export interface FileRouteTypes {
     | '/notes'
     | '/operasional-sales'
     | '/operations'
-    | '/other-income'
     | '/outlets'
     | '/products'
     | '/profile'
@@ -394,7 +384,6 @@ export interface FileRouteTypes {
     | '/_authenticated/notes'
     | '/_authenticated/operasional-sales'
     | '/_authenticated/operations'
-    | '/_authenticated/other-income'
     | '/_authenticated/outlets'
     | '/_authenticated/products'
     | '/_authenticated/profile'
@@ -502,11 +491,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOperationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/other-income': {
-      id: '/_authenticated/other-income'
-      path: '/other-income'
-      fullPath: '/other-income'
-      preLoaderRoute: typeof AuthenticatedOtherIncomeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/outlets': {
@@ -690,7 +674,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNotesRoute: typeof AuthenticatedNotesRoute
   AuthenticatedOperasionalSalesRoute: typeof AuthenticatedOperasionalSalesRoute
   AuthenticatedOperationsRoute: typeof AuthenticatedOperationsRoute
-  AuthenticatedOtherIncomeRoute: typeof AuthenticatedOtherIncomeRoute
   AuthenticatedOutletsRoute: typeof AuthenticatedOutletsRouteWithChildren
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
@@ -718,7 +701,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNotesRoute: AuthenticatedNotesRoute,
   AuthenticatedOperasionalSalesRoute: AuthenticatedOperasionalSalesRoute,
   AuthenticatedOperationsRoute: AuthenticatedOperationsRoute,
-  AuthenticatedOtherIncomeRoute: AuthenticatedOtherIncomeRoute,
   AuthenticatedOutletsRoute: AuthenticatedOutletsRouteWithChildren,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
