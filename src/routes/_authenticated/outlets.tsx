@@ -250,6 +250,7 @@ function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: 
   const [routeNotes, setRouteNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 
   function useGps() {
     if (!navigator.geolocation) { toast.error("GPS tidak tersedia di perangkat ini."); return; }
@@ -268,6 +269,16 @@ function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: 
     if (!name.trim()) { toast.error("Nama outlet wajib diisi."); return; }
     setBusy(true);
     try {
+      let storePhoto: string | null = null;
+      if (file) {
+        try {
+          storePhoto = await uploadStorePhoto(file);
+        } catch (photoErr) {
+          console.warn("Gagal unggah foto:", photoErr);
+          toast.error("Foto gagal diunggah, outlet tetap disimpan tanpa foto.");
+        }
+      }
+
       const { data, error } = await supabase.from("outlets").insert({
         user_id: account.ownerId,
         name: name.trim(),
@@ -276,6 +287,7 @@ function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: 
         address: address.trim() || null,
         map_location: map.trim() || null,
         route_notes: routeNotes.trim() || null,
+        store_photo: storePhoto,
       }).select("id").single();
       if (error) throw error;
       if (!data?.id) throw new Error("Outlet gagal mendapatkan ID.");
@@ -290,6 +302,10 @@ function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: 
     <Button type="button" variant="ghost" className="-ml-3 h-9 px-3" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" />Kembali ke Semua Outlet</Button>
     <h1 className="mt-4 text-2xl font-bold">Tambah Outlet</h1>
     <form onSubmit={save} className="mt-6 space-y-4">
+      <label className="flex aspect-video cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border-2 border-dashed bg-card">
+        {file ? <img src={URL.createObjectURL(file)} alt="Foto outlet" className="h-full w-full object-cover" /> : <><Camera className="h-8 w-8 text-muted-foreground" /><span className="mt-2 text-sm text-muted-foreground">Foto outlet (opsional)</span><span className="mt-1 text-[10px] text-muted-foreground">Otomatis dikompres agar ringan</span></>}
+        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+      </label>
       <div className="space-y-2"><Label>Nama Outlet *</Label><Input required value={name} onChange={(e) => setName(e.target.value)} className="h-12" placeholder="Contoh: Toko Makmur" /></div>
       <div className="space-y-2"><Label>Nama Pemilik</Label><Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="h-12" /></div>
       <div className="space-y-2"><Label>No. HP Pemilik</Label><Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xx" className="h-12" /></div>
