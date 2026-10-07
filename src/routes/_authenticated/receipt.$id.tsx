@@ -62,14 +62,45 @@ function ReceiptPage() {
   const { data: t, isLoading, error } = useQuery({
     queryKey: ["receipt", id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: tx, error: txError } = await supabase
         .from("transactions")
         .select("*, outlets(name, owner_phone)")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-      return data;
+      if (tx) return tx;
+
+      const { data: wds, error: wdsError } = await supabase
+        .from("warehouse_direct_sales")
+        .select("*, outlets:buyer_outlet_id(name, owner_phone)")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (wds) {
+        return {
+          id: wds.id,
+          receipt_number: wds.receipt_number,
+          transaction_type: "Direct Sale",
+          stock_scheme: "accumulation",
+          visit_date: wds.sale_date,
+          created_at: wds.created_at,
+          sales_name: "Gudang Utama",
+          total_sales: wds.total_sales,
+          discount_amount: wds.discount_amount,
+          previous_debt: 0,
+          total_due: Number(wds.total_sales) - Number(wds.discount_amount),
+          amount_paid: wds.amount_paid,
+          remaining_debt: Math.max(0, Number(wds.total_sales) - Number(wds.discount_amount) - Number(wds.amount_paid)),
+          line_items: wds.line_items,
+          new_consignment_items: [],
+          custom_note: wds.custom_note,
+          outlets: wds.outlets ?? { name: wds.buyer_name, owner_phone: null },
+        };
+      }
+
+      if (txError) throw txError;
+      if (wdsError) throw wdsError;
+      return null;
     },
   });
 
