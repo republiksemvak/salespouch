@@ -162,6 +162,12 @@ function MasterStockPage() {
   const productionRemainder = Math.max(0, Number(productionPcs) || 0);
   const productionQuantity = productionPacks * productionPackSize + productionRemainder;
 
+  const selectedDamageProduct = products.find((p) => p.id === damageProduct);
+  const damagePackSize = selectedDamageProduct?.pcs_per_pack ?? 1;
+  const damagePacks = Math.max(0, Number(damagePack) || 0);
+  const damageRemainder = Math.max(0, Number(damagePcs) || 0);
+  const damageQuantity = damagePacks * damagePackSize + damageRemainder;
+
   const selectedOpeningProduct = products.find((p) => p.id === openingProduct);
   const openingPackSize = packSize(selectedOpeningProduct?.pcs_per_pack);
   const openingQuantity = toPieces(Math.max(0, Number(openingPack) || 0), Math.max(0, Number(openingPcs) || 0), openingPackSize);
@@ -235,6 +241,43 @@ function MasterStockPage() {
     setProductionPcs("");
     setProductionNote("");
     setProductionMessage(`Stok distribusi ${productionQuantity.toLocaleString("id-ID")} pcs berhasil ditambahkan.`);
+  };
+
+  const saveDamage = async () => {
+    setDamageMessage("");
+    if (!damageLocation || !damageProduct || damageQuantity <= 0) {
+      setDamageMessage("Pilih Gudang, produk, dan isi jumlah barang rusak lebih dari 0.");
+      return;
+    }
+    if (!/^\d*$/.test(damagePack) || !/^\d*$/.test(damagePcs) || damageRemainder >= damagePackSize) {
+      setDamageMessage(`Sisa pcs harus 0–${damagePackSize - 1} untuk produk ini.`);
+      return;
+    }
+    setSavingDamage(true);
+    const { error } = await (supabase as any).from("stock_movements").insert({
+      owner_id: account!.ownerId,
+      product_id: damageProduct,
+      movement_type: "damage",
+      from_location_id: damageLocation,
+      to_location_id: null,
+      quantity: damageQuantity,
+      reference_type: null,
+      notes: damageNote.trim() || "Pemusnahan barang rusak / BS",
+      occurred_at: new Date(`${damageDate}T12:00:00`).toISOString()
+    });
+    setSavingDamage(false);
+    if (error) {
+      setDamageMessage(error.message || "Gagal memproses pemusnahan barang rusak.");
+      return;
+    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["master-stock-warehouse", account?.ownerId] }),
+      queryClient.invalidateQueries({ queryKey: ["master-stock-movements", account?.ownerId] })
+    ]);
+    setDamagePack("");
+    setDamagePcs("");
+    setDamageNote("");
+    setDamageMessage(`Barang rusak ${damageQuantity.toLocaleString("id-ID")} pcs berhasil dimusnahkan dan memotong gudang.`);
   };
 
   const saveOpeningSnapshot = async () => {
