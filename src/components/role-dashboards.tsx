@@ -286,7 +286,7 @@ export function SuperAdminDashboard() {
   );
 }
 
-export function SalesDashboard({ businessName }: DashboardProps) {
+export function SalesDashboard({ businessName, profile }: DashboardProps) {
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
       <Header title="Sales Field" subtitle={businessName || "Mode Kunjungan Lapangan"} />
