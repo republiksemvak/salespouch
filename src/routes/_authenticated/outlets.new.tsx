@@ -46,6 +46,14 @@ function NewOutlet() {
       toast.error("Nama outlet wajib diisi");
       return;
     }
+    if (account?.role !== "owner" && account?.role !== "admin" && account?.role !== "manager") {
+      toast.error("Anda tidak memiliki akses untuk menambah outlet.");
+      return;
+    }
+    if (!account?.ownerId) {
+      toast.error("Usaha belum teridentifikasi. Silakan muat ulang.");
+      return;
+    }
     setBusy(true);
     try {
       if (!account?.ownerId) throw new Error("Data akun belum siap. Silakan muat ulang.");
@@ -73,6 +81,7 @@ function NewOutlet() {
       }).select("id").single();
 
       if (error) throw error;
+      if (!newOutlet?.id) throw new Error("Outlet tidak mendapatkan ID setelah disimpan.");
 
       toast.success("Outlet berhasil ditambahkan");
 
