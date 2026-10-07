@@ -14,7 +14,11 @@ CROSS JOIN (VALUES
   ('Operasional'),
   ('Lainnya')
 ) AS c(name)
-WHERE p.role = 'owner'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.team_members tm
+    WHERE tm.user_id = p.id
+  )
   AND NOT EXISTS (
     SELECT 1
     FROM public.expense_categories ec
