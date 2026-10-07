@@ -292,7 +292,7 @@ export function SalesDashboard({ businessName, profile }: DashboardProps) {
       <Header title="Sales Field" subtitle={businessName || "Mode Kunjungan Lapangan"} />
 
       <div className="mt-3">
-        <Button asChild className="h-12 w-full rounded-xl text-base font-semibold shadow-xs">
+        <Button asChild className="h-12 w-full rounded-lg text-base font-semibold shadow-xs">
           <Link to="/visit" search={{ outlet: undefined }}>
             <Play className="mr-2 h-5 w-5 fill-current" />
             Mulai Kunjungan
