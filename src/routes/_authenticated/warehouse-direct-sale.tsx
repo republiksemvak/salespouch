@@ -88,7 +88,7 @@ function WarehouseDirectSalePage() {
     setBusy(true);
     try {
       const receipt_number = await nextReceiptNumber();
-      const { error } = await supabase.from("warehouse_direct_sales").insert({
+      const { data: savedDirect, error } = await supabase.from("warehouse_direct_sales").insert({
         owner_id: account.ownerId,
         receipt_number,
         buyer_name: buyerName.trim(),
@@ -99,12 +99,17 @@ function WarehouseDirectSalePage() {
         discount_amount: discountAmount,
         amount_paid: amountPaid,
         custom_note: note.trim() || null,
-      } as any);
+      } as any).select("id").single();
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["master-stock-global"] });
+      qc.invalidateQueries({ queryKey: ["transaction-history"] });
       toast.success("Penjualan gudang tersimpan");
-      navigate({ to: "/dashboard" });
+      if (savedDirect?.id) {
+        navigate({ to: "/receipt/$id", params: { id: savedDirect.id } });
+      } else {
+        navigate({ to: "/transactions" });
+      }
     } catch (error) {
       toast.error((error as Error).message);
     } finally {
