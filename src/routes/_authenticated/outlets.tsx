@@ -153,7 +153,7 @@ function AllOutlets() {
             <Button asChild type="button" variant="outline" size="sm" className="rounded-lg">
               <Link to="/schedule">
                 <CalendarDays className="mr-1.5 h-4 w-4" />
-                Jadwal Kunjungan
+                Jadwal
               </Link>
             </Button>
             <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => setShowCreate(true)}>
