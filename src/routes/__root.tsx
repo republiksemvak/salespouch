@@ -104,7 +104,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-function RootShell({ children }: { children: ReactNode }) {
+// Mobile viewport is intentionally fixed for the app UI.\nfunction RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="id">
       <head>
