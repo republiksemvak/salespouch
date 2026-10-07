@@ -51,6 +51,7 @@ function AllOutlets() {
   const [scheduleDay, setScheduleDay] = useState("");
   const [salesFilter, setSalesFilter] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
   const search = q.trim();
   const ownerId = account?.ownerId;
 
@@ -111,6 +112,18 @@ function AllOutlets() {
   const outlets = (data?.outlets ?? []).filter((outlet) => !hasScheduleFilter || filteredOutletIds.includes(outlet.id));
   const count = data?.count ?? 0;
 
+  if (showCreate) {
+    return <InlineCreateOutlet onBack={() => setShowCreate(false)} onSaved={async () => {
+      setShowCreate(false);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["all-outlets"] }),
+        qc.invalidateQueries({ queryKey: ["outlets"] }),
+        qc.invalidateQueries({ queryKey: ["dashboard-outlets"] }),
+        qc.invalidateQueries({ queryKey: ["warehouse-direct-sale-outlets"] }),
+      ]);
+    }} />;
+  }
+
   if (editingId) {
     return (
       <InlineEditOutlet
@@ -136,7 +149,7 @@ function AllOutlets() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Kembali
           </Button>
-          <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => window.location.assign("/outlets/new")}>
+          <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => setShowCreate(true)}>
             <Plus className="mr-1.5 h-4 w-4" />
             Tambah Outlet
           </Button>
@@ -197,7 +210,7 @@ function AllOutlets() {
             <p className="mt-1 text-xs text-muted-foreground">
               {q ? `Belum ada outlet dengan nama "${q}".` : "Belum ada outlet yang ditambahkan ke sistem."}
             </p>
-            <Button type="button" size="sm" className="mt-4 rounded-lg" onClick={() => navigate({ to: "/outlets/new" })}>
+            <Button type="button" size="sm" className="mt-4 rounded-lg" onClick={() => setShowCreate(true)}>
               <Plus className="mr-1.5 h-4 w-4" />
               Daftarkan Toko Baru
             </Button>
@@ -225,6 +238,67 @@ function AllOutlets() {
       </div>
     </main>
   );
+}
+
+function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: () => Promise<void> | void }) {
+  const { data: account, isLoading: accountLoading } = useProfile();
+  const [name, setName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [map, setMap] = useState("");
+  const [routeNotes, setRouteNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  function useGps() {
+    if (!navigator.geolocation) { toast.error("GPS tidak tersedia di perangkat ini."); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setMap(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`); setLocating(false); },
+      (err) => { toast.error(err.message); setLocating(false); },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (accountLoading || !account?.ownerId) { toast.error("Data akun belum siap. Silakan muat ulang."); return; }
+    if (!["owner", "admin", "manager"].includes(account.role)) { toast.error("Anda tidak memiliki akses untuk menambah outlet."); return; }
+    if (!name.trim()) { toast.error("Nama outlet wajib diisi."); return; }
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.from("outlets").insert({
+        user_id: account.ownerId,
+        name: name.trim(),
+        owner_name: ownerName.trim() || null,
+        owner_phone: phone.trim() || null,
+        address: address.trim() || null,
+        map_location: map.trim() || null,
+        route_notes: routeNotes.trim() || null,
+      }).select("id").single();
+      if (error) throw error;
+      if (!data?.id) throw new Error("Outlet gagal mendapatkan ID.");
+      toast.success("Outlet berhasil ditambahkan");
+      await onSaved();
+    } catch (err) {
+      toast.error(`Gagal menyimpan outlet: ${(err as Error).message}`);
+    } finally { setBusy(false); }
+  }
+
+  return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
+    <Button type="button" variant="ghost" className="-ml-3 h-9 px-3" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" />Kembali ke Semua Outlet</Button>
+    <h1 className="mt-4 text-2xl font-bold">Tambah Outlet</h1>
+    <form onSubmit={save} className="mt-6 space-y-4">
+      <div className="space-y-2"><Label>Nama Outlet *</Label><Input required value={name} onChange={(e) => setName(e.target.value)} className="h-12" placeholder="Contoh: Toko Makmur" /></div>
+      <div className="space-y-2"><Label>Nama Pemilik</Label><Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="h-12" /></div>
+      <div className="space-y-2"><Label>No. HP Pemilik</Label><Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xx" className="h-12" /></div>
+      <div className="space-y-2"><Label>Alamat Toko</Label><Textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={3} /></div>
+      <div className="space-y-2"><Label>Lokasi</Label><div className="flex gap-2"><Input value={map} onChange={(e) => setMap(e.target.value)} placeholder="Link Google Maps" className="h-12" /><Button type="button" variant="secondary" className="h-12 shrink-0" onClick={useGps} disabled={locating}><Crosshair className="h-4 w-4" />{locating ? "…" : "GPS"}</Button></div></div>
+      <div className="space-y-2"><Label>Catatan Rute</Label><Textarea value={routeNotes} onChange={(e) => setRouteNotes(e.target.value)} rows={3} placeholder="Patokan menuju toko" /></div>
+      <Button type="submit" disabled={busy || !name.trim()} className="h-14 w-full text-base">{busy ? "Menyimpan…" : "Simpan Outlet"}</Button>
+    </form>
+  </main>;
 }
 
 function InlineEditOutlet({ id, onBack, onSaved }: { id: string; onBack: () => void; onSaved: () => Promise<void> | void }) {
