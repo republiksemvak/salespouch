@@ -59,6 +59,7 @@ function OwnerReportsPage() {
   );
 }
 
+// Direct Gudang included in financial report totals.
 function FinancialReportTab() {
   const now = new Date();
   const [from, setFrom] = useState(ymd(new Date(now.getFullYear(), now.getMonth(), 1)));
