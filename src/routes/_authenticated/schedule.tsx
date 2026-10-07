@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -72,9 +72,10 @@ function SchedulePage() {
       const client = supabase as any;
       let query = client
         .from("store_schedules")
-        .select("id,outlet_id,sales_id,day_of_week,note,outlets(name),profiles!store_schedules_sales_id_fkey(display_name,username,user_email)")
+        .select("id,outlet_id,sales_id,day_of_week,note,visit_order,outlets(name),profiles!store_schedules_sales_id_fkey(display_name,username,user_email)")
         .eq("owner_id", ownerId)
         .order("day_of_week")
+        .order("visit_order", { ascending: true, nullsFirst: false })
         .order("created_at");
       if (!isOwner && profile?.userId) query = query.eq("sales_id", profile.userId).eq("day_of_week", todayDay);
       const { data, error } = await query;
@@ -130,6 +131,67 @@ function SchedulePage() {
   });
 
   const collectedOutletIds = useMemo(() => new Set(collectedToday), [collectedToday]);
+  const todayOutletIds = useMemo(
+    () => [...new Set(schedules.map((item: any) => item.outlet_id).filter(Boolean))],
+    [schedules]
+  );
+
+  const { data: outstandingDebts = [], isLoading: debtsLoading } = useQuery({
+    queryKey: ["schedule-outlet-debts", ownerId, todayOutletIds.join(",")],
+    enabled: !!ownerId && todayOutletIds.length > 0,
+    queryFn: async () => {
+      const client = supabase as any;
+      const { data, error } = await client
+        .from("transactions")
+        .select("outlet_id,remaining_debt,visit_date,created_at")
+        .in("outlet_id", todayOutletIds)
+        .eq("user_id", ownerId)
+        .order("visit_date", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const latest = new Map<string, number>();
+      for (const row of data ?? []) {
+        if (!latest.has(row.outlet_id)) latest.set(row.outlet_id, Number(row.remaining_debt) || 0);
+      }
+      return [...latest.entries()].map(([outletId, amount]) => ({ outletId, amount }));
+    },
+    staleTime: 15_000,
+  });
+
+  const outstandingByOutlet = useMemo(
+    () => new Map(outstandingDebts.map((row: any) => [row.outletId, row.amount])),
+    [outstandingDebts]
+  );
+
+  const moveSchedule = async (index: number, direction: -1 | 1) => {
+    if (isOwner || busy) return;
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= schedules.length) return;
+
+    const current = schedules[index] as any;
+    const target = schedules[nextIndex] as any;
+    if (current.day_of_week !== target.day_of_week) return;
+
+    setBusy(true);
+    try {
+      const client = supabase as any;
+      const currentOrder = Number(current.visit_order) || index + 1;
+      const targetOrder = Number(target.visit_order) || nextIndex + 1;
+      const [first, second] = await Promise.all([
+        client.from("store_schedules").update({ visit_order: targetOrder }).eq("id", current.id),
+        client.from("store_schedules").update({ visit_order: currentOrder }).eq("id", target.id),
+      ]);
+      if (first.error) throw first.error;
+      if (second.error) throw second.error;
+      await qc.invalidateQueries({ queryKey: ["store-schedules", ownerId] });
+      toast.success("Urutan tagihan diperbarui");
+    } catch (error) {
+      toast.error((error as Error).message || "Urutan gagal diperbarui.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   async function addSchedule(e: React.FormEvent) {
     e.preventDefault();
@@ -219,7 +281,12 @@ function SchedulePage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        {index + 1}
+                      </span>
+                      <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
+                    </div>
                     {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="h-3 w-3" />
@@ -228,7 +295,18 @@ function SchedulePage() {
                     )}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
+                  <div className="mt-1 text-sm font-semibold">
+                    {debtsLoading ? "Memuat tagihan..." : `Tagihan: Rp ${Math.round(outstandingByOutlet.get(item.outlet_id) ?? 0).toLocaleString("id-ID")}`}
+                  </div>
                   {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
+                  <div className="mt-3 flex gap-1">
+                    <Button variant="outline" size="sm" disabled={busy || index === 0 || schedules[index - 1]?.day_of_week !== item.day_of_week} onClick={() => moveSchedule(index, -1)}>
+                      <ArrowUp className="mr-1 h-3.5 w-3.5" /> Naik
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={busy || index === schedules.length - 1 || schedules[index + 1]?.day_of_week !== item.day_of_week} onClick={() => moveSchedule(index, 1)}>
+                      <ArrowDown className="mr-1 h-3.5 w-3.5" /> Turun
+                    </Button>
+                  </div>
                 </div>
                 {isOwner && <Button variant="ghost" size="icon" aria-label="Hapus jadwal" onClick={() => removeSchedule(item.id)}><Trash2 className="h-4 w-4" /></Button>}
               </div>
@@ -245,7 +323,7 @@ function SchedulePage() {
               </span>
             </h2>
             <div className="space-y-2">
-            {schedules.map((item: any) => <div key={item.id} className="rounded-xl border bg-card p-3">
+            {schedules.map((item: any, index: number) => <div key={item.id} className="rounded-xl border bg-card p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
