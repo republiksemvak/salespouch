@@ -289,6 +289,17 @@ function VisitPage() {
         {type === "Consignment" && !isFirst && <PreviousStockEditor rows={rows} setRows={setRows} lineItems={lineItems} stockScheme={stockScheme} />}
         <div className="mt-6"><h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Tier Harga Nota Ini</h2><div className="mt-2 grid grid-cols-3 rounded-xl border bg-card p-1 text-sm">{TIERS.map((t) => <button key={t.id} type="button" onClick={() => changeTier(t.id)} className={`rounded-lg py-2 font-medium ${tier === t.id ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.label}</button>)}</div></div>
         {type === "Direct Sale" && <ItemEditor title="Produk Terjual" items={directItems} setItems={setDirectItems} qtyLabel="Terjual" products={products} tier={tier} stockLabel={stockSource === "sales" ? "Stok Sales" : "Stok gudang"} stockBalances={stockSource === "sales" ? salesStock.data : undefined} />}
+        {type === "Consignment" && (
+          <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900">
+            <div className="font-semibold flex items-center gap-1.5">
+              💡 Panduan Pengisian Toko
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-blue-800">
+              • <b>Sisa Lalu:</b> Barang fisik yang sudah ada di rak toko sebelum hari ini.<br/>
+              • <b>Titipan Baru:</b> Barang yang baru diturunkan dari muatan motor/mobil Anda hari ini (memotong stok sales).
+            </p>
+          </div>
+        )}
         {type === "Consignment" && <ItemEditor title={isFirst ? "Titip Barang Baru (Drop-off)" : "Titip Barang Baru Hari Ini"} items={newItems} setItems={setNewItems} qtyLabel="Titip" products={products} tier={tier} stockLabel="Stok Sales" stockBalances={salesStock.data} />}
         {(type === "Consignment" || stockSource === "sales") && salesStock.isPending && <p className="mt-2 text-xs text-muted-foreground">Memeriksa stok Sales…</p>}
         {(type === "Consignment" || stockSource === "sales") && salesStock.isError && <p className="mt-2 text-xs text-destructive">Stok Sales belum dapat dimuat. Coba lagi sebelum menyimpan.</p>}
