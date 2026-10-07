@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Store } from "lucide-react";
+import { ArrowLeft, CalendarDays, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Search, Store } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signedPhotoUrls, uploadStorePhoto } from "@/lib/photos";
@@ -51,9 +51,13 @@ function AllOutlets() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const ownerId = account?.ownerId;
+  const [q, setQ] = useState("");
+  const search = q.trim();
+
+
 
   const { data, isLoading } = useQuery({
-    queryKey: ["all-outlets", sort, ownerId, account?.role, account?.userId],
+    queryKey: ["all-outlets", search, sort, ownerId, account?.role, account?.userId],
     enabled: !!ownerId && !!account?.userId,
     queryFn: async () => {
       let assignedOutletIds: string[] | null = null;
@@ -81,6 +85,11 @@ function AllOutlets() {
 
       if (assignedOutletIds) {
         query = query.in("id", assignedOutletIds);
+      }
+
+      if (search) {
+        const safeSearch = search.replace(/[%_]/g, (char) => `\\\\${char}`);
+        query = query.ilike("name", `%${safeSearch}%`);
       }
 
       const { data, error, count } = await query;
@@ -174,6 +183,16 @@ function AllOutlets() {
           <p className="mt-0.5 text-xs text-muted-foreground">{count} warung/toko terdaftar</p>
         </div>
       </header>
+
+      <div className="relative mt-5">
+        <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Cari nama toko…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="h-11 pl-9"
+        />
+      </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Button type="button" variant={sort === "newest" ? "default" : "outline"} className="h-10" onClick={() => setSort("newest")}>Registrasi Terbaru</Button>
