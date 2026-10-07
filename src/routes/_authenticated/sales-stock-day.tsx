@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Boxes, CheckCircle2, Info, RefreshCw, Truck } from "lucide-react";
 import { toast } from "sonner";
@@ -45,7 +45,7 @@ function SalesStockDayPage() {
 
   const { data: members = [] } = useQuery<Member[]>({ 
     queryKey: ["sales-stock-members", ownerId], 
-    enabled: !!ownerId, 
+    enabled: !!ownerId && account?.role !== "sales", 
     queryFn: async () => { 
       const { data, error } = await supabase
         .from("team_members")
@@ -57,7 +57,18 @@ function SalesStockDayPage() {
     } 
   });
 
+  useEffect(() => {
+    if (account?.role === "sales" && account.userId && salesUserId !== account.userId) {
+      setSalesUserId(account.userId);
+      setRows([]);
+    }
+  }, [account?.role, account?.userId, salesUserId]);
+
   const selectedMember = members.find((m) => m.user_id === salesUserId);
+  const selectedSalesName =
+    account?.role === "sales"
+      ? account.profile?.display_name || account.profile?.business_name || "Sales"
+      : selectedMember?.profiles?.display_name || selectedMember?.profiles?.username || "Sales";
   
   const { data: salesLocation } = useQuery<{ id: string } | null>({ 
     queryKey: ["sales-stock-location", ownerId, salesUserId], 
@@ -212,7 +223,7 @@ function SalesStockDayPage() {
   const totalSalesStock = stockRows.reduce((sum, x) => sum + x.qty, 0);
 
   if (accountLoading) return <main className="mx-auto max-w-md px-4 pt-12 text-center text-sm text-muted-foreground">Memuat Stok Sales…</main>;
-  if (account?.role !== "owner") return <main className="mx-auto max-w-md px-4 pt-12 text-center text-destructive">Stok Sales hanya dapat dilihat Owner.</main>;
+  if (account?.role !== "owner" && account?.role !== "sales") return <main className="mx-auto max-w-md px-4 pt-12 text-center text-destructive">Stok Sales hanya dapat dilihat Owner atau Sales.</main>;
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-5">
@@ -233,45 +244,40 @@ function SalesStockDayPage() {
         </div>
       </header>
 
-      {/* Filter Sales & Tanggal */}
+      {/* Sales melihat armada miliknya; Owner tetap dapat memilih Sales. */}
       <section className="mt-4 rounded-2xl border bg-card p-4 shadow-sm">
         <div className="grid grid-cols-2 gap-3">
-          <label className="text-xs font-medium">
-            Pilih Sales
-            <select 
-              value={salesUserId} 
-              onChange={(e) => { setSalesUserId(e.target.value); setRows([]); }} 
-              className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm"
-            >
-              <option value="">Pilih Sales…</option>
-              {members.map((m) => (
-                <option key={m.user_id} value={m.user_id}>
-                  {m.profiles?.display_name || m.profiles?.username || m.user_id.slice(0, 8)}
-                </option>
-              ))}
-            </select>
-          </label>
+          {account?.role === "owner" ? (
+            <label className="text-xs font-medium">
+              Pilih Sales
+              <select 
+                value={salesUserId} 
+                onChange={(e) => { setSalesUserId(e.target.value); setRows([]); }} 
+                className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm"
+              >
+                <option value="">Pilih Sales…</option>
+                {members.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.profiles?.display_name || m.profiles?.username || m.user_id.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="rounded-xl border bg-blue-50/60 border-blue-100 px-3 py-2 text-xs">
+              <div className="text-muted-foreground">Sales</div>
+              <b>{selectedSalesName}</b>
+            </div>
+          )}
           <label className="text-xs font-medium">
             Tanggal
-            <input 
-              type="date" 
-              value={stockDate} 
-              onChange={(e) => setStockDate(e.target.value)} 
-              className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm" 
-            />
+            <input type="date" value={stockDate} onChange={(e) => setStockDate(e.target.value)} className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm" />
           </label>
         </div>
-
-        {selectedMember && (
-          <div className="mt-3 flex items-center justify-between rounded-xl bg-blue-50/60 border border-blue-100 px-3 py-2 text-xs">
-            <div>
-              Sales: <b>{selectedMember.profiles?.display_name || selectedMember.profiles?.username}</b>
-            </div>
-            <div className="text-blue-700 font-semibold">
-              {totalSalesStock.toLocaleString("id-ID")} pcs di tangan
-            </div>
-          </div>
-        )}
+        <div className="mt-3 flex items-center justify-between rounded-xl bg-blue-50/60 border border-blue-100 px-3 py-2 text-xs">
+          <div>Sales: <b>{selectedSalesName}</b></div>
+          <div className="text-blue-700 font-semibold">{totalSalesStock.toLocaleString("id-ID")} pcs di tangan</div>
+        </div>
       </section>
 
       {/* Info Fleksibilitas */}
