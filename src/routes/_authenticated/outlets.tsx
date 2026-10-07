@@ -56,16 +56,38 @@ function AllOutlets() {
   const ownerId = account?.ownerId;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["all-outlets", search, sort],
+    queryKey: ["all-outlets", search, sort, ownerId, account?.role, account?.userId],
+    enabled: !!ownerId && !!account?.userId,
     queryFn: async () => {
+      let assignedOutletIds: string[] | null = null;
+
+      if (account?.role === "sales") {
+        const { data: assignments, error: assignmentError } = await supabase
+          .from("store_schedules")
+          .select("outlet_id")
+          .eq("owner_id", ownerId!)
+          .eq("sales_id", account.userId);
+
+        if (assignmentError) throw assignmentError;
+        assignedOutletIds = Array.from(new Set((assignments ?? []).map((item) => item.outlet_id)));
+
+        if (assignedOutletIds.length === 0) {
+          return { outlets: [], count: 0 };
+        }
+      }
+
       let query = supabase
         .from("outlets")
         .select("id,name,owner_phone,map_location,created_at", { count: "exact" })
         .order("created_at", { ascending: sort === "oldest" })
         .range(0, 199);
 
+      if (assignedOutletIds) {
+        query = query.in("id", assignedOutletIds);
+      }
+
       if (search) {
-        const safeSearch = search.replace(/[%_]/g, (char) => `\\${char}`);
+        const safeSearch = search.replace(/[%_]/g, (char) => `\\\\${char}`);
         query = query.ilike("name", `%${safeSearch}%`);
       }
 
@@ -85,6 +107,7 @@ function AllOutlets() {
         .from("store_schedules")
         .select("outlet_id,sales_id,day_of_week,profiles!store_schedules_sales_id_fkey(display_name,username,user_email)")
         .eq("owner_id", ownerId);
+      if (account?.role === "sales" && account.userId) query = query.eq("sales_id", account.userId);
       if (error) throw error;
       return data ?? [];
     },
