@@ -64,24 +64,45 @@ function FinancialReportTab() {
   const [from, setFrom] = useState(ymd(new Date(now.getFullYear(), now.getMonth(), 1)));
   const [to, setTo] = useState(ymd(now));
   const { data: products } = useProducts();
-  const { data: txs, isLoading } = useQuery({
-    queryKey: ["report", from, to],
+  const { data: account } = useProfile();
+
+  const { data: reportData, isLoading } = useQuery({
+    queryKey: ["report", from, to, account?.ownerId],
+    enabled: !!account?.ownerId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("transactions")
+      // 1. Transaksi lapangan (konsinyasi & direct sale sales)
+      const { data: txs, error: txError } = await supabase
+        .from("transactions")
         .select("receipt_number,visit_date,sales_name,transaction_type,line_items,total_sales,discount_amount,amount_paid,remaining_debt,outlets(name)")
-        .gte("visit_date", `${from}T00:00:00`).lte("visit_date", `${to}T23:59:59`).order("visit_date");
-      if (error) throw error;
-      return data ?? [];
+        .eq("user_id", account!.ownerId)
+        .gte("visit_date", `${from}T00:00:00`)
+        .lte("visit_date", `${to}T23:59:59`)
+        .order("visit_date");
+      if (txError) throw txError;
+
+      // 2. Direct sales dari Gudang
+      const { data: wds, error: wdsError } = await supabase
+        .from("warehouse_direct_sales")
+        .select("receipt_number,sale_date,line_items,total_sales,discount_amount,amount_paid,buyer_name,outlets:buyer_outlet_id(name)")
+        .eq("owner_id", account!.ownerId)
+        .gte("sale_date", `${from}T00:00:00`)
+        .lte("sale_date", `${to}T23:59:59`)
+        .order("sale_date");
+      if (wdsError) throw wdsError;
+
+      return { txs: txs ?? [], wds: wds ?? [] };
     },
   });
 
   const report = useMemo(() => {
     const costs = new Map((products ?? []).map(p => [key(p.name), { price: p.cost_price, size: p.pcs_per_pack }]));
     const hppByProduct = new Map<string, number>();
-    const rows = (txs ?? []).map(t => {
+
+    const txRows = (reportData?.txs ?? []).map(t => {
       let hpp = 0;
       const gross = Number(t.total_sales) || 0;
       const discount = Number(t.discount_amount) || 0;
+
       for (const li of (t.line_items as LineItem[]) ?? []) {
         const qty = Number(li.sold) || 0;
         if (!qty) continue;
@@ -90,14 +111,89 @@ function FinancialReportTab() {
         hpp += c;
         hppByProduct.set(key(li.name), (hppByProduct.get(key(li.name)) ?? 0) + c);
       }
+
       const omset = gross - discount;
-      return { nota: t.receipt_number, tanggal: t.visit_date.slice(0, 10), toko: (t.outlets as { name: string } | null)?.name ?? "-", sales: t.sales_name, jenis: t.transaction_type, bruto: gross, diskon: discount, omset, hpp, profit: omset - hpp, dibayar: Number(t.amount_paid) || 0, sisa: Number(t.remaining_debt) || 0 };
+      return {
+        nota: t.receipt_number,
+        tanggal: t.visit_date.slice(0, 10),
+        toko: (t.outlets as { name: string } | null)?.name ?? "-",
+        sales: t.sales_name || "Sales",
+        jenis: t.transaction_type === "Direct Sale" ? "Direct Sale" : "Konsinyasi",
+        bruto: gross,
+        diskon: discount,
+        omset,
+        hpp,
+        profit: omset - hpp,
+        dibayar: Number(t.amount_paid) || 0,
+        sisa: Number(t.remaining_debt) || 0,
+      };
     });
-    const totals = rows.reduce((a, x) => ({ omset: a.omset + x.omset, hpp: a.hpp + x.hpp, profit: a.profit + x.profit, dibayar: a.dibayar + x.dibayar }), { omset: 0, hpp: 0, profit: 0, dibayar: 0 });
-    const sales = aggregateProductSales(txs ?? []);
-    const productRows: ProductReport[] = sales.map(p => ({ ...p, hpp: hppByProduct.get(key(p.name)) ?? 0, profit: p.omset - (hppByProduct.get(key(p.name)) ?? 0) })).sort((a, b) => b.omset - a.omset);
-    return { rows, totals, products: productRows };
-  }, [txs, products]);
+
+    const wdsRows = (reportData?.wds ?? []).map(w => {
+      let hpp = 0;
+      const gross = Number(w.total_sales) || 0;
+      const discount = Number(w.discount_amount) || 0;
+
+      for (const li of (w.line_items as any[]) ?? []) {
+        const qty = Number(li.qty) || 0;
+        if (!qty) continue;
+        const p = costs.get(key(li.name));
+        const c = ((p?.price ?? 0) * qty) / packSize(li.pcs_per_pack ?? p?.size);
+        hpp += c;
+        hppByProduct.set(key(li.name), (hppByProduct.get(key(li.name)) ?? 0) + c);
+      }
+
+      const omset = gross - discount;
+      const debt = Math.max(0, omset - (Number(w.amount_paid) || 0));
+
+      return {
+        nota: w.receipt_number,
+        tanggal: w.sale_date.slice(0, 10),
+        toko: (w.outlets as { name: string } | null)?.name || w.buyer_name || "Direct Gudang",
+        sales: "Gudang Utama",
+        jenis: "Direct Gudang",
+        bruto: gross,
+        diskon: discount,
+        omset,
+        hpp,
+        profit: omset - hpp,
+        dibayar: Number(w.amount_paid) || 0,
+        sisa: debt,
+      };
+    });
+
+    const rows = [...txRows, ...wdsRows].sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+    const totalBruto = rows.reduce((s, r) => s + r.bruto, 0);
+    const totalDiskon = rows.reduce((s, r) => s + r.diskon, 0);
+    const totalOmset = rows.reduce((s, r) => s + r.omset, 0);
+    const totalHpp = rows.reduce((s, r) => s + r.hpp, 0);
+    const totalProfit = totalOmset - totalHpp;
+    const totalDibayar = rows.reduce((s, r) => s + r.dibayar, 0);
+    const totalSisa = rows.reduce((s, r) => s + r.sisa, 0);
+
+    const fieldSales = aggregateProductSales(reportData?.txs ?? []);
+    const productRows: ProductReport[] = fieldSales
+      .map(p => ({
+        ...p,
+        hpp: hppByProduct.get(key(p.name)) ?? 0,
+        profit: p.omset - (hppByProduct.get(key(p.name)) ?? 0),
+      }))
+      .sort((a, b) => b.omset - a.omset);
+
+    return {
+      rows,
+      products: productRows,
+      totals: {
+        bruto: totalBruto,
+        diskon: totalDiskon,
+        omset: totalOmset,
+        hpp: totalHpp,
+        profit: totalProfit,
+        dibayar: totalDibayar,
+        sisa: totalSisa,
+      },
+    };
+  }, [reportData, products]);
 
   async function download() {
     const XLSX = await import("xlsx");
@@ -108,11 +204,18 @@ function FinancialReportTab() {
       ...report.rows.map(x => [x.tanggal, x.nota, x.toko, x.sales, x.jenis, x.bruto, x.diskon, x.omset, x.hpp, x.profit, x.dibayar, x.sisa]),
       ["TOTAL", "", "", "", "", ...["F", "G", "H", "I", "J", "K", "L"].map(col => ({ f: `SUM(${col}2:${col}${n1})` }))],
     ]);
-    report.rows.forEach((x, i) => { s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: x.omset }; s1[`J${i + 2}`] = { t: "n", f: `H${i + 2}-I${i + 2}`, v: x.profit }; });
+    report.rows.forEach((x, i) => {
+      s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: x.omset };
+      s1[`J${i + 2}`] = { t: "n", f: `H${i + 2}-I${i + 2}`, v: x.profit };
+    });
     s1["!cols"] = [12,18,20,14,12,14,14,14,14,14,14,14].map(wch => ({ wch }));
     XLSX.utils.book_append_sheet(wb, s1, "Transaksi");
     const n2 = report.products.length + 1;
-    const s2 = XLSX.utils.aoa_to_sheet([["Produk", "Terjual (pcs)", "Omset", "HPP", "Profit"], ...report.products.map((p, i) => [p.name, p.qty, p.omset, p.hpp, { t: "n", f: `C${i + 2}-D${i + 2}`, v: p.omset - p.hpp }]), ["TOTAL", { f: `SUM(B2:B${n2})` }, { f: `SUM(C2:C${n2})` }, { f: `SUM(D2:D${n2})` }, { f: `SUM(E2:E${n2})` }]]);
+    const s2 = XLSX.utils.aoa_to_sheet([
+      ["Produk", "Terjual (pcs)", "Omset", "HPP", "Profit"],
+      ...report.products.map((p, i) => [p.name, p.qty, p.omset, p.hpp, { t: "n", f: `C${i + 2}-D${i + 2}`, v: p.omset - p.hpp }]),
+      ["TOTAL", { f: `SUM(B2:B${n2})` }, { f: `SUM(C2:C${n2})` }, { f: `SUM(D2:D${n2})` }, { f: `SUM(E2:E${n2})` }],
+    ]);
     s2["!cols"] = [24,14,14,14,14].map(wch => ({ wch }));
     XLSX.utils.book_append_sheet(wb, s2, "Per Produk");
     XLSX.writeFile(wb, `Laporan-${from}_sd_${to}.xlsx`);
@@ -121,6 +224,7 @@ function FinancialReportTab() {
   const margin = report.totals.omset ? (report.totals.profit / report.totals.omset) * 100 : 0;
   const topSelling = [...report.products].sort((a,b) => b.qty - a.qty).slice(0,5);
   const topRevenue = [...report.products].sort((a,b) => b.omset - a.omset).slice(0,5);
+
   return (
     <div className="mt-4">
       <div className="grid grid-cols-2 gap-2"><label className="text-xs text-muted-foreground">Dari<Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-11" /></label><label className="text-xs text-muted-foreground">Sampai<Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-11" /></label></div>
