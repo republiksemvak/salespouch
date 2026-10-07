@@ -136,11 +136,9 @@ function AllOutlets() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Kembali
           </Button>
-          <Button asChild size="sm" className="rounded-lg shadow-xs">
-            <Link to="/outlets/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Tambah Outlet
-            </Link>
+          <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => navigate({ to: "/outlets/new" })}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            Tambah Outlet
           </Button>
         </div>
         <div className="mt-3">
@@ -199,11 +197,9 @@ function AllOutlets() {
             <p className="mt-1 text-xs text-muted-foreground">
               {q ? `Belum ada outlet dengan nama "${q}".` : "Belum ada outlet yang ditambahkan ke sistem."}
             </p>
-            <Button asChild size="sm" className="mt-4 rounded-lg">
-              <Link to="/outlets/new">
-                <Plus className="mr-1.5 h-4 w-4" />
-                Daftarkan Toko Baru
-              </Link>
+            <Button type="button" size="sm" className="mt-4 rounded-lg" onClick={() => navigate({ to: "/outlets/new" })}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Daftarkan Toko Baru
             </Button>
           </div>
         )}
