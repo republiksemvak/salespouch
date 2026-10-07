@@ -1,7 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const MAX_PHOTO_SIZE = 1200;
-const PHOTO_QUALITY = 0.78;
+const MAX_PHOTO_SIZE = 900;
+const MAX_PHOTO_BYTES = 250 * 1024;
+const PHOTO_QUALITY = 0.68;
 
 async function compressPhoto(file: File) {
   if (!file.type.startsWith("image/")) return file;
@@ -24,9 +25,16 @@ async function compressPhoto(file: File) {
     ctx.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
 
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", PHOTO_QUALITY),
-    );
+    let quality = PHOTO_QUALITY;
+    let blob: Blob | null = null;
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", quality),
+      );
+      if (!blob || blob.size <= MAX_PHOTO_BYTES || quality <= 0.5) break;
+      quality -= 0.06;
+    }
 
     if (!blob) return file;
 
