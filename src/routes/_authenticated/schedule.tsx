@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -131,12 +131,13 @@ function SchedulePage() {
   });
 
   const collectedOutletIds = useMemo(() => new Set(collectedToday), [collectedToday]);
-  const todayOutletIds = useMemo(
-    () => [...new Set(schedules.map((item: any) => item.outlet_id).filter(Boolean))],
+  const todayOutletIds = useMemo<string[]>(
+    () => [...new Set((schedules as any[]).map((item) => item.outlet_id).filter(Boolean))] as string[],
     [schedules]
   );
 
-  const { data: outstandingDebts = [], isLoading: debtsLoading } = useQuery({
+  type OutletDebt = { outletId: string; amount: number };
+  const { data: outstandingDebts = [], isLoading: debtsLoading } = useQuery<OutletDebt[]>({
     queryKey: ["schedule-outlet-debts", ownerId, todayOutletIds.join(",")],
     enabled: !!ownerId && todayOutletIds.length > 0,
     queryFn: async () => {
@@ -154,13 +155,13 @@ function SchedulePage() {
       for (const row of data ?? []) {
         if (!latest.has(row.outlet_id)) latest.set(row.outlet_id, Number(row.remaining_debt) || 0);
       }
-      return [...latest.entries()].map(([outletId, amount]) => ({ outletId, amount }));
+      return [...latest.entries()].map(([outletId, amount]) => ({ outletId, amount })) as OutletDebt[];
     },
     staleTime: 15_000,
   });
 
   const outstandingByOutlet = useMemo(
-    () => new Map(outstandingDebts.map((row: any) => [row.outletId, row.amount])),
+    () => new Map<string, number>(outstandingDebts.map((row) => [row.outletId, row.amount])),
     [outstandingDebts]
   );
 
@@ -193,7 +194,7 @@ function SchedulePage() {
     }
   };
 
-  async function addSchedule(e: React.FormEvent) {
+  async function addSchedule(e: FormEvent) {
     e.preventDefault();
     if (!ownerId || !outletId || !salesId) return;
     setBusy(true);
