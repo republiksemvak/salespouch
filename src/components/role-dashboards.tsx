@@ -401,7 +401,7 @@ function SalesFinancialSummary({ salesId }: { salesId?: string }) {
             Ringkasan Hari Ini
           </div>
           <div className="text-[10px] text-muted-foreground">
-            Jadwal kunjungan & hasil tagihan
+            Target berdasarkan jadwal hari ini
           </div>
         </div>
         <CalendarDays className="h-4 w-4 text-primary" />
@@ -409,32 +409,24 @@ function SalesFinancialSummary({ salesId }: { salesId?: string }) {
 
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border bg-emerald-500/5 p-2.5">
-          <div className="text-[10px] text-muted-foreground">Uang Jalan</div>
-          <div className="mt-0.5 text-sm font-bold text-foreground">
-            {value(data?.travel_balance, true)}
-          </div>
+          <div className="text-[10px] font-medium text-muted-foreground">Uang Jalan</div>
+          <div className="mt-1 truncate text-sm font-bold text-foreground">{value(data?.travel_balance, true)}</div>
         </div>
 
         <div className="rounded-lg border bg-blue-500/5 p-2.5">
-          <div className="text-[10px] text-muted-foreground">Outlet Hari Ini</div>
-          <div className="mt-0.5 text-sm font-bold text-foreground">
-            {value(data?.scheduled_outlets_today)} toko
-          </div>
+          <div className="text-[10px] font-medium text-muted-foreground">Jumlah Outlet</div>
+          <div className="mt-1 text-sm font-bold text-foreground">{value(data?.scheduled_outlets_today)} toko</div>
         </div>
 
         <div className="rounded-lg border bg-purple-500/5 p-2.5">
-          <div className="text-[10px] text-muted-foreground">Target Tagihan</div>
-          <div className="mt-0.5 text-sm font-bold text-foreground">
-            {value(data?.scheduled_bill_target, true)}
-          </div>
+          <div className="text-[10px] font-medium text-muted-foreground">Target Tagihan</div>
+          <div className="mt-1 truncate text-sm font-bold text-foreground">{value(data?.scheduled_bill_target, true)}</div>
         </div>
 
         <div className="rounded-lg border bg-amber-500/5 p-2.5">
-          <div className="text-[10px] text-muted-foreground">Nilai Tagihan</div>
-          <div className="mt-0.5 text-sm font-bold text-foreground">
-            {value(data?.collected_today, true)}
-          </div>
-          <div className="mt-0.5 text-[9px] text-muted-foreground">tertagih hari ini</div>
+          <div className="text-[10px] font-medium text-muted-foreground">Nilai Tagihan</div>
+          <div className="mt-1 truncate text-sm font-bold text-foreground">{value(data?.collected_today, true)}</div>
+          <div className="mt-0.5 text-[9px] text-muted-foreground">sudah tertagih</div>
         </div>
       </div>
     </section>
