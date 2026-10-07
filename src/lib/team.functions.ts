@@ -160,9 +160,9 @@ export const createSales = createServerFn({ method: "POST" })
     const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({ email: salesAuthEmail(username), password: data.password, email_confirm: true, user_metadata: { username, display_name: name, role: "sales", team_position: position } });
     if (createError || !created.user) throw new Error(createError?.message ?? "Akun karyawan gagal dibuat.");
     try {
-      const { data: savedProfile, error: profileError } = await supabaseAdmin.from("profiles").update({ username, display_name: name }).eq("id", created.user.id).select("id,username,display_name").single();
+      const { data: savedProfile, error: profileError } = await supabaseAdmin.from("profiles").update({ username, display_name: name, account_type: "employee" }).eq("id", created.user.id).select("id,username,display_name,account_type").single();
       if (profileError) throw profileError;
-      if (savedProfile?.username !== username || savedProfile.display_name !== name) throw new Error("Profil karyawan gagal disimpan.");
+      if (savedProfile?.username !== username || savedProfile.display_name !== name || savedProfile.account_type !== "employee") throw new Error("Profil karyawan gagal disimpan.");
       const { error: linkError } = await (supabaseAdmin as any).from("team_members").insert({ owner_id: actor.ownerId, user_id: created.user.id, position, manager_id: managerId });
       if (linkError) throw linkError;
     } catch (error) {
