@@ -365,7 +365,7 @@ export function AdminDashboard({ businessName, permissions }: PermissionDashboar
 }
 
 
-// Ringkasan keuangan Sales: uang jalan, penjualan, hasil tagihan masuk, dan target setoran.
+// Ringkasan informasi Sales hari ini.
 function SalesFinancialSummary({ salesId }: { salesId?: string }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["sales-dashboard-financial-summary", salesId],
@@ -387,55 +387,55 @@ function SalesFinancialSummary({ salesId }: { salesId?: string }) {
       maximumFractionDigits: 0,
     }).format(value);
 
-  const loadingText = isLoading ? "Memuat…" : isError ? "—" : null;
+  const value = (raw: unknown, format = false) => {
+    if (isLoading) return "…";
+    if (isError) return "—";
+    return format ? rp(Number(raw) || 0) : String(Number(raw) || 0);
+  };
 
   return (
     <section className="mt-3 rounded-xl border bg-card p-3 shadow-xs">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2.5 flex items-center justify-between">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Keuangan Sales Hari Ini
+            Ringkasan Hari Ini
           </div>
           <div className="text-[10px] text-muted-foreground">
-            Acuan saat melakukan setoran sales
+            Jadwal kunjungan & hasil tagihan
           </div>
         </div>
-        <Wallet className="h-4 w-4 text-emerald-600" />
+        <CalendarDays className="h-4 w-4 text-primary" />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border bg-emerald-500/5 p-2.5">
           <div className="text-[10px] text-muted-foreground">Uang Jalan</div>
           <div className="mt-0.5 text-sm font-bold text-foreground">
-            {loadingText ?? rp(Number(data?.travel_balance) || 0)}
+            {value(data?.travel_balance, true)}
           </div>
         </div>
 
         <div className="rounded-lg border bg-blue-500/5 p-2.5">
-          <div className="text-[10px] text-muted-foreground">Penjualan</div>
+          <div className="text-[10px] text-muted-foreground">Outlet Hari Ini</div>
           <div className="mt-0.5 text-sm font-bold text-foreground">
-            {loadingText ?? rp(Number(data?.sales_value_today) || 0)}
-          </div>
-        </div>
-
-        <div className="rounded-lg border bg-amber-500/5 p-2.5">
-          <div className="text-[10px] text-muted-foreground">Hasil Tagihan Masuk</div>
-          <div className="mt-0.5 text-sm font-bold text-foreground">
-            {loadingText ?? rp(Number(data?.collected_today) || 0)}
+            {value(data?.scheduled_outlets_today)} toko
           </div>
         </div>
 
         <div className="rounded-lg border bg-purple-500/5 p-2.5">
-          <div className="text-[10px] text-muted-foreground">Target Setoran</div>
+          <div className="text-[10px] text-muted-foreground">Target Tagihan</div>
           <div className="mt-0.5 text-sm font-bold text-foreground">
-            {loadingText ?? rp(Number(data?.deposit_target) || 0)}
+            {value(data?.scheduled_bill_target, true)}
           </div>
         </div>
-      </div>
 
-      <div className="mt-2 rounded-lg bg-muted/50 px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground">
-        Target setoran mengikuti <b className="text-foreground">hasil tagihan yang sudah masuk</b>,
-        bukan seluruh nilai piutang yang belum dibayar.
+        <div className="rounded-lg border bg-amber-500/5 p-2.5">
+          <div className="text-[10px] text-muted-foreground">Nilai Tagihan</div>
+          <div className="mt-0.5 text-sm font-bold text-foreground">
+            {value(data?.collected_today, true)}
+          </div>
+          <div className="mt-0.5 text-[9px] text-muted-foreground">tertagih hari ini</div>
+        </div>
       </div>
     </section>
   );
