@@ -210,34 +210,62 @@ function SchedulePage() {
           </div>
         )}
 
-        {grouped.map((d) => d.items.length > 0 && (
-          <div key={d.value}>
+        {isOwner ? (
+          grouped.map((d) => d.items.length > 0 && (
+            <div key={d.value}>
+              <h2 className="mb-2 font-semibold">{d.label}</h2>
+              <div className="space-y-2">
+            {d.items.map((item: any) => <div key={item.id} className="rounded-xl border bg-card p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
+                    {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Sudah tertagih
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
+                  {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
+                </div>
+                {isOwner && <Button variant="ghost" size="icon" aria-label="Hapus jadwal" onClick={() => removeSchedule(item.id)}><Trash2 className="h-4 w-4" /></Button>}
+              </div>
+            </div>)}
+          </div>
+            </div>
+          ))
+        ) : (
+          <div>
             <h2 className="mb-2 flex items-center gap-2 font-semibold">
-              {d.label}
-              {!isOwner && d.value === todayDay && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Hari Ini</span>}
+              Jadwal Hari Ini
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                {DAYS.find((d) => d.value === todayDay)?.label}
+              </span>
             </h2>
             <div className="space-y-2">
-              {d.items.map((item: any) => <div key={item.id} className="rounded-xl border bg-card p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
-                      {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Sudah tertagih
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
-                    {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
+            {schedules.map((item: any) => <div key={item.id} className="rounded-xl border bg-card p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
+                    {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Sudah tertagih
+                      </span>
+                    )}
                   </div>
-                  {isOwner && <Button variant="ghost" size="icon" aria-label="Hapus jadwal" onClick={() => removeSchedule(item.id)}><Trash2 className="h-4 w-4" /></Button>}
+                  <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
+                  {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
                 </div>
-              </div>)}
-            </div>
+                {isOwner && <Button variant="ghost" size="icon" aria-label="Hapus jadwal" onClick={() => removeSchedule(item.id)}><Trash2 className="h-4 w-4" /></Button>}
+              </div>
+            </div>)}
           </div>
-        ))}
+          </div>
+        )}
       </section>
     </main>
   );
