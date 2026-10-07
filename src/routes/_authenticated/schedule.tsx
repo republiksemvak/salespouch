@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -33,6 +33,13 @@ function SchedulePage() {
   const [salesId, setSalesId] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const today = new Date();
+  const todayDay = today.getDay() || 7;
+  const todayStart = new Date(today);
+  todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
 
   const { data: outlets = [], isLoading: outletsLoading } = useQuery({
     queryKey: ["schedule-outlets", ownerId],
@@ -69,7 +76,7 @@ function SchedulePage() {
         .eq("owner_id", ownerId)
         .order("day_of_week")
         .order("created_at");
-      if (!isOwner && profile?.userId) query = query.eq("sales_id", profile.userId);
+      if (!isOwner && profile?.userId) query = query.eq("sales_id", profile.userId).eq("day_of_week", todayDay);
       const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
@@ -80,6 +87,49 @@ function SchedulePage() {
     ...d,
     items: schedules.filter((item: any) => item.day_of_week === d.value),
   })), [schedules]);
+  const { data: collectedToday = [], isLoading: collectionsLoading } = useQuery({
+    queryKey: ["schedule-collected-today", ownerId, profile?.userId, todayStart.toISOString().slice(0, 10)],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const client = supabase as any;
+      let query = client
+        .from("sales_payment_collections")
+        .select("transaction_id,amount")
+        .eq("owner_id", ownerId)
+        .gte("collected_at", todayStart.toISOString())
+        .lt("collected_at", tomorrowStart.toISOString());
+      if (!isOwner && profile?.userId) query = query.eq("sales_id", profile.userId);
+
+      const { data: collections, error } = await query;
+      if (error) throw error;
+      const rows = (collections ?? []) as Array<{ transaction_id: string; amount: number }>;
+      const transactionIds = [...new Set(rows.map((row) => row.transaction_id).filter(Boolean))];
+      if (transactionIds.length === 0) return [];
+
+      const { data: transactions, error: transactionError } = await client
+        .from("transactions")
+        .select("id,outlet_id")
+        .in("id", transactionIds);
+      if (transactionError) throw transactionError;
+
+      const outletAmounts = new Map<string, number>();
+      const outletByTransaction = new Map<string, string>();
+      for (const transaction of transactions ?? []) {
+        if (transaction.outlet_id) outletByTransaction.set(transaction.id, transaction.outlet_id);
+      }
+      for (const row of rows) {
+        const outletId = outletByTransaction.get(row.transaction_id);
+        if (!outletId) continue;
+        outletAmounts.set(outletId, (outletAmounts.get(outletId) ?? 0) + Number(row.amount || 0));
+      }
+      return [...outletAmounts.entries()]
+        .filter(([, amount]) => amount > 0)
+        .map(([outletId]) => outletId);
+    },
+    staleTime: 15_000,
+  });
+
+  const collectedOutletIds = useMemo(() => new Set(collectedToday), [collectedToday]);
 
   async function addSchedule(e: React.FormEvent) {
     e.preventDefault();
@@ -150,14 +200,35 @@ function SchedulePage() {
       <section className="mt-6 space-y-4">
         {schedulesLoading && <p className="text-sm text-muted-foreground">Memuat jadwal...</p>}
         {!schedulesLoading && grouped.every((d) => d.items.length === 0) && <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Belum ada jadwal toko.</div>}
+        {!isOwner && !schedulesLoading && schedules.length > 0 && (
+          <div className="rounded-xl border bg-primary/5 p-3 text-sm">
+            <div className="font-semibold">Jadwal Hari Ini · {DAYS.find((d) => d.value === todayDay)?.label}</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {schedules.length} outlet dijadwalkan untuk dikunjungi
+              {!collectionsLoading && ` · ${schedules.filter((item: any) => collectedOutletIds.has(item.outlet_id)).length} sudah tertagih`}
+            </div>
+          </div>
+        )}
+
         {grouped.map((d) => d.items.length > 0 && (
           <div key={d.value}>
-            <h2 className="mb-2 font-semibold">{d.label}</h2>
+            <h2 className="mb-2 flex items-center gap-2 font-semibold">
+              {d.label}
+              {!isOwner && d.value === todayDay && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Hari Ini</span>}
+            </h2>
             <div className="space-y-2">
               {d.items.map((item: any) => <div key={item.id} className="rounded-xl border bg-card p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
+                      {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Sudah tertagih
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
                     {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
                   </div>
