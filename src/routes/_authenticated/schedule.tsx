@@ -277,73 +277,73 @@ function SchedulePage() {
             <div key={d.value}>
               <h2 className="mb-2 font-semibold">{d.label}</h2>
               <div className="space-y-2">
-            {d.items.map((item: any) => <div key={item.id} className="rounded-xl border bg-card p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                        {index + 1}
-                      </span>
-                      <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
+                {d.items.map((item: any) => (
+                  <div key={item.id} className="rounded-xl border bg-card p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
+                          {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                              <CheckCircle2 className="h-3 w-3" /> Sudah tertagih
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
+                        {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
+                      </div>
+                      <Button variant="ghost" size="icon" aria-label="Hapus jadwal" onClick={() => removeSchedule(item.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Sudah tertagih
-                      </span>
-                    )}
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
-                  <div className="mt-1 text-sm font-semibold">
-                    {debtsLoading ? "Memuat tagihan..." : `Tagihan: Rp ${Math.round(outstandingByOutlet.get(item.outlet_id) ?? 0).toLocaleString("id-ID")}`}
-                  </div>
-                  {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>
-                  <div className="mt-3 flex gap-1">
-                    <Button variant="outline" size="sm" disabled={busy || index === 0} onClick={() => moveSchedule(index, -1)}>
-                      <ArrowUp className="mr-1 h-3.5 w-3.5" /> Naik
-                    </Button>
-                    <Button variant="outline" size="sm" disabled={busy || index === schedules.length - 1} onClick={() => moveSchedule(index, 1)}>
-                      <ArrowDown className="mr-1 h-3.5 w-3.5" /> Turun
-                    </Button>
-                  </div>}
-                </div>
-                {isOwner && <Button variant="ghost" size="icon" aria-label="Hapus jadwal" onClick={() => removeSchedule(item.id)}><Trash2 className="h-4 w-4" /></Button>}
+                ))}
               </div>
-            </div>)}
-          </div>
             </div>
           ))
         ) : (
           <div>
             <h2 className="mb-2 flex items-center gap-2 font-semibold">
-              Jadwal Hari Ini
+              Urutan Tagihan Hari Ini
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                 {DAYS.find((d) => d.value === todayDay)?.label}
               </span>
             </h2>
+            <p className="mb-3 text-xs text-muted-foreground">Atur sendiri urutan toko yang ingin ditagih. Nilai tagihan di bawah adalah sisa tagihan terakhir toko.</p>
             <div className="space-y-2">
-            {schedules.map((item: any, index: number) => <div key={item.id} className="rounded-xl border bg-card p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
-                    {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Sudah tertagih
-                      </span>
-                    )}
+              {schedules.map((item: any, index: number) => (
+                <div key={item.id} className="rounded-xl border bg-card p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>
+                        <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
+                        {collectedOutletIds.has(item.outlet_id) && (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                            <CheckCircle2 className="h-3 w-3" /> Sudah tertagih
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 text-sm font-semibold">
+                        {debtsLoading ? "Memuat tagihan..." : `Tagihan: Rp ${Math.round(outstandingByOutlet.get(item.outlet_id) ?? 0).toLocaleString("id-ID")}`}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
+                      {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
+                      <div className="mt-3 flex gap-1">
+                        <Button variant="outline" size="sm" disabled={busy || index === 0} onClick={() => moveSchedule(index, -1)}>
+                          <ArrowUp className="mr-1 h-3.5 w-3.5" /> Naik
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={busy || index === schedules.length - 1} onClick={() => moveSchedule(index, 1)}>
+                          <ArrowDown className="mr-1 h-3.5 w-3.5" /> Turun
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
-                  {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
                 </div>
-                {isOwner && <Button variant="ghost" size="icon" aria-label="Hapus jadwal" onClick={() => removeSchedule(item.id)}><Trash2 className="h-4 w-4" /></Button>}
-              </div>
-            </div>)}
+              ))}
+            </div>
           </div>
-          </div>
-        )}
+        )
       </section>
     </main>
   );
