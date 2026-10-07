@@ -4,6 +4,8 @@
 -- Outlet count = unique outlets scheduled for today.
 -- Nilai tagihan = actual payment collected today.
 
+DROP FUNCTION IF EXISTS public.get_sales_dashboard_financial_summary(uuid, date);
+
 CREATE OR REPLACE FUNCTION public.get_sales_dashboard_financial_summary(
   _sales_id uuid,
   _as_of_date date DEFAULT CURRENT_DATE
