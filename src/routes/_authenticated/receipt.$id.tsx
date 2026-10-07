@@ -90,6 +90,7 @@ function ReceiptPage() {
           previous_debt: 0,
           total_due: Number(wds.total_sales) - Number(wds.discount_amount),
           amount_paid: wds.amount_paid,
+          revised_at: null,
           remaining_debt: Math.max(0, Number(wds.total_sales) - Number(wds.discount_amount) - Number(wds.amount_paid)),
           line_items: wds.line_items,
           new_consignment_items: [],
