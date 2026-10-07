@@ -303,8 +303,10 @@ export function SalesDashboard({ businessName }: DashboardProps) {
           Aktivitas Sales
         </div>
         <div className="grid grid-cols-4 gap-1">
+          <CompactIconMenu to="/outlets" icon={Store} label="Outlet" badgeColor="bg-amber-500/10 text-amber-600" />
           <CompactIconMenu to="/sales-stock-day" icon={Truck} label="Stok Sales" badgeColor="bg-blue-500/10 text-blue-600" />
           <CompactIconMenu to="/transactions" icon={History} label="Riwayat Nota" badgeColor="bg-purple-500/10 text-purple-600" />
+          <CompactIconMenu to="/schedule" icon={CalendarDays} label="Jadwal" badgeColor="bg-sky-500/10 text-sky-600" />
           <CompactIconMenu to="/travel-funds" icon={Wallet} label="Uang Jalan" badgeColor="bg-emerald-500/10 text-emerald-600" />
           <CompactIconMenu to="/notes" icon={FileText} label="Catatan" badgeColor="bg-orange-500/10 text-orange-600" />
         </div>
