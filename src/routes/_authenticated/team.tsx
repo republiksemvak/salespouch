@@ -33,6 +33,7 @@ function TeamPage() {
   const [position, setPosition] = useState<"admin" | "manager" | "sales">("sales");
   const [managerId, setManagerId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const activeOwnerId = profile?.ownerId;
   const { data: members, error } = useQuery({
@@ -55,6 +56,7 @@ function TeamPage() {
       setName(""); setUsername(""); setPassword(""); setManagerId("");
       toast.success(`${finalPosition === "admin" ? "Admin" : finalPosition === "manager" ? "Manager" : "Sales"} berhasil dibuat`);
       qc.invalidateQueries({ queryKey: ["team", activeOwnerId] });
+      setShowCreateForm(false);
     } catch (err) { toast.error((err as Error).message); }
     finally { setBusy(false); }
   }
@@ -65,34 +67,49 @@ function TeamPage() {
     <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
     <div className="mt-4 flex items-start justify-between gap-3"><div><h1 className="text-2xl font-bold">Manajemen Tim</h1><p className="mt-1 text-sm text-muted-foreground">Owner → Admin / Manager → Sales</p></div>{owner && <Button asChild variant="outline" className="shrink-0"><Link to="/team-access"><ShieldCheck className="mr-2 h-4 w-4" />Atur Akses</Link></Button>}</div>
 
-    <form onSubmit={add} className="mt-6 space-y-3">
-      <label className="text-sm font-medium">Jabatan</label>
-      <select value={manager ? "sales" : position} onChange={(e) => setPosition(e.target.value as "admin" | "manager" | "sales")} disabled={manager} className="h-12 w-full rounded-md border bg-background px-3 text-sm">
-        <option value="sales">Sales</option>
-        {!manager && <option value="manager">Manager</option>}
-        {owner && <option value="admin">Admin</option>}
-      </select>
+    <Button
+      type="button"
+      onClick={() => setShowCreateForm((open) => !open)}
+      className="mt-6 h-12 w-full"
+    >
+      {showCreateForm ? "Tutup Form" : "Buat Akun Sales"}
+    </Button>
 
-      <label className="text-sm font-medium">Nama {manager ? "Sales" : roleLabel}</label>
-      <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder={position === "manager" && !manager ? "Andi" : position === "admin" ? "Citra" : "Budi"} className="h-12" />
-      <label className="text-sm font-medium">Username</label>
-      <Input required minLength={3} maxLength={30} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="budi.sales" className="h-12" />
-      <label className="text-sm font-medium">Password</label>
-      <Input required minLength={6} maxLength={72} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" className="h-12" />
+    {showCreateForm && (
+      <form onSubmit={add} className="mt-4 space-y-3 rounded-lg border bg-card p-4">
+        <div>
+          <h2 className="text-sm font-semibold">Buat Akun</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Isi data akun baru untuk anggota tim.</p>
+        </div>
 
-      {!manager && position === "sales" && <>
-        <label className="text-sm font-medium">Manager (opsional)</label>
-        <select value={managerId} onChange={(e) => setManagerId(e.target.value)} className="h-12 w-full rounded-md border bg-background px-3 text-sm">
-          <option value="">Tanpa Manager — langsung di bawah Owner</option>
-          {managers.map((member) => {
-            const p = member.profiles as { display_name?: string; username?: string } | null;
-            return <option key={member.user_id} value={member.user_id}>{p?.display_name ?? p?.username ?? "Manager"}</option>;
-          })}
+        <label className="text-sm font-medium">Jabatan</label>
+        <select value={manager ? "sales" : position} onChange={(e) => setPosition(e.target.value as "admin" | "manager" | "sales")} disabled={manager} className="h-12 w-full rounded-md border bg-background px-3 text-sm">
+          <option value="sales">Sales</option>
+          {!manager && <option value="manager">Manager</option>}
+          {owner && <option value="admin">Admin</option>}
         </select>
-      </>}
 
-      <Button disabled={busy} className="h-12 w-full">{busy ? "Membuat akun…" : `Buat Akun ${manager ? "Sales" : roleLabel}`}</Button>
-    </form>
+        <label className="text-sm font-medium">Nama {manager ? "Sales" : roleLabel}</label>
+        <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder={position === "manager" && !manager ? "Andi" : position === "admin" ? "Citra" : "Budi"} className="h-12" />
+        <label className="text-sm font-medium">Username</label>
+        <Input required minLength={3} maxLength={30} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="budi.sales" className="h-12" />
+        <label className="text-sm font-medium">Password</label>
+        <Input required minLength={6} maxLength={72} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" className="h-12" />
+
+        {!manager && position === "sales" && <>
+          <label className="text-sm font-medium">Manager (opsional)</label>
+          <select value={managerId} onChange={(e) => setManagerId(e.target.value)} className="h-12 w-full rounded-md border bg-background px-3 text-sm">
+            <option value="">Tanpa Manager — langsung di bawah Owner</option>
+            {managers.map((member) => {
+              const p = member.profiles as { display_name?: string; username?: string } | null;
+              return <option key={member.user_id} value={member.user_id}>{p?.display_name ?? p?.username ?? "Manager"}</option>;
+            })}
+          </select>
+        </>}
+
+        <Button disabled={busy} className="h-12 w-full">{busy ? "Membuat akun…" : `Buat Akun ${manager ? "Sales" : roleLabel}`}</Button>
+      </form>
+    )}
 
     <h2 className="mt-8 text-sm font-semibold">Struktur tim ({members?.length ?? 0})</h2>
     {error && <p className="mt-3 text-sm text-destructive">Daftar tim tidak dapat dimuat.</p>}
