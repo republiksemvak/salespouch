@@ -273,7 +273,7 @@ function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (accountLoading || !account?.ownerId) { toast.error("Data akun belum siap. Silakan muat ulang."); return; }
-    if (!["owner", "admin", "manager"].includes(account.role)) { toast.error("Anda tidak memiliki akses untuk menambah outlet."); return; }
+    if (!["owner", "admin", "manager", "sales"].includes(account.role)) { toast.error("Anda tidak memiliki akses untuk menambah outlet."); return; }
     if (!name.trim()) { toast.error("Nama outlet wajib diisi."); return; }
     setBusy(true);
     try {
