@@ -59,16 +59,18 @@ function SchedulePage() {
   });
 
   const { data: schedules = [], isLoading: schedulesLoading } = useQuery({
-    queryKey: ["store-schedules", ownerId],
+    queryKey: ["store-schedules", ownerId, profile?.userId, profile?.role],
     enabled: !!ownerId,
     queryFn: async () => {
       const client = supabase as any;
-      const { data, error } = await client
+      let query = client
         .from("store_schedules")
         .select("id,outlet_id,sales_id,day_of_week,note,outlets(name),profiles!store_schedules_sales_id_fkey(display_name,username,user_email)")
         .eq("owner_id", ownerId)
         .order("day_of_week")
         .order("created_at");
+      if (!isOwner && profile?.userId) query = query.eq("sales_id", profile.userId);
+      const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
     },
