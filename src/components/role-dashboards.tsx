@@ -1,4 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   BarChart3,
   Building2,
@@ -69,20 +71,66 @@ function CompactIconMenu({
 }
 
 // Ringkasan Statistik Harian yang Ramping
-function CompactSummary() {
+function CompactSummary({ ownerId }: { ownerId?: string }) {
+  const { data } = useQuery({
+    queryKey: ["owner-dashboard-summary", ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+
+      const [{ data: txs, error: txError }, { data: wds, error: wdsError }] = await Promise.all([
+        supabase
+          .from("transactions")
+          .select("outlet_id,total_sales,discount_amount")
+          .eq("user_id", ownerId!)
+          .gte("visit_date", start)
+          .lt("visit_date", end),
+        supabase
+          .from("warehouse_direct_sales")
+          .select("total_sales,discount_amount")
+          .eq("owner_id", ownerId!)
+          .gte("sale_date", start)
+          .lt("sale_date", end),
+      ]);
+
+      if (txError) throw txError;
+      if (wdsError) throw wdsError;
+
+      const fieldRows = txs ?? [];
+      const warehouseRows = wds ?? [];
+      const omzet = [...fieldRows, ...warehouseRows].reduce(
+        (sum, row) => sum + (Number(row.total_sales) || 0) - (Number(row.discount_amount) || 0),
+        0,
+      );
+      const visited = new Set(fieldRows.map(row => row.outlet_id).filter(Boolean)).size;
+
+      return {
+        omzet,
+        transactions: fieldRows.length + warehouseRows.length,
+        visited,
+      };
+    },
+    staleTime: 30_000,
+  });
+
+  const rp = (value: number) =>
+    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+
   return (
     <section className="mt-3 grid grid-cols-3 divide-x rounded-xl border bg-card/60 p-2 text-center shadow-xs">
       <div>
         <div className="text-[10px] text-muted-foreground">Omset Hari Ini</div>
-        <div className="mt-0.5 text-sm font-bold text-foreground">Rp 0</div>
+        <div className="mt-0.5 truncate text-sm font-bold text-foreground">{data ? rp(data.omzet) : "Memuat…"}</div>
       </div>
       <div>
         <div className="text-[10px] text-muted-foreground">Transaksi</div>
-        <div className="mt-0.5 text-sm font-bold text-foreground">0</div>
+        <div className="mt-0.5 text-sm font-bold text-foreground">{data?.transactions ?? "—"}</div>
       </div>
       <div>
         <div className="text-[10px] text-muted-foreground">Outlet Dikunjungi</div>
-        <div className="mt-0.5 text-sm font-bold text-foreground">0</div>
+        <div className="mt-0.5 text-sm font-bold text-foreground">{data?.visited ?? "—"}</div>
       </div>
     </section>
   );
@@ -99,7 +147,7 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
         subtitle="Kendali Operasional Lapangan"
       />
 
-      <CompactSummary />
+      <CompactSummary ownerId={profile?.id} />
 
       {/* Tombol Utama (Call to Action Terbesar) */}
       <div className="mt-3">
