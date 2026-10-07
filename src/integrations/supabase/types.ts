@@ -122,44 +122,6 @@ export type Database = {
         }
         Relationships: []
       }
-      personal_other_income: {
-        Row: {
-          account_id: string
-          amount: number
-          category: string
-          created_at: string
-          id: string
-          note: string | null
-          received_at: string
-        }
-        Insert: {
-          account_id: string
-          amount: number
-          category: string
-          created_at?: string
-          id?: string
-          note?: string | null
-          received_at?: string
-        }
-        Update: {
-          account_id?: string
-          amount?: number
-          category?: string
-          created_at?: string
-          id?: string
-          note?: string | null
-          received_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "personal_other_income_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       personal_reminders: {
         Row: {
           account_id: string
