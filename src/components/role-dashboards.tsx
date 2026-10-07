@@ -290,7 +290,7 @@ export function SalesDashboard({ businessName, profile }: DashboardProps) {
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
       <Header title="Sales Field" subtitle={businessName || "Mode Kunjungan Lapangan"} />
-      <SalesFinancialSummary salesId={profile?.id} />
+
       <div className="mt-3">
         <Button asChild className="h-12 w-full rounded-xl text-base font-semibold shadow-xs">
           <Link to="/visit" search={{ outlet: undefined }}>
@@ -299,16 +299,18 @@ export function SalesDashboard({ businessName, profile }: DashboardProps) {
           </Link>
         </Button>
       </div>
+
+      <SalesFinancialSummary salesId={profile?.id} />
+
       <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
         <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          Aktivitas Sales
+          Menu
         </div>
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-3 gap-2">
           <CompactIconMenu to="/outlets" icon={Store} label="Outlet" badgeColor="bg-amber-500/10 text-amber-600" />
           <CompactIconMenu to="/sales-stock-day" icon={Truck} label="Stok Sales" badgeColor="bg-blue-500/10 text-blue-600" />
           <CompactIconMenu to="/transactions" icon={History} label="Riwayat Nota" badgeColor="bg-purple-500/10 text-purple-600" />
           <CompactIconMenu to="/schedule" icon={CalendarDays} label="Jadwal" badgeColor="bg-sky-500/10 text-sky-600" />
-          <CompactIconMenu to="/travel-funds" icon={Wallet} label="Uang Jalan" badgeColor="bg-emerald-500/10 text-emerald-600" />
           <CompactIconMenu to="/notes" icon={FileText} label="Catatan" badgeColor="bg-orange-500/10 text-orange-600" />
         </div>
       </section>
