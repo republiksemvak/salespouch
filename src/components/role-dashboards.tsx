@@ -282,6 +282,33 @@ export function SuperAdminDashboard() {
           <Link to="/admin">Buka Dashboard Super Admin</Link>
         </Button>
       </section>
+
+      {/* Submenu Operasional — khusus Owner */}
+      <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
+        <div className="mb-2 flex items-center gap-2 px-1">
+          <Wallet className="h-4 w-4 text-slate-600" />
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Operasional</div>
+            <div className="text-[10px] text-muted-foreground">Pengelolaan dana operasional Sales</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            to="/operations"
+            className="rounded-lg border p-3 transition-colors hover:bg-muted/50"
+          >
+            <div className="text-xs font-semibold">Ringkasan Operasional</div>
+            <div className="mt-0.5 text-[10px] text-muted-foreground">Saldo & rekap Sales</div>
+          </Link>
+          <Link
+            to="/travel-funds"
+            className="rounded-lg border p-3 transition-colors hover:bg-muted/50"
+          >
+            <div className="text-xs font-semibold">Input Uang Jalan Sales</div>
+            <div className="mt-0.5 text-[10px] text-muted-foreground">Berikan atau kurangi uang jalan</div>
+          </Link>
+        </div>
+      </section>
     </main>
   );
 }
