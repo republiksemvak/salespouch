@@ -66,6 +66,16 @@ function MasterStockPage() {
   const [savingProduction, setSavingProduction] = useState(false);
   const [productionMessage, setProductionMessage] = useState("");
 
+  const [showDamage, setShowDamage] = useState(false);
+  const [damageLocation, setDamageLocation] = useState("");
+  const [damageProduct, setDamageProduct] = useState("");
+  const [damagePack, setDamagePack] = useState("");
+  const [damagePcs, setDamagePcs] = useState("");
+  const [damageDate, setDamageDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [damageNote, setDamageNote] = useState("");
+  const [savingDamage, setSavingDamage] = useState(false);
+  const [damageMessage, setDamageMessage] = useState("");
+
   const [showOpening, setShowOpening] = useState(false);
   const [openingLocation, setOpeningLocation] = useState("");
   const [openingProduct, setOpeningProduct] = useState("");
