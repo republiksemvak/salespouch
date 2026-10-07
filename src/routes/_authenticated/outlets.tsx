@@ -136,7 +136,7 @@ function AllOutlets() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Kembali
           </Button>
-          <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => navigate({ to: "/outlets/new" })}>
+          <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => window.location.assign("/outlets/new")}>
             <Plus className="mr-1.5 h-4 w-4" />
             Tambah Outlet
           </Button>
