@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Search, Store } from "lucide-react";
+import { ArrowLeft, CalendarDays, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Search, Store } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signedPhotoUrls, uploadStorePhoto } from "@/lib/photos";
@@ -144,15 +144,23 @@ function AllOutlets() {
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-8 pt-6">
       <header>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <Button type="button" variant="ghost" className="-ml-3 h-9 px-3 text-muted-foreground hover:text-foreground" onClick={() => navigate({ to: "/dashboard" })}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Kembali
           </Button>
-          <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => setShowCreate(true)}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            Tambah Outlet
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild type="button" variant="outline" size="sm" className="rounded-lg">
+              <Link to="/schedule">
+                <CalendarDays className="mr-1.5 h-4 w-4" />
+                Jadwal Kunjungan
+              </Link>
+            </Button>
+            <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => setShowCreate(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Tambah Outlet
+            </Button>
+          </div>
         </div>
         <div className="mt-3">
           <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Manajemen Toko</div>
