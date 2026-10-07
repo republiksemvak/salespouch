@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Store } from "lucide-react";
+import { ArrowLeft, CalendarDays, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Store } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signedPhotoUrls, uploadStorePhoto } from "@/lib/photos";
@@ -155,17 +155,17 @@ function AllOutlets() {
           </Button>
           <div className="flex items-center gap-2">
             {account?.role !== "sales" && (
-              <Button type="button" size="sm" variant="outline" className="rounded-lg" onClick={() => setShowCreate(true)}>
-                <Plus className="mr-1.5 h-4 w-4" />
-                Tambah Outlet
+              <Button asChild type="button" variant="outline" size="sm" className="rounded-lg">
+                <Link to="/schedule">
+                  <CalendarDays className="mr-1.5 h-4 w-4" />
+                  Jadwal
+                </Link>
               </Button>
             )}
-            {account?.role === "sales" && (
-              <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => setShowCreate(true)}>
-                <Plus className="mr-1.5 h-4 w-4" />
-                Tambah Outlet
-              </Button>
-            )}
+            <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => setShowCreate(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Tambah Outlet
+            </Button>
           </div>
         </div>
         <div className="mt-3">
