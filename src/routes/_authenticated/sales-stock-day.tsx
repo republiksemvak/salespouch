@@ -155,7 +155,7 @@ function SalesStockDayPage() {
   const getActionTimestamp = (selectedDate: string) => {
     const isToday = selectedDate === today();
     if (isToday) return new Date().toISOString();
-    return new Date(\`\${selectedDate}T12:00:00\`).toISOString();
+    return new Date(`${selectedDate}T12:00:00`).toISOString();
   };
 
   async function handleLoadStock() { 
