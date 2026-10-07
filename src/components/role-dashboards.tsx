@@ -303,15 +303,31 @@ export function SalesDashboard({ businessName, profile }: DashboardProps) {
       <SalesFinancialSummary salesId={profile?.id} />
 
       <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
-        <div className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          Menu
+        <div className="mb-2.5 flex items-center justify-between px-1">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Menu</div>
         </div>
+
         <div className="grid grid-cols-2 gap-2">
-          <CompactIconMenu to="/outlets" icon={Store} label="Outlet" badgeColor="bg-amber-500/10 text-amber-600" />
-          <CompactIconMenu to="/sales-stock-day" icon={Truck} label="Stok Sales" badgeColor="bg-blue-500/10 text-blue-600" />
-          <CompactIconMenu to="/transactions" icon={History} label="Riwayat Nota" badgeColor="bg-purple-500/10 text-purple-600" />
-          <CompactIconMenu to="/schedule" icon={CalendarDays} label="Jadwal" badgeColor="bg-sky-500/10 text-sky-600" />
-          <CompactIconMenu to="/notes" icon={FileText} label="Catatan" badgeColor="bg-orange-500/10 text-orange-600" />
+          <Link to="/outlets" className="rounded-lg border bg-amber-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
+            <Store className="h-4 w-4 text-amber-600" />
+            <div className="mt-2 text-xs font-semibold text-foreground">Outlet</div>
+          </Link>
+          <Link to="/sales-stock-day" className="rounded-lg border bg-blue-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
+            <Truck className="h-4 w-4 text-blue-600" />
+            <div className="mt-2 text-xs font-semibold text-foreground">Stok Sales</div>
+          </Link>
+          <Link to="/transactions" className="rounded-lg border bg-purple-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
+            <History className="h-4 w-4 text-purple-600" />
+            <div className="mt-2 text-xs font-semibold text-foreground">Riwayat Nota</div>
+          </Link>
+          <Link to="/schedule" className="rounded-lg border bg-sky-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
+            <CalendarDays className="h-4 w-4 text-sky-600" />
+            <div className="mt-2 text-xs font-semibold text-foreground">Jadwal</div>
+          </Link>
+          <Link to="/notes" className="rounded-lg border bg-orange-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
+            <FileText className="h-4 w-4 text-orange-600" />
+            <div className="mt-2 text-xs font-semibold text-foreground">Catatan</div>
+          </Link>
         </div>
       </section>
     </main>
