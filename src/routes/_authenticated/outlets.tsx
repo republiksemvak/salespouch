@@ -1,7 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Search, Store } from "lucide-react";
+import { ArrowLeft, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Store } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signedPhotoUrls, uploadStorePhoto } from "@/lib/photos";
@@ -46,17 +46,14 @@ function AllOutlets() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: account } = useProfile();
-  const [q, setQ] = useState("");
   const [sort, setSort] = useState<RegistrationSort>("newest");
   const [scheduleDay, setScheduleDay] = useState("");
-  const [salesFilter, setSalesFilter] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const search = q.trim();
   const ownerId = account?.ownerId;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["all-outlets", search, sort, ownerId, account?.role, account?.userId],
+    queryKey: ["all-outlets", sort, ownerId, account?.role, account?.userId],
     enabled: !!ownerId && !!account?.userId,
     queryFn: async () => {
       let assignedOutletIds: string[] | null = null;
@@ -86,11 +83,6 @@ function AllOutlets() {
         query = query.in("id", assignedOutletIds);
       }
 
-      if (search) {
-        const safeSearch = search.replace(/[%_]/g, (char) => `\\\\${char}`);
-        query = query.ilike("name", `%${safeSearch}%`);
-      }
-
       const { data, error, count } = await query;
       if (error) throw error;
       return { outlets: data ?? [], count: count ?? 0 };
@@ -103,35 +95,24 @@ function AllOutlets() {
     enabled: !!ownerId,
     queryFn: async () => {
       const client = supabase as any;
-      const { data, error } = await client
+      let query = client
         .from("store_schedules")
         .select("outlet_id,sales_id,day_of_week,profiles!store_schedules_sales_id_fkey(display_name,username,user_email)")
         .eq("owner_id", ownerId);
-      if (account?.role === "sales" && account.userId) query = query.eq("sales_id", account.userId);
-      if (error) throw error;
+      if (account?.role === "sales" && account.userId) {
+        query = query.eq("sales_id", account.userId);
+      }
+      const { data, error } = await query;
       return data ?? [];
     },
     staleTime: 30_000,
   });
 
-  const salesOptions = Array.from(
-    new Map<string, string>(
-      schedules.map((item: any) => [
-        item.sales_id,
-        item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales",
-      ]),
-    ).entries(),
-  );
-
   const filteredOutletIds = schedules
-    .filter((item: any) => {
-      const dayMatches = !scheduleDay || String(item.day_of_week) === scheduleDay;
-      const salesMatches = !salesFilter || item.sales_id === salesFilter;
-      return dayMatches && salesMatches;
-    })
+    .filter((item: any) => !scheduleDay || String(item.day_of_week) === scheduleDay)
     .map((item: any) => item.outlet_id);
 
-  const hasScheduleFilter = !!scheduleDay || !!salesFilter;
+  const hasScheduleFilter = !!scheduleDay;
   const outlets = (data?.outlets ?? []).filter((outlet) => !hasScheduleFilter || filteredOutletIds.includes(outlet.id));
   const count = data?.count ?? 0;
 
@@ -173,16 +154,18 @@ function AllOutlets() {
             Kembali
           </Button>
           <div className="flex items-center gap-2">
-            <Button asChild type="button" variant="outline" size="sm" className="rounded-lg">
-              <Link to="/schedule">
-                <CalendarDays className="mr-1.5 h-4 w-4" />
-                Jadwal
-              </Link>
-            </Button>
-            <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => setShowCreate(true)}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              Tambah Outlet
-            </Button>
+            {account?.role !== "sales" && (
+              <Button type="button" size="sm" variant="outline" className="rounded-lg" onClick={() => setShowCreate(true)}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Tambah Outlet
+              </Button>
+            )}
+            {account?.role === "sales" && (
+              <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => setShowCreate(true)}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Tambah Outlet
+              </Button>
+            )}
           </div>
         </div>
         <div className="mt-3">
@@ -191,11 +174,6 @@ function AllOutlets() {
           <p className="mt-0.5 text-xs text-muted-foreground">{count} warung/toko terdaftar</p>
         </div>
       </header>
-
-      <div className="relative mt-5">
-        <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Cari nama toko…" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 pl-9" />
-      </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Button type="button" variant={sort === "newest" ? "default" : "outline"} className="h-10" onClick={() => setSort("newest")}>Registrasi Terbaru</Button>
@@ -213,21 +191,12 @@ function AllOutlets() {
           <option value="">Jadwal Hari</option>
           {SCHEDULE_DAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
         </select>
-        <select
-          value={salesFilter}
-          onChange={(e) => setSalesFilter(e.target.value)}
-          className={`h-10 w-full rounded-md border bg-background px-3 text-sm ${salesFilter ? "font-medium" : "text-muted-foreground"}`}
-          aria-label="Filter Sales"
-          disabled={schedulesLoading}
-        >
-          <option value="">Sales</option>
-          {salesOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-        </select>
+
       </div>
 
       <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
         <span>{hasScheduleFilter ? `${outlets.length} outlet sesuai filter` : "Filter berdasarkan jadwal kunjungan"}</span>
-        {hasScheduleFilter && <button type="button" className="underline" onClick={() => { setScheduleDay(""); setSalesFilter(""); }}>Reset</button>}
+        {hasScheduleFilter && <button type="button" className="underline" onClick={() => setScheduleDay("")}>Reset</button>}
       </div>
 
       <div className="mt-4 space-y-2">
@@ -239,7 +208,7 @@ function AllOutlets() {
               {hasScheduleFilter ? "Tidak ada outlet di jadwal ini" : "Outlet tidak ditemukan"}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {q ? `Belum ada outlet dengan nama "${q}".` : "Belum ada outlet yang ditambahkan ke sistem."}
+              "Belum ada outlet yang ditambahkan ke sistem."
             </p>
             <Button type="button" size="sm" className="mt-4 rounded-lg" onClick={() => setShowCreate(true)}>
               <Plus className="mr-1.5 h-4 w-4" />
