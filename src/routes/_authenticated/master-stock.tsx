@@ -471,6 +471,63 @@ function MasterStockPage() {
         )}
       </section>
 
+      {/* Form 2: Pemusnahan / Barang Rusak */}
+      <section className="mt-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-1.5 text-sm font-bold text-rose-900">
+              <AlertTriangle className="h-4 w-4" /> Barang Rusak / BS
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">Keluarkan barang rusak, bocor, atau expired dari stok Gudang.</p>
+          </div>
+          <Button type="button" variant={showDamage ? "secondary" : "outline"} size="sm" className="shrink-0 rounded-xl text-rose-700 border-rose-200" onClick={() => { setShowDamage((v) => !v); setDamageMessage(""); }}>
+            {showDamage ? "Tutup" : "Catat"}
+          </Button>
+        </div>
+
+        {showDamage && (
+          <div className="mt-4 space-y-3 border-t border-rose-200 pt-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium">Gudang Asal</label>
+              <select value={damageLocation} onChange={(e) => setDamageLocation(e.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 text-sm">
+                <option value="">Pilih Gudang…</option>
+                {locations.filter((l) => l.location_type === "warehouse").map((l) => <option key={l.id} value={l.id}>{l.name} (Gudang)</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">Produk Rusak</label>
+              <select value={damageProduct} onChange={(e) => { setDamageProduct(e.target.value); setDamagePack(""); setDamagePcs(""); }} className="h-11 w-full rounded-xl border bg-background px-3 text-sm">
+                <option value="">Pilih produk…</option>
+                {products.map((p) => <option key={p.id} value={p.id}>{p.name} — 1 pack = {p.pcs_per_pack} pcs</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium">Pack</label>
+                <Input type="number" min="0" step="1" value={damagePack} onChange={(e) => setDamagePack(e.target.value)} placeholder="0" className="h-11 rounded-xl" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium">Pcs Sisa</label>
+                <Input type="number" min="0" step="1" value={damagePcs} onChange={(e) => setDamagePcs(e.target.value)} placeholder="0" className="h-11 rounded-xl" />
+              </div>
+            </div>
+            {damageProduct && <div className="rounded-xl border border-rose-200 bg-background/80 px-3 py-2 text-xs text-rose-700">Total yang dimusnahkan: <b>{damageQuantity.toLocaleString("id-ID")} pcs</b> (mengurangi saldo gudang)</div>}
+            <div>
+              <label className="mb-1 block text-xs font-medium">Tanggal Pemusnahan</label>
+              <Input type="date" value={damageDate} onChange={(e) => setDamageDate(e.target.value)} className="h-11 rounded-xl" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">Alasan Kerusakan *</label>
+              <Input required value={damageNote} onChange={(e) => setDamageNote(e.target.value)} placeholder="Contoh: Kemasan bocor / Expired" className="h-11 rounded-xl" />
+            </div>
+            {damageMessage && <div className={`rounded-xl px-3 py-2 text-xs ${damageMessage.includes("berhasil") ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{damageMessage}</div>}
+            <Button type="button" disabled={savingDamage} className="h-11 w-full rounded-xl bg-rose-600 text-white hover:bg-rose-700" onClick={saveDamage}>
+              {savingDamage ? "Memproses…" : "Musnahkan & Kurangi Stok Gudang"}
+            </Button>
+          </div>
+        )}
+      </section>
+
       <div className="mt-4 flex gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
