@@ -77,6 +77,38 @@ function ReceiptPage() {
         .maybeSingle();
 
       if (wds) {
+        // warehouse_direct_sales memakai { qty, price, pcs_per_pack, subtotal },
+        // sedangkan komponen nota memakai format LineItem { sold, subtotal, ... }.
+        // Normalisasi di sini agar jumlah terjual dan nilai per produk tidak tampil 0/kosong.
+        const warehouseItems = Array.isArray(wds.line_items) ? wds.line_items as Array<Record<string, unknown>> : [];
+        const normalizedItems = warehouseItems.map((item) => {
+          const qty = Number(item.qty) || 0;
+          const pcsPerPack = packSize(Number(item.pcs_per_pack) || 1);
+          const price = Number(item.price) || 0;
+          const subtotal = Number(item.subtotal) || (qty * price) / pcsPerPack;
+
+          return {
+            name: String(item.name ?? ""),
+            sold: qty,
+            prev_stock: 0,
+            remaining: 0,
+            returned: 0,
+            price,
+            pcs_per_pack: pcsPerPack,
+            subtotal,
+          };
+        });
+
+        const calculatedTotal = normalizedItems.reduce(
+          (sum, item) => sum + (Number(item.subtotal) || 0),
+          0,
+        );
+        const storedTotal = Number(wds.total_sales) || 0;
+        const totalSales = storedTotal > 0 ? storedTotal : calculatedTotal;
+        const discountAmount = Number(wds.discount_amount) || 0;
+        const totalDue = Math.max(0, totalSales - discountAmount);
+        const amountPaid = Number(wds.amount_paid) || 0;
+
         return {
           id: wds.id,
           receipt_number: wds.receipt_number,
@@ -85,14 +117,14 @@ function ReceiptPage() {
           visit_date: wds.sale_date,
           created_at: wds.created_at,
           sales_name: "Gudang Utama",
-          total_sales: wds.total_sales,
-          discount_amount: wds.discount_amount,
+          total_sales: totalSales,
+          discount_amount: discountAmount,
           previous_debt: 0,
-          total_due: Number(wds.total_sales) - Number(wds.discount_amount),
-          amount_paid: wds.amount_paid,
+          total_due: totalDue,
+          amount_paid: amountPaid,
           revised_at: null,
-          remaining_debt: Math.max(0, Number(wds.total_sales) - Number(wds.discount_amount) - Number(wds.amount_paid)),
-          line_items: wds.line_items,
+          remaining_debt: Math.max(0, totalDue - amountPaid),
+          line_items: normalizedItems,
           new_consignment_items: [],
           custom_note: wds.custom_note,
           outlets: wds.outlets ?? { name: wds.buyer_name, owner_phone: null },
