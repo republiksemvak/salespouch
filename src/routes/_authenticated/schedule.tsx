@@ -298,15 +298,15 @@ function SchedulePage() {
                   <div className="mt-1 text-sm font-semibold">
                     {debtsLoading ? "Memuat tagihan..." : `Tagihan: Rp ${Math.round(outstandingByOutlet.get(item.outlet_id) ?? 0).toLocaleString("id-ID")}`}
                   </div>
-                  {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
+                  {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>
                   <div className="mt-3 flex gap-1">
-                    <Button variant="outline" size="sm" disabled={busy || index === 0 || schedules[index - 1]?.day_of_week !== item.day_of_week} onClick={() => moveSchedule(index, -1)}>
+                    <Button variant="outline" size="sm" disabled={busy || index === 0} onClick={() => moveSchedule(index, -1)}>
                       <ArrowUp className="mr-1 h-3.5 w-3.5" /> Naik
                     </Button>
-                    <Button variant="outline" size="sm" disabled={busy || index === schedules.length - 1 || schedules[index + 1]?.day_of_week !== item.day_of_week} onClick={() => moveSchedule(index, 1)}>
+                    <Button variant="outline" size="sm" disabled={busy || index === schedules.length - 1} onClick={() => moveSchedule(index, 1)}>
                       <ArrowDown className="mr-1 h-3.5 w-3.5" /> Turun
                     </Button>
-                  </div>
+                  </div>}
                 </div>
                 {isOwner && <Button variant="ghost" size="icon" aria-label="Hapus jadwal" onClick={() => removeSchedule(item.id)}><Trash2 className="h-4 w-4" /></Button>}
               </div>
