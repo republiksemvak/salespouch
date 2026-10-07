@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { salesAuthEmail } from "@/lib/sales-auth";
+import { isSuperAdminEmail } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,27 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+async function ensureBusinessAccess() {
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData.user;
+  if (!user) throw new Error("Sesi login tidak ditemukan.");
+
+  if (isSuperAdminEmail(user.email)) return;
+
+  const [{ data: profile, error: profileError }, { data: membership, error: membershipError }] = await Promise.all([
+    supabase.from("profiles").select("account_type").eq("id", user.id).maybeSingle(),
+    supabase.from("team_members").select("owner_id").eq("user_id", user.id).maybeSingle(),
+  ]);
+
+  if (profileError) throw profileError;
+  if (membershipError) throw membershipError;
+
+  if (profile?.account_type === "employee" && !membership) {
+    await supabase.auth.signOut();
+    throw new Error("Akun Sales sudah tidak terhubung ke usaha. Hubungi Owner untuk mendapatkan akses.");
+  }
+}
+
 function AuthPage() {
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState("");
@@ -29,8 +51,14 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard" });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      try {
+        await ensureBusinessAccess();
+        navigate({ to: "/dashboard" });
+      } catch (err) {
+        toast.error((err as Error).message);
+      }
     });
   }, [navigate]);
 
@@ -42,6 +70,7 @@ function AuthPage() {
       const email = value.includes("@") ? value.toLowerCase() : salesAuthEmail(value);
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      await ensureBusinessAccess();
       navigate({ to: "/dashboard" });
     } catch (err) {
       toast.error((err as Error).message);
