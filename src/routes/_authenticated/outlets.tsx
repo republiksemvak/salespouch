@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Camera, Crosshair, MapPin, Pencil, Phone, Search, Store } from "lucide-react";
+import { ArrowLeft, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Search, Store } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signedPhotoUrls, uploadStorePhoto } from "@/lib/photos";
@@ -131,13 +131,23 @@ function AllOutlets() {
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-8 pt-6">
       <header>
-        <Button type="button" variant="ghost" className="-ml-3 mb-2 h-9 px-3" onClick={() => navigate({ to: "/dashboard" })}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Kembali
-        </Button>
-        <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Manajemen Outlet</div>
-        <h1 className="mt-1 text-2xl font-bold">Semua Outlet</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{count} outlet terdaftar</p>
+        <div className="flex items-center justify-between">
+          <Button type="button" variant="ghost" className="-ml-3 h-9 px-3 text-muted-foreground hover:text-foreground" onClick={() => navigate({ to: "/dashboard" })}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Kembali
+          </Button>
+          <Button asChild size="sm" className="rounded-lg shadow-xs">
+            <Link to="/outlets/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Tambah Outlet
+            </Link>
+          </Button>
+        </div>
+        <div className="mt-3">
+          <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Manajemen Toko</div>
+          <h1 className="mt-0.5 text-2xl font-bold tracking-tight">Semua Outlet</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">{count} warung/toko terdaftar</p>
+        </div>
       </header>
 
       <div className="relative mt-5">
@@ -181,9 +191,20 @@ function AllOutlets() {
       <div className="mt-4 space-y-2">
         {isLoading && <p className="text-sm text-muted-foreground">Memuat outlet…</p>}
         {!isLoading && outlets.length === 0 && (
-          <div className="rounded-2xl border border-dashed p-8 text-center">
-            <Store className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-3 text-sm text-muted-foreground">{hasScheduleFilter ? "Tidak ada outlet yang sesuai filter." : "Outlet tidak ditemukan."}</p>
+          <div className="rounded-xl border border-dashed bg-card/50 p-8 text-center">
+            <Store className="mx-auto h-9 w-9 text-muted-foreground" />
+            <div className="mt-3 text-sm font-semibold">
+              {hasScheduleFilter ? "Tidak ada outlet di jadwal ini" : "Outlet tidak ditemukan"}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {q ? `Belum ada outlet dengan nama "${q}".` : "Belum ada outlet yang ditambahkan ke sistem."}
+            </p>
+            <Button asChild size="sm" className="mt-4 rounded-lg">
+              <Link to="/outlets/new">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Daftarkan Toko Baru
+              </Link>
+            </Button>
           </div>
         )}
         {outlets.map((outlet) => (
