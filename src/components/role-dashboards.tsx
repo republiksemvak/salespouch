@@ -362,3 +362,5 @@ export function AdminDashboard({ businessName, permissions }: PermissionDashboar
     </main>
   );
 }
+
+// Sales mode access: outlet, stock, history, schedule, travel funds, and notes.
