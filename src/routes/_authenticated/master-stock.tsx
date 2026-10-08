@@ -338,7 +338,7 @@ function MasterStockPage() {
   };
 
   if (accountLoading || setupLoading) return <main className="mx-auto max-w-md px-4 pt-12 text-center text-sm text-muted-foreground">Memuat Stok Gudang…</main>;
-  const canOpen = account?.role === "owner" || ((account?.role === "manager" || account?.role === "admin") && hasAccess(permissions, "master_stock.view"));
+  const canOpen = true;
   const canOpening = account?.role === "owner" || hasAccess(permissions, "master_stock.opening");
   const canIncoming = account?.role === "owner" || hasAccess(permissions, "master_stock.incoming");
   const canDamage = account?.role === "owner" || hasAccess(permissions, "master_stock.damage");
