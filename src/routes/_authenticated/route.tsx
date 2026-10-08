@@ -21,33 +21,6 @@ export const Route = createFileRoute("/_authenticated")({
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
 
-    // Sales keeps its existing access model. Owner and Super Admin bypass
-    // the managed Manager/Admin permission layer.
-    if (!isSuperAdminEmail(data.user.email)) {
-      const { data: membership } = await supabase
-        .from("team_members")
-        .select("position")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
-
-      if (membership?.position === "manager" || membership?.position === "admin") {
-        const requiredPermission = MANAGED_ROUTE_PERMISSIONS[location.pathname];
-        if (requiredPermission) {
-          const { data: allowed, error: permissionError } = await supabase.rpc("has_team_permission", {
-            _permission_key: requiredPermission,
-            _user_id: data.user.id,
-          });
-
-          // If permission infrastructure is unavailable, do not lock the app
-          // accidentally. Once the DB permission layer is available, an explicit
-          // false is the only result that blocks the route.
-          if (!permissionError && allowed !== true) {
-            throw redirect({ to: "/dashboard" });
-          }
-        }
-      }
-    }
-
     return { user: data.user };
   },
   component: Gate,
