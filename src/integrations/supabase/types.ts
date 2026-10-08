@@ -851,6 +851,7 @@ export type Database = {
           created_at: string
           manager_id: string | null
           owner_id: string
+          permissions_configured: boolean
           position: string
           updated_at: string
           user_id: string
@@ -859,6 +860,7 @@ export type Database = {
           created_at?: string
           manager_id?: string | null
           owner_id: string
+          permissions_configured?: boolean
           position?: string
           updated_at?: string
           user_id: string
@@ -867,6 +869,7 @@ export type Database = {
           created_at?: string
           manager_id?: string | null
           owner_id?: string
+          permissions_configured?: boolean
           position?: string
           updated_at?: string
           user_id?: string
