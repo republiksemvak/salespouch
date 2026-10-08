@@ -8,7 +8,7 @@ import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { listTeam, replaceTeamPermissions, setTeamMemberRole } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
-import { ACCESS_GROUPS, MANAGER_ADMIN_DEFAULTS, SALES_DEFAULTS } from "@/lib/team-access";
+import { ACCESS_GROUPS, MANAGER_ADMIN_DEFAULTS, SALES_DEFAULTS, type AccessGroup } from "@/lib/team-access";
 
 export const Route = createFileRoute("/_authenticated/team-access")({
   head: () => ({ meta: [{ title: "Jabatan & Akses — Sales Pouch" }, { name: "description", content: "Owner menentukan jabatan dan hak akses setiap anggota tim." }] }),
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/team-access")({
 });
 
 type JobLevel = "admin" | "manager" | "sales";
-type PermissionGroup = { title: string; items: { key: string; label: string; description: string }[] };
+type PermissionGroup = AccessGroup;
 
 type TeamMember = {
   user_id: string;
@@ -76,12 +76,24 @@ function TeamAccessPage() {
     [members, selectedId],
   );
 
+  function expandLegacyPermissions(saved: string[], groups: PermissionGroup[]) {
+    const result = new Set(saved);
+    for (const group of groups) for (const item of group.items) {
+      if (!item.children?.length) continue;
+      const hasChild = item.children.some((child) => result.has(child.key));
+      if (result.has(item.key) && !hasChild) item.children.forEach((child) => result.add(child.key));
+      if (hasChild) result.add(item.key);
+    }
+    return [...result];
+  }
+
   function selectMember(userId: string) {
     const member = (members as TeamMember[]).find((item) => item.user_id === userId);
     setSelectedId(userId);
     if (!member) return;
     setLevel(member.position);
-    setPermissions(member.hasCustomPermissions ? (member.permissions ?? []) : levelDefaults[member.position]);
+    const groups = member.position === "sales" ? salesGroups : managerAdminGroups;
+    setPermissions(member.hasCustomPermissions ? expandLegacyPermissions(member.permissions ?? [], groups) : levelDefaults[member.position]);
   }
 
   function changeLevel(next: JobLevel) {
@@ -95,6 +107,27 @@ function TeamAccessPage() {
     setPermissions((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
   }
 
+  function toggleMenu(item: PermissionGroup["items"][number]) {
+    if (!item.children?.length) return toggle(item.key);
+    const childKeys = item.children.map((child) => child.key);
+    const hasAny = childKeys.some((key) => permissions.includes(key));
+    setPermissions((current) => {
+      const next = current.filter((key) => key !== item.key && !childKeys.includes(key));
+      return hasAny ? next : [...next, item.key, ...childKeys];
+    });
+  }
+
+  function permissionsForSave() {
+    const groups = level === "sales" ? salesGroups : managerAdminGroups;
+    const result = new Set<string>();
+    for (const group of groups) for (const item of group.items) {
+      if (!item.children?.length) { if (permissions.includes(item.key)) result.add(item.key); continue; }
+      const selectedChildren = item.children.map((child) => child.key).filter((key) => permissions.includes(key));
+      if (selectedChildren.length) { result.add(item.key); selectedChildren.forEach((key) => result.add(key)); }
+    }
+    return [...result];
+  }
+
   async function save() {
     if (!selectedId) {
       toast.error("Pilih anggota tim terlebih dahulu.");
@@ -104,7 +137,7 @@ function TeamAccessPage() {
     setSaving(true);
     try {
       await saveRole({ data: { userId: selectedId, position: level } });
-      await savePermissions({ data: { userId: selectedId, permissionKeys: permissions } });
+      await savePermissions({ data: { userId: selectedId, permissionKeys: permissionsForSave() } });
       await qc.invalidateQueries({ queryKey: ["team-access", profile?.ownerId] });
       await qc.invalidateQueries({ queryKey: ["team", profile?.ownerId] });
       toast.success("Jabatan dan akses berhasil disimpan.");
@@ -155,8 +188,7 @@ function TeamAccessPage() {
 
       <section className="mt-5 space-y-5">
         <div className="rounded-xl border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">Level <strong className="text-foreground">{level === "manager" ? "Manajer" : level === "admin" ? "Admin" : "Sales"}</strong> hanya menjadi jabatan. Owner tetap menentukan hak akses menu di bawah.</div>
-        {(level === "sales" ? salesGroups : managerAdminGroups).map((group) => <div key={group.title}><h2 className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h2><div className="overflow-hidden rounded-2xl border bg-card">{group.items.map((item, index) => { const checked = permissions.includes(item.key); return <button type="button" key={item.key} onClick={() => toggle(item.key)} className={`flex w-full items-center gap-3 p-3 text-left ${index ? "border-t" : ""}`}><span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}>{checked && <Check className="h-4 w-4" />}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">{item.description}</span></span></button>; })}</div></div>)}
-      </section>
+        {(level === "sales" ? salesGroups : managerAdminGroups).map((group) => <div key={group.title}><h2 className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h2><div className="overflow-hidden rounded-2xl border bg-card">{group.items.map((item, index) => {const childKeys = item.children?.map((child) => child.key) ?? [];const checked = item.children?.length ? childKeys.some((key) => permissions.includes(key)) : permissions.includes(item.key);const allChildren = item.children?.length ? childKeys.every((key) => permissions.includes(key)) : false;return <div key={item.key} className={index ? "border-t" : ""}><button type="button" onClick={() => toggleMenu(item)} className="flex w-full items-center gap-3 p-3 text-left"><span className={checked ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-primary bg-primary text-primary-foreground" : "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border bg-background"}>{checked && <Check className="h-4 w-4" />}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">{item.description}</span></span>{item.children?.length ? <span className="text-[10px] text-muted-foreground">{allChildren ? "Semua" : checked ? "Sebagian" : "Terkunci"}</span> : null}</button>{item.children?.length ? <div className="border-t bg-muted/20 px-3 pb-2">{item.children.map((child) => { const childChecked = permissions.includes(child.key); return <button type="button" key={child.key} onClick={() => toggle(child.key)} className="flex w-full items-center gap-3 py-2.5 pl-9 text-left"><span className={childChecked ? "flex h-5 w-5 shrink-0 items-center justify-center rounded border border-primary bg-primary text-primary-foreground" : "flex h-5 w-5 shrink-0 items-center justify-center rounded border bg-background"}>{childChecked && <Check className="h-3.5 w-3.5" />}</span><span className="min-w-0 flex-1"><span className="block text-xs font-semibold">{child.label}</span><span className="block text-[10px] leading-4 text-muted-foreground">{child.description}</span></span></button>; })}</div> : null}</div>; })}</div></div>)}</section>
 
       <Button disabled={saving} onClick={save} className="mt-6 h-12 w-full rounded-xl">{saving ? "Menyimpan…" : "Simpan Jabatan & Akses"}</Button>
       <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">Perubahan disimpan ke database dan berlaku pada akses tim setelah login/refresh berikutnya.</p>
