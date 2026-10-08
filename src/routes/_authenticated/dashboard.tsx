@@ -21,6 +21,8 @@ function Dashboard() {
     // Owner and Sales do not need this extra request on dashboard load.
     enabled: !!p && (p.role === "manager" || p.role === "admin"),
     queryFn: () => fetchPermissions({ data: {} }),
+    staleTime: 30_000,
+    retry: 1,
   });
 
   if (isLoading || !p) return <div className="min-h-screen p-10 text-center text-muted-foreground">Memuat dashboard…</div>;
@@ -28,7 +30,13 @@ function Dashboard() {
   const superAdmin = isSuperAdminEmail(p.email);
   const testMode = superAdmin ? getTestMode() : null;
   const effectiveRole = superAdmin ? testMode ?? "super-admin" : p.role;
-  const permissions = access?.permissions ?? [];
+  const roleDefaults: Record<string, string[]> = {
+    manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
+    admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
+  };
+  // Keep the role defaults visible while the server permission request resolves.
+  // Once the server responds, its saved permissions are authoritative.
+  const permissions = access ? access.permissions : (roleDefaults[p.role] ?? []);
 
   if (effectiveRole === "super-admin") return <SuperAdminDashboard />;
   if (effectiveRole === "manager") return <ManagerDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} permissions={permissions} />;
