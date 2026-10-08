@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSuperAdminEmail } from "@/lib/access";
 import { salesAuthEmail, normalizeSalesUsername } from "@/lib/sales-auth";
-import { MANAGER_ADMIN_DEFAULTS, SALES_DEFAULTS } from "@/lib/team-access";
+import { MANAGER_ADMIN_DEFAULTS, SALES_DEFAULTS, expandLegacyManagerPermissions } from "@/lib/team-access";
 
 type TeamPosition = "admin" | "manager" | "sales";
 type TeamActor = { ownerId: string; position: "owner" | TeamPosition };
@@ -63,7 +63,8 @@ export const getMyTeamPermissions = createServerFn({ method: "GET" })
 
     // Existing saved permissions are authoritative. If none have ever been
     // saved, use the role's recommended defaults instead of locking everything.
-    const savedPermissions = (data ?? []).map((item) => item.permission_key);
+    const rawPermissions = (data ?? []).map((item) => item.permission_key);
+    const savedPermissions = actor.position === "sales" ? rawPermissions : expandLegacyManagerPermissions(rawPermissions);
     const { data: memberState, error: memberStateError } = await supabaseAdmin
       .from("team_members")
       .select("permissions_configured")
