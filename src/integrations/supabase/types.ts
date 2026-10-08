@@ -1179,6 +1179,13 @@ export type Database = {
         }
         Returns: string
       }
+      get_sales_current_stock: {
+        Args: { _sales_user_id: string }
+        Returns: {
+          product_id: string
+          quantity: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
