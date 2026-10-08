@@ -506,12 +506,12 @@ function RolePermissionDashboard({
   );
 }
 
-export function ManagerDashboard({ businessName, permissions }: PermissionDashboardProps) {
-  return <RolePermissionDashboard roleTitle="Manager" subtitle={businessName || "Operasional Tim"} permissions={permissions} />;
+export function ManagerDashboard({ businessName }: PermissionDashboardProps) {
+  return <OwnerDashboard profile={null} businessName={businessName || "Manager"} />;
 }
 
-export function AdminDashboard({ businessName, permissions }: PermissionDashboardProps) {
-  return <RolePermissionDashboard roleTitle="Admin" subtitle={businessName || "Administrasi Usaha"} permissions={permissions} />;
+export function AdminDashboard({ businessName }: PermissionDashboardProps) {
+  return <OwnerDashboard profile={null} businessName={businessName || "Admin"} />;
 }
 
 
