@@ -127,7 +127,14 @@ function SalesExpenses() {
     if (!profileData?.ownerId || !userId) return setErrorMessage("Profil belum siap. Coba lagi.");
     setSaving(true);
     const payload = { category: category.trim(), amount: numericAmount, note: note.trim() || null, spent_at: spentAt };
-    const result = editingExpense ? await supabase.from("sales_expenses").update(payload).eq("id", editingExpense.id).eq("sales_id", userId) : await supabase.from("sales_expenses").insert({ ...payload, owner_id: profileData.ownerId, sales_id: userId });
+    const result = editingExpense
+      ? await supabase.from("sales_expenses").update(payload).eq("id", editingExpense.id).eq("sales_id", userId)
+      : await (supabase as any).rpc("record_sales_expense", {
+          p_category: payload.category,
+          p_amount: payload.amount,
+          p_note: payload.note,
+          p_spent_at: payload.spent_at,
+        });
     setSaving(false);
     if (result.error) return setErrorMessage(result.error.message);
     resetForm(); await queryClient.invalidateQueries({ queryKey: ["sales-expenses"] });
