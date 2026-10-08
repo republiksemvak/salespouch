@@ -296,53 +296,122 @@ function AllOutlets() {
     </main>
 
     <Dialog open={!!infoId} onOpenChange={(open) => !open && setInfoId(null)}>
-      <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{infoData?.outlet?.name ?? infoOutlet?.name ?? "Info Outlet"}</DialogTitle>
-          <DialogDescription>Ringkasan kondisi outlet saat ini.</DialogDescription>
-        </DialogHeader>
-        {infoLoading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">Memuat informasi outlet…</div>
-        ) : infoData ? (
-          <div className="space-y-4 text-sm">
-            <section className="rounded-xl border bg-muted/30 p-3">
-              <div className="font-semibold">Profil Outlet</div>
-              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                <div>Pemilik: <span className="font-medium text-foreground">{infoData.outlet.owner_name || "—"}</span></div>
-                <div>Telepon: <span className="font-medium text-foreground">{infoData.outlet.owner_phone || "—"}</span></div>
-                <div>Alamat: <span className="font-medium text-foreground">{infoData.outlet.address || "—"}</span></div>
-              </div>
-              {infoData.outlet.map_location && <a href={infoData.outlet.map_location.startsWith("http") ? infoData.outlet.map_location : `https://maps.google.com/?q=${encodeURIComponent(infoData.outlet.map_location)}`} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-accent underline"><MapPin className="h-3 w-3" />Buka lokasi peta</a>}
-            </section>
+      <DialogContent className="max-h-[88vh] w-[calc(100%-24px)] max-w-md overflow-hidden rounded-2xl p-0">
+        <div className="max-h-[88vh] overflow-y-auto">
+          <DialogHeader className="border-b bg-muted/30 px-5 pb-4 pt-5">
+            <div className="pr-6">
+              <DialogTitle className="text-xl font-bold tracking-tight">
+                {infoData?.outlet?.name ?? infoOutlet?.name ?? "Info Outlet"}
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-xs">
+                Ringkasan kondisi outlet saat ini
+              </DialogDescription>
+            </div>
+          </DialogHeader>
 
-            <section className="rounded-xl border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-semibold">Nilai Tagihan / Stok Outlet</div>
-                <div className="font-bold">Rp {Math.round(infoData.stock.reduce((sum: number, item: any) => sum + item.value, 0)).toLocaleString("id-ID")}</div>
-              </div>
-              <div className="mt-1 text-[11px] text-muted-foreground">Nilai barang titipan yang masih berada di outlet.</div>
-              {infoData.stock.length > 0 ? (
-                <div className="mt-3 space-y-2">
-                  {infoData.stock.map((item: any) => (
-                    <div key={item.name} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2">
-                      <div className="min-w-0"><div className="truncate font-medium">{item.name}</div><div className="text-[11px] text-muted-foreground">{item.qty} pcs · Rp {Math.round(item.price / (Number(item.pcs_per_pack) || 1)).toLocaleString("id-ID")}/pcs</div></div>
-                      <div className="shrink-0 text-xs font-semibold">Rp {Math.round(item.value).toLocaleString("id-ID")}</div>
+          {infoLoading ? (
+            <div className="flex min-h-48 items-center justify-center px-5 text-sm text-muted-foreground">
+              Memuat informasi outlet…
+            </div>
+          ) : infoData ? (
+            <div className="space-y-3 p-4">
+              <section className="rounded-2xl border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Store className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold">Profil Outlet</div>
+                    <div className="text-[11px] text-muted-foreground">Informasi toko & kontak</div>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-2.5 text-xs">
+                  <div className="rounded-xl bg-muted/40 px-3 py-2.5">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Pemilik</div>
+                    <div className="mt-0.5 font-medium">{infoData.outlet.owner_name || "—"}</div>
+                  </div>
+                  <div className="rounded-xl bg-muted/40 px-3 py-2.5">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Telepon</div>
+                    <div className="mt-0.5 font-medium">{infoData.outlet.owner_phone || "—"}</div>
+                  </div>
+                  <div className="rounded-xl bg-muted/40 px-3 py-2.5">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Alamat</div>
+                    <div className="mt-0.5 font-medium leading-relaxed">{infoData.outlet.address || "—"}</div>
+                  </div>
+                </div>
+                {infoData.outlet.map_location && (
+                  <a href={infoData.outlet.map_location.startsWith("http") ? infoData.outlet.map_location : `https://maps.google.com/?q=${encodeURIComponent(infoData.outlet.map_location)}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium text-accent hover:bg-muted">
+                    <MapPin className="h-3.5 w-3.5" />Buka lokasi peta
+                  </a>
+                )}
+              </section>
+
+              <section className="rounded-2xl border bg-card p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <span className="text-sm font-bold">Rp</span>
                     </div>
-                  ))}
+                    <div>
+                      <div className="text-sm font-semibold">Piutang Outlet</div>
+                      <div className="text-[11px] text-muted-foreground">Nilai stok titipan saat ini</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold tracking-tight">Rp {Math.round(infoData.stock.reduce((sum: number, item: any) => sum + item.value, 0)).toLocaleString("id-ID")}</div>
+                    <div className="text-[10px] text-muted-foreground">{infoData.stock.reduce((sum: number, item: any) => sum + (Number(item.qty) || 0), 0)} pcs</div>
+                  </div>
                 </div>
-              ) : <div className="mt-3 text-xs text-muted-foreground">Tidak ada stok titipan aktif.</div>}
-            </section>
+                {infoData.stock.length > 0 ? (
+                  <div className="mt-4 divide-y rounded-xl border">
+                    {infoData.stock.map((item: any) => (
+                      <div key={item.name} className="flex items-center justify-between gap-3 px-3 py-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-xs font-semibold">{item.name}</div>
+                          <div className="mt-0.5 text-[10px] text-muted-foreground">{item.qty} pcs · Rp {Math.round(item.price / (Number(item.pcs_per_pack) || 1)).toLocaleString("id-ID")}/pcs</div>
+                        </div>
+                        <div className="shrink-0 text-xs font-bold">Rp {Math.round(item.value).toLocaleString("id-ID")}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">Tidak ada stok titipan aktif.</div>
+                )}
+              </section>
 
-            <section className="rounded-xl border p-3">
-              <div className="font-semibold">PIC & Jadwal Kunjungan</div>
-              {infoData.scheduleRows.length > 0 ? (
-                <div className="mt-2 space-y-2">
-                  {infoData.scheduleRows.map((row: any) => <div key={row.id ?? `${row.sales_id}-${row.day_of_week}`} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2"><div><div className="font-medium">{row.profiles?.display_name ?? row.profiles?.username ?? row.profiles?.user_email ?? "Sales"}</div><div className="text-[11px] text-muted-foreground">{SCHEDULE_DAYS.find((d) => d.value === String(row.day_of_week))?.label ?? "Hari tidak diketahui"}</div></div>{row.note && <div className="max-w-[45%] text-right text-[11px] text-muted-foreground">{row.note}</div>}</div>)}
+              <section className="rounded-2xl border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <CalendarDays className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold">PIC & Jadwal</div>
+                    <div className="text-[11px] text-muted-foreground">Sales yang bertanggung jawab</div>
+                  </div>
                 </div>
-              ) : <div className="mt-2 text-xs text-muted-foreground">Belum ada PIC/jadwal yang ditetapkan.</div>}
-            </section>
-          </div>
-        ) : null}
+                {infoData.scheduleRows.length > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    {infoData.scheduleRows.map((row: any) => (
+                      <div key={row.id ?? `${row.sales_id}-${row.day_of_week}`} className="rounded-xl border bg-muted/20 px-3 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-xs font-semibold">{row.profiles?.display_name ?? row.profiles?.username ?? row.profiles?.user_email ?? "Sales"}</div>
+                            <div className="mt-1 text-[10px] text-muted-foreground">{row.note || "Kunjungan terjadwal"}</div>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+                            {SCHEDULE_DAYS.find((d) => d.value === String(row.day_of_week))?.label ?? "Hari tidak diketahui"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">Belum ada PIC/jadwal yang ditetapkan.</div>
+                )}
+              </section>
+            </div>
+          ) : null}
+        </div>
       </DialogContent>
     </Dialog>
     </>
