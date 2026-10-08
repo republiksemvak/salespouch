@@ -10,6 +10,8 @@ import { nextReceiptNumber } from "@/lib/visit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTeamPermissions } from "@/hooks/use-team-permissions";
+import { hasAccess } from "@/lib/team-access";
 
 export const Route = createFileRoute("/_authenticated/warehouse-direct-sale")({
   head: () => ({ meta: [{ title: "Direct Selling Gudang — Sales Pouch" }, { name: "description", content: "Catat penjualan langsung dari stok gudang." }, { property: "og:title", content: "Direct Selling Gudang — Sales Pouch" }, { property: "og:description", content: "Catat penjualan langsung dari stok gudang." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -24,6 +26,8 @@ function WarehouseDirectSalePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: account } = useProfile();
+  const { data: access } = useTeamPermissions(account?.role === "manager" || account?.role === "admin");
+  const canReturn = account?.role === "owner" || hasAccess(access?.permissions ?? [], "direct_selling.return");
   const { data: products = [] } = useProducts();
   const [buyerName, setBuyerName] = useState("");
   const [buyerOutletId, setBuyerOutletId] = useState("");
@@ -139,10 +143,13 @@ function WarehouseDirectSalePage() {
         <div className="mt-3 space-y-2">{rows.map((row, index) => <div key={row.productId} className="rounded-lg border p-3"><div className="flex items-center justify-between gap-2"><select value={row.productId} onChange={(e) => { const p = products.find((x) => x.id === e.target.value); if (!p) return; setRows((current) => current.map((r, i) => i === index ? { ...r, productId: p.id, name: p.name, price: tierPrice(p, tier), pcsPerPack: p.pcs_per_pack } : r)); }} className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm">{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><Button type="button" variant="ghost" size="icon" onClick={() => setRows((current) => current.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button></div><div className="mt-2 grid grid-cols-2 gap-2"><Input type="number" min="0" value={row.qty} onChange={(e) => setRows((current) => current.map((r, i) => i === index ? { ...r, qty: e.target.value } : r))} placeholder="Qty pcs" /><Input type="number" min="0" value={row.price} onChange={(e) => setRows((current) => current.map((r, i) => i === index ? { ...r, price: Number(e.target.value) || 0 } : r))} placeholder="Harga / pack" /></div></div>)}</div>
       </section>
 
+{canReturn && (
       <section className="mt-4 rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between"><div><h2 className="font-semibold">Retur ke Gudang</h2><p className="text-xs text-muted-foreground">Outlet pembeli → Gudang Utama.</p></div><Button type="button" variant="outline" size="sm" onClick={addReturnRow}><Plus className="mr-1 h-4 w-4" />Retur</Button></div>
         <div className="mt-3 space-y-2">{returns.map((row, index) => <div key={row.productId} className="flex items-center gap-2"><select value={row.productId} onChange={(e) => { const p = products.find((x) => x.id === e.target.value); if (!p) return; setReturns((current) => current.map((r, i) => i === index ? { ...r, productId: p.id, name: p.name, pcsPerPack: p.pcs_per_pack } : r)); }} className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm">{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><Input className="w-24" type="number" min="0" value={row.qty} onChange={(e) => setReturns((current) => current.map((r, i) => i === index ? { ...r, qty: e.target.value } : r))} /><Button type="button" variant="ghost" size="icon" onClick={() => setReturns((current) => current.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button></div>)}</div>
       </section>
+
+      )}
 
       <section className="mt-4 rounded-xl border bg-card p-4 space-y-3">
         <div className="flex items-center justify-between"><span className="text-muted-foreground">Total</span><b>Rp {Math.round(totalSales).toLocaleString("id-ID")}</b></div>
