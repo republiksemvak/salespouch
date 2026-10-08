@@ -4,6 +4,38 @@
 ALTER TABLE public.team_members
   ADD COLUMN IF NOT EXISTS permissions_configured boolean NOT NULL DEFAULT false;
 
+-- Remove legacy rows when their normalized row already exists, avoiding unique-key collisions.
+DELETE FROM public.team_permissions legacy
+WHERE legacy.permission_key IN (
+  'team','outlets','schedule','sales_stock','transactions','operations',
+  'travel_funds','expenses','reports','kpi','direct_selling','products',
+  'master_stock','notes','profile','payroll'
+)
+AND EXISTS (
+  SELECT 1
+  FROM public.team_permissions current
+  WHERE current.owner_id = legacy.owner_id
+    AND current.user_id = legacy.user_id
+    AND current.permission_key = CASE legacy.permission_key
+      WHEN 'team' THEN 'team.view'
+      WHEN 'outlets' THEN 'outlets.view'
+      WHEN 'schedule' THEN 'schedule.view'
+      WHEN 'sales_stock' THEN 'sales_stock.view'
+      WHEN 'transactions' THEN 'transactions.view'
+      WHEN 'operations' THEN 'operations.view'
+      WHEN 'travel_funds' THEN 'travel_funds.view'
+      WHEN 'expenses' THEN 'expenses.view'
+      WHEN 'reports' THEN 'reports.view'
+      WHEN 'kpi' THEN 'kpi.view'
+      WHEN 'direct_selling' THEN 'direct_selling.view'
+      WHEN 'products' THEN 'products.view'
+      WHEN 'master_stock' THEN 'master_stock.view'
+      WHEN 'notes' THEN 'notes.view'
+      WHEN 'profile' THEN 'profile.view'
+      WHEN 'payroll' THEN 'payroll.view'
+    END
+);
+
 -- Normalize the existing coarse permission keys to the new view-level keys.
 UPDATE public.team_permissions
 SET permission_key = CASE permission_key
