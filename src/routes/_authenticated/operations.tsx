@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Wallet, ReceiptText, BarChart3 } from "lucide-react";
+import { ArrowLeft, Download, Wallet, ReceiptText, BarChart3, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -101,7 +101,8 @@ function OperationsPage() {
       </section>
 
       <section className="mt-4 grid grid-cols-2 gap-2">
-        <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/expenses"><ReceiptText className="mr-2 h-4 w-4" />Transaksi</Link></Button>
+        <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/travel-funds"><Plus className="mr-2 h-4 w-4" />Input Uang Jalan</Link></Button>
+        <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/expenses"><ReceiptText className="mr-2 h-4 w-4" />Pengeluaran</Link></Button>
         <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/reports"><BarChart3 className="mr-2 h-4 w-4" />Laporan</Link></Button>
         <Button type="button" variant="outline" className="h-12 rounded-lg justify-start" onClick={downloadExcel}><Download className="mr-2 h-4 w-4" />Download Excel</Button>
       </section>
