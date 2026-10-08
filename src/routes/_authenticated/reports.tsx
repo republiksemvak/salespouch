@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({
     meta: [
       { title: "Laporan Keuangan & Piutang — Sales Pouch" },
-      { name: "description", content: "Laporan Laba Rugi, Omset, dan Penuaan Piutang Toko (AR Aging)." },
+      { name: "description", content: "Laporan Laba Rugi, Omset, dan Piutang Outlet." },
     ],
   }),
   component: ReportsPage,
@@ -51,9 +51,9 @@ function OwnerReportsPage() {
       <h1 className="mt-4 text-2xl font-bold">Laporan</h1>
       <div className="mt-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-xs font-semibold">
         <button onClick={() => setTab("finance")} className={`rounded-lg py-2 ${tab === "finance" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Laba Rugi & Omset</button>
-        <button onClick={() => setTab("aging")} className={`rounded-lg py-2 ${tab === "aging" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Penuaan Piutang (AR)</button>
+        <button onClick={() => setTab("aging")} className={`rounded-lg py-2 ${tab === "aging" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Piutang Outlet</button>
       </div>
-      {tab === "finance" ? <FinancialReportTab /> : <ArAgingTab />}
+      {tab === "finance" ? <FinancialReportTab /> : <OutletReceivablesTab />}
     </main>
   );
 }
@@ -261,27 +261,73 @@ function FinancialReportTab() {
   );
 }
 
-function ArAgingTab() {
+function OutletReceivablesTab() {
   const { data: account } = useProfile();
   const { data: rows, isLoading, error } = useQuery({
-    queryKey: ["ar-aging-list", account?.ownerId],
+    queryKey: ["outlet-receivables", account?.ownerId],
     enabled: !!account?.ownerId,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_outlet_ar_aging_v2", {
+      const { data, error } = await supabase.rpc("get_outlet_receivables_v1", {
         _owner_id: account!.ownerId,
       });
       if (error) throw error;
-      return (data ?? []) as AgingRow[];
+      return (data ?? []) as Array<{
+        outlet_id: string;
+        outlet_name: string;
+        phone: string | null;
+        stock_pcs: number;
+        receivable_value: number;
+        stock_since: string | null;
+      }>;
     },
   });
-  const summary = useMemo(() => (rows ?? []).reduce((a, r) => ({ total: a.total + Number(r.total_debt || 0), current: a.current + Number(r.current_0_7 || 0), attention: a.attention + Number(r.aging_8_14 || 0), critical: a.critical + Number(r.aging_15_30 || 0), overdue: a.overdue + Number(r.over_30 || 0) }), { total: 0, current: 0, attention: 0, critical: 0, overdue: 0 }), [rows]);
+
+  const totalValue = useMemo(
+    () => (rows ?? []).reduce((sum, row) => sum + Number(row.receivable_value || 0), 0),
+    [rows],
+  );
+  const totalStock = useMemo(
+    () => (rows ?? []).reduce((sum, row) => sum + Number(row.stock_pcs || 0), 0),
+    [rows],
+  );
+
   return (
     <div className="mt-4 space-y-4">
-      <div className="rounded-2xl border bg-card p-4"><div className="text-xs text-muted-foreground">Total Piutang Mengendap di Toko</div><div className="mt-1 text-2xl font-bold text-destructive">{rp(summary.total)}</div><div className="mt-4 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><Bucket label="0–7 Hari (Lancar)" value={summary.current} /><Bucket label="8–14 Hari (Perhatian)" value={summary.attention} /><Bucket label="15–30 Hari (Kritis)" value={summary.critical} /><Bucket label="> 30 Hari (Macet)" value={summary.overdue} /></div></div>
-      {error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Gagal memuat AR Aging: {(error as Error).message}</div>}
-      {isLoading && <p className="text-sm text-muted-foreground">Memuat rincian toko…</p>}
-      {!isLoading && !error && !(rows ?? []).length && <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">🎉 Tidak ada piutang tertunggak saat ini. Semua toko lunas!</div>}
-      <div className="space-y-3">{(rows ?? []).map(o => <div key={o.outlet_id} className="space-y-2 rounded-2xl border bg-card p-4 text-sm shadow-sm"><div className="flex items-start justify-between gap-2"><div><div className="flex items-center gap-1.5 font-bold"><Store className="h-4 w-4 text-muted-foreground" />{o.outlet_name}</div></div><div className="text-right"><div className="text-xs text-muted-foreground">Total Hutang</div><div className="font-bold text-destructive">{rp(Number(o.total_debt))}</div></div></div><div className="grid grid-cols-4 gap-1 rounded-xl bg-muted/60 p-2 text-center text-[10px]"><AgingCell label="0-7" value={o.current_0_7} /><AgingCell label="8-14" value={o.aging_8_14} /><AgingCell label="15-30" value={o.aging_15_30} /><AgingCell label=">30" value={o.over_30} /></div><div className="flex items-center justify-between border-t pt-1 text-xs"><span className="flex items-center gap-1 text-[11px] text-muted-foreground"><Calendar className="h-3 w-3" /> Sejak {o.last_transaction_date?.slice(0,10) ?? "-"}</span>{o.phone ? <a href={`https://wa.me/${o.phone.replace(/^0/, "62").replace(/\D/g, "")}?text=${encodeURIComponent(`Halo ${o.outlet_name}, mengonfirmasi catatan tagihan titip barang di Sales Pouch sebesar ${rp(Number(o.total_debt))}. Mohon konfirmasi jadwal pembayaran saat kunjungan berikutnya ya. Terima kasih 🙏`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline"><Phone className="h-3.5 w-3.5" /> WhatsApp Tagihan</a> : <span className="text-[11px] italic text-muted-foreground">No HP belum diisi</span>}</div></div>)}</div>
+      <div className="rounded-2xl border bg-card p-4">
+        <div className="text-xs text-muted-foreground">Total Piutang Outlet</div>
+        <div className="mt-1 text-2xl font-bold text-destructive">{rp(totalValue)}</div>
+        <div className="mt-2 text-xs text-muted-foreground">
+          Nilai barang titipan yang masih berada di outlet · {totalStock} pcs
+        </div>
+      </div>
+
+      {error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Gagal memuat Piutang Outlet: {(error as Error).message}</div>}
+      {isLoading && <p className="text-sm text-muted-foreground">Memuat rincian outlet…</p>}
+      {!isLoading && !error && !(rows ?? []).length && <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">🎉 Tidak ada Piutang Outlet saat ini.</div>}
+
+      <div className="space-y-3">
+        {(rows ?? []).map((o) => (
+          <div key={o.outlet_id} className="space-y-3 rounded-2xl border bg-card p-4 text-sm shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 font-bold"><Store className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="truncate">{o.outlet_name}</span></div>
+                <div className="mt-1 text-xs text-muted-foreground">Stok titipan: {Number(o.stock_pcs).toLocaleString("id-ID")} pcs</div>
+              </div>
+              <div className="shrink-0 text-right"><div className="text-xs text-muted-foreground">Nilai Piutang</div><div className="font-bold text-destructive">{rp(Number(o.receivable_value))}</div></div>
+            </div>
+            <div className="rounded-xl bg-muted/60 p-3 text-xs">
+              <div className="flex justify-between"><span>Nilai stok outlet</span><b>{rp(Number(o.receivable_value))}</b></div>
+              <div className="mt-1 flex justify-between text-muted-foreground"><span>Stok yang masih dititipkan</span><span>{Number(o.stock_pcs).toLocaleString("id-ID")} pcs</span></div>
+            </div>
+            <div className="flex items-center justify-between border-t pt-2 text-xs">
+              <span className="text-[11px] text-muted-foreground">Stok sejak {o.stock_since?.slice(0, 10) ?? "-"}</span>
+              {o.phone ? (
+                <a href={`https://wa.me/${o.phone.replace(/^0/, "62").replace(/\D/g, "")}?text=${encodeURIComponent(`Halo ${o.outlet_name}, mengonfirmasi nilai barang titipan yang masih tercatat di Sales Pouch sebesar ${rp(Number(o.receivable_value))}. Mohon konfirmasi saat kunjungan berikutnya. Terima kasih 🙏`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline"><Phone className="h-3.5 w-3.5" /> Konfirmasi</a>
+              ) : <span className="text-[11px] italic text-muted-foreground">No HP belum diisi</span>}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
