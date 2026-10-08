@@ -262,10 +262,14 @@ function FinancialReportTab() {
 }
 
 function ArAgingTab() {
+  const { data: account } = useProfile();
   const { data: rows, isLoading, error } = useQuery({
-    queryKey: ["ar-aging-list"],
+    queryKey: ["ar-aging-list", account?.ownerId],
+    enabled: !!account?.ownerId,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_outlet_ar_aging");
+      const { data, error } = await supabase.rpc("get_outlet_ar_aging_v2", {
+        _owner_id: account!.ownerId,
+      });
       if (error) throw error;
       return (data ?? []) as AgingRow[];
     },
