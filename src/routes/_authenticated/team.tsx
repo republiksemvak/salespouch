@@ -45,7 +45,7 @@ function TeamPage() {
     queryFn: () => fetchTeam({ data: {} }),
   });
 
-  const managers = useMemo(() => (members ?? []).filter((member) => member.position === "manager"), [members]);\n\n  const salesMembers = useMemo(() => (members ?? []).filter((member) => member.position === "sales"), [members]);
+  const managers = useMemo(() => (members ?? []).filter((member) => member.position === "manager"), [members]);\n\n  // Preview sync marker: render current physical stock on each Sales card.\n  const salesMembers = useMemo(() => (members ?? []).filter((member) => member.position === "sales"), [members]);
 
   const { data: salesStock = {} } = useQuery<Record<string, { total: number; items: { name: string; qty: number }[] }>>({
     queryKey: ["team-sales-current-stock", activeOwnerId, salesMembers.map((m) => m.user_id).join(",")],
