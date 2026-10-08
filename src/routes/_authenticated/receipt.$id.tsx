@@ -160,6 +160,13 @@ function ReceiptPage() {
 
   const prevDebt = Number(receipt.previous_debt);
   const discountAmount = Number(receipt.discount_amount) || 0;
+  const newConsignmentValue = newItems.reduce(
+    (sum, item) =>
+      sum +
+      ((Number(item.qty) || 0) * (Number(item.price) || 0)) /
+        packSize(Number(item.pcs_per_pack) || 1),
+    0,
+  );
 
   const business = p?.profile?.business_name ?? "";
 
@@ -925,6 +932,10 @@ function ReceiptPage() {
                 v={`@ ${rp(n.price)}/pack`}
               />
             ))}
+            <div className="mt-2 border-t border-dashed pt-2 font-semibold">
+              NILAI TITIP BARU : {rp(newConsignmentValue)}
+            </div>
+
           </>
         )}
 
