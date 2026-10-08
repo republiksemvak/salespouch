@@ -56,23 +56,66 @@ function TeamPage() {
     queryKey: ["team-sales-current-stock", activeOwnerId, salesMembers.map((m) => m.user_id).join(",")],
     enabled: !!activeOwnerId && salesMembers.length > 0,
     queryFn: async () => {
-      const rows = await Promise.all(
-        salesMembers.map(async (member) => {
-          const { data, error } = await (supabase as any).rpc("get_sales_current_stock", {
-            _sales_user_id: member.user_id,
-          });
-          if (error) throw error;
-          const items = ((data ?? []) as { product_id: string; quantity: number }[])
-            .map((row) => ({
-              name: products.find((p) => p.id === row.product_id)?.name ?? "Produk",
-              qty: Number(row.quantity) || 0,
-            }))
-            .filter((row) => row.qty > 0)
-            .sort((a, b) => b.qty - a.qty);
-          return [member.user_id, { total: items.reduce((sum, item) => sum + item.qty, 0), items }] as const;
-        }),
-      );
-      return Object.fromEntries(rows);
+      const salesIds = salesMembers.map((member) => member.user_id);
+      const { data: locations, error: locationsError } = await supabase
+        .from("stock_locations")
+        .select("id,team_member_user_id")
+        .eq("owner_id", activeOwnerId!)
+        .eq("location_type", "sales")
+        .in("team_member_user_id", salesIds);
+      if (locationsError) throw locationsError;
+
+      const locationRows = (locations ?? []) as { id: string; team_member_user_id: string }[];
+      const locationIds = locationRows.map((location) => location.id);
+      const balanceBySales = new Map<string, Map<string, number>>();
+      for (const member of salesMembers) balanceBySales.set(member.user_id, new Map());
+
+      if (locationIds.length > 0) {
+        const [{ data: openings, error: openingsError }, { data: movements, error: movementsError }] = await Promise.all([
+          supabase
+            .from("stock_opening_items")
+            .select("location_id,product_id,quantity")
+            .eq("owner_id", activeOwnerId!)
+            .in("location_id", locationIds),
+          supabase
+            .from("stock_movements")
+            .select("product_id,from_location_id,to_location_id,quantity")
+            .eq("owner_id", activeOwnerId!),
+        ]);
+        if (openingsError) throw openingsError;
+        if (movementsError) throw movementsError;
+
+        const salesByLocation = new Map(locationRows.map((location) => [location.id, location.team_member_user_id]));
+        const apply = (locationId: string | null, productId: string, delta: number) => {
+          if (!locationId) return;
+          const salesId = salesByLocation.get(locationId);
+          if (!salesId) return;
+          const balances = balanceBySales.get(salesId);
+          if (!balances) return;
+          balances.set(productId, (balances.get(productId) ?? 0) + delta);
+        };
+
+        for (const row of (openings ?? []) as { location_id: string; product_id: string; quantity: number }[]) {
+          apply(row.location_id, row.product_id, Number(row.quantity) || 0);
+        }
+        for (const row of (movements ?? []) as { product_id: string; from_location_id: string | null; to_location_id: string | null; quantity: number }[]) {
+          const quantity = Number(row.quantity) || 0;
+          apply(row.to_location_id, row.product_id, quantity);
+          apply(row.from_location_id, row.product_id, -quantity);
+        }
+      }
+
+      return Object.fromEntries(salesMembers.map((member) => {
+        const balances = balanceBySales.get(member.user_id) ?? new Map<string, number>();
+        const items = [...balances.entries()]
+          .map(([productId, qty]) => ({
+            name: products.find((product) => product.id === productId)?.name ?? "Produk",
+            qty,
+          }))
+          .filter((item) => item.qty > 0)
+          .sort((a, b) => b.qty - a.qty);
+        return [member.user_id, { total: items.reduce((sum, item) => sum + item.qty, 0), items }];
+      }));
     },
     staleTime: 5_000,
   });
