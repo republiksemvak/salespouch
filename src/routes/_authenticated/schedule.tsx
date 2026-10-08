@@ -110,7 +110,6 @@ function SchedulePage() {
 
   const visitedOutletIds = useMemo(() => new Set(visitStatus.visited), [visitStatus]);
   const paidOutletIds = useMemo(() => new Set(visitStatus.paid), [visitStatus]);
-  const collectedOutletIds = useMemo(() => new Set(collectedToday), [collectedToday]);
   const todayOutletIds = useMemo<string[]>(
     () => [...new Set((schedules as any[]).map((item) => item.outlet_id).filter(Boolean))] as string[],
     [schedules]
