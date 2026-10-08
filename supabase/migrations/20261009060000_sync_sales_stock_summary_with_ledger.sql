@@ -1,6 +1,6 @@
 -- Keep the Team page Sales stock summary aligned with the stock ledger.
--- Sum balances across every active Sales location assigned to this user;
--- legacy duplicate locations must not cause the UI to select an arbitrary one.
+-- Sum balances across every Sales location assigned to this user, including inactive
+-- legacy locations that can still hold a physical balance. Never pick an arbitrary row.
 CREATE OR REPLACE FUNCTION public.get_sales_current_stock(
   _sales_user_id uuid
 )
@@ -45,7 +45,6 @@ BEGIN
     WHERE sl.owner_id = _owner_id
       AND sl.location_type = 'sales'
       AND sl.team_member_user_id = _sales_user_id
-      AND sl.is_active = true
   ),
   balances AS (
     SELECT soi.product_id, SUM(soi.quantity) AS quantity
