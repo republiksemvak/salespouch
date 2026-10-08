@@ -19,7 +19,7 @@ type Reminder = { id: string; title: string; note: string | null; reminder_date:
 function Reminders() {
   const { data: profileData, isLoading } = useProfile();
   const queryClient = useQueryClient();
-  const userId = profileData?.profile?.id;
+  // For Sales, profileData.profile is the OWNER profile; userId is the authenticated account that owns these personal reminders.\n  const userId = profileData?.userId;
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [reminderDate, setReminderDate] = useState("");
@@ -31,7 +31,7 @@ function Reminders() {
     queryKey: ["personal-reminders", userId],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const { data, error } = await supabase.from("personal_reminders").select("id,title,note,reminder_date").order("reminder_date", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("personal_reminders").select("id,title,note,reminder_date").eq("account_id", userId).order("reminder_date", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Reminder[];
     },
@@ -52,7 +52,7 @@ function Reminders() {
 
   async function handleDelete(id: string) {
     setDeleting(id);
-    const { error } = await supabase.from("personal_reminders").delete().eq("id", id);
+    const { error } = await supabase.from("personal_reminders").delete().eq("id", id).eq("account_id", userId);
     setDeleting(null);
     if (error) return setErrorMessage(error.message);
     await queryClient.invalidateQueries({ queryKey: ["personal-reminders"] });
