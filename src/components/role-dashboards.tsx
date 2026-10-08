@@ -493,7 +493,7 @@ function RolePermissionDashboard({
           <ShieldCheck className="h-4 w-4 text-primary" />
           <div>
             <div className="text-xs font-semibold">Akses Menu</div>
-            <div className="text-[10px] text-muted-foreground">Menu yang terkunci ditandai 🔒 dan hanya dapat dibuka Owner.</div>
+            <div className="text-[10px] text-muted-foreground">Menu default mengikuti jabatan. Owner dapat mengunci atau membuka menu dari Pengaturan Akses.</div>
           </div>
         </div>
       </section>
