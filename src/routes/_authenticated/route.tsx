@@ -6,7 +6,8 @@ import { LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, profileQueryKey } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { accessStatus, ADMIN_TELEGRAM, ADMIN_WHATSAPP } from "@/lib/access";
+import { accessStatus, ADMIN_TELEGRAM, ADMIN_WHATSAPP, isSuperAdminEmail } from "@/lib/access";
+import { MANAGED_ROUTE_PERMISSIONS } from "@/lib/team-access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,9 +17,37 @@ const businessModels = ["Titip Jual", "Cash", "Grosir", "Retail", "Campuran", "L
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
+
+    // Sales keeps its existing access model. Owner and Super Admin bypass
+    // the managed Manager/Admin permission layer.
+    if (!isSuperAdminEmail(data.user.email)) {
+      const { data: membership } = await supabase
+        .from("team_members")
+        .select("position")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (membership?.position === "manager" || membership?.position === "admin") {
+        const requiredPermission = MANAGED_ROUTE_PERMISSIONS[location.pathname];
+        if (requiredPermission) {
+          const { data: allowed, error: permissionError } = await supabase.rpc("has_team_permission", {
+            _permission_key: requiredPermission,
+            _user_id: data.user.id,
+          });
+
+          // If permission infrastructure is unavailable, do not lock the app
+          // accidentally. Once the DB permission layer is available, an explicit
+          // false is the only result that blocks the route.
+          if (!permissionError && allowed !== true) {
+            throw redirect({ to: "/dashboard" });
+          }
+        }
+      }
+    }
+
     return { user: data.user };
   },
   component: Gate,
