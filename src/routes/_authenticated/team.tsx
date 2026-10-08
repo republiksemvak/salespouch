@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, UserMinus, ShieldCheck, Package } from "lucide-react";
+import { ArrowLeft, UserMinus, ShieldCheck, Package, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,7 @@ function TeamPage() {
   const [managerId, setManagerId] = useState("");
   const [busy, setBusy] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<{ userId: string; name: string } | null>(null);
 
   const activeOwnerId = profile?.ownerId;
   const { data: members, error } = useQuery({
@@ -173,9 +174,11 @@ function TeamPage() {
               </div>
             )}
           </div>
-          {canRemove && <Button variant="ghost" size="icon" aria-label="Keluarkan karyawan" title="Keluarkan dari tim" onClick={async () => { if (!confirm("Keluarkan karyawan dari tim?")) return; try { await remove({ data: { userId: member.user_id } }); qc.invalidateQueries({ queryKey: ["team", activeOwnerId] }); toast.success("Karyawan dikeluarkan"); } catch (err) { toast.error((err as Error).message); } }}><UserMinus className="h-4 w-4" /></Button>}
+          {canRemove && <Button variant="ghost" size="icon" aria-label="Keluarkan karyawan" title="Keluarkan dari tim" onClick={() => setRemoveTarget({ userId: member.user_id, name: p?.display_name ?? p?.username ?? p?.user_email ?? "Karyawan" })}><UserMinus className="h-4 w-4" /></Button>}
         </div>;
       })}
     </div>
+
+    {removeTarget && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-5" role="dialog" aria-modal="true"><div className="w-full max-w-sm overflow-hidden rounded-2xl border bg-card shadow-2xl"><div className="border-b bg-amber-50 px-5 py-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><AlertTriangle className="h-5 w-5" /></div><div><h2 className="text-base font-bold text-amber-950">Keluarkan Sales?</h2><p className="mt-1 text-xs leading-relaxed text-amber-900/75">Tindakan ini akan mengeluarkan anggota dari struktur tim bisnis.</p></div></div></div><div className="px-5 py-4"><div className="rounded-xl border bg-muted/30 px-3 py-2.5 text-sm font-semibold">{removeTarget.name}</div><p className="mt-3 text-xs leading-relaxed text-muted-foreground">Data transaksi dan riwayat operasional tetap tersimpan.</p></div><div className="flex gap-2 border-t bg-muted/20 px-5 py-4"><Button type="button" variant="outline" className="h-10 flex-1 rounded-xl" onClick={() => setRemoveTarget(null)}>Batal</Button><Button type="button" className="h-10 flex-1 rounded-xl bg-amber-600 text-white hover:bg-amber-700" onClick={async () => { const target=removeTarget; if (!target) return; setRemoveTarget(null); try { await remove({data:{userId:target.userId}}); qc.invalidateQueries({queryKey:["team",activeOwnerId]}); toast.success("Karyawan dikeluarkan"); } catch(err){ toast.error((err as Error).message); } }}>Keluarkan</Button></div></div></div>)}
   </main>;
 }
