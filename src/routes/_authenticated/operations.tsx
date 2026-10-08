@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Button } from "@/components/ui/button";
+import { useTeamPermissions } from "@/hooks/use-team-permissions";
+import { hasAccess } from "@/lib/team-access";
 
 export const Route = createFileRoute("/_authenticated/operations")({
   head: () => ({ meta: [{ title: "Operasional — Sales Pouch" }, { name: "description", content: "Ringkasan uang jalan dan pengeluaran operasional Sales." }] }),
@@ -28,7 +30,13 @@ function OperationsPage() {
   const { data: profile } = useProfile();
   const { data: isAdmin } = useIsAdmin();
   const ownerId = profile?.ownerId;
-  const canManage = !!isAdmin || profile?.role === "owner";
+  const { data: access } = useTeamPermissions(profile?.role === "manager" || profile?.role === "admin");
+  const permissions = access?.permissions ?? [];
+  const canManage = !!isAdmin || profile?.role === "owner" || ((profile?.role === "manager" || profile?.role === "admin") && hasAccess(permissions, "operations.view"));
+  const canTravel = profile?.role === "owner" || hasAccess(permissions, "operations.travel_funds");
+  const canExpense = profile?.role === "owner" || hasAccess(permissions, "operations.expenses");
+  const canReport = profile?.role === "owner" || hasAccess(permissions, "operations.reports");
+  const canExport = profile?.role === "owner" || hasAccess(permissions, "operations.export");
 
   const { data: members = [] } = useQuery({
     queryKey: ["operations-team", ownerId],
@@ -87,7 +95,7 @@ function OperationsPage() {
     }
   }
 
-  if (!canManage) return <main className="mx-auto max-w-md px-5 py-10 text-sm text-muted-foreground">Halaman ini khusus Owner.</main>;
+  if (!canManage) return <main className="mx-auto max-w-md px-5 py-10 text-sm text-muted-foreground">Akses Operasional belum diberikan Owner.</main>;
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
@@ -101,10 +109,10 @@ function OperationsPage() {
       </section>
 
       <section className="mt-4 grid grid-cols-2 gap-2">
-        <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/travel-funds"><Plus className="mr-2 h-4 w-4" />Input Uang Jalan</Link></Button>
-        <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/expenses"><ReceiptText className="mr-2 h-4 w-4" />Pengeluaran</Link></Button>
-        <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/reports"><BarChart3 className="mr-2 h-4 w-4" />Laporan</Link></Button>
-        <Button type="button" variant="outline" className="h-12 rounded-lg justify-start" onClick={downloadExcel}><Download className="mr-2 h-4 w-4" />Download Excel</Button>
+        {canTravel && <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/travel-funds"><Plus className="mr-2 h-4 w-4" />Input Uang Jalan</Link></Button>}
+        {canExpense && <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/expenses"><ReceiptText className="mr-2 h-4 w-4" />Pengeluaran</Link></Button>}
+        {canReport && <Button asChild variant="outline" className="h-12 rounded-lg justify-start"><Link to="/reports"><BarChart3 className="mr-2 h-4 w-4" />Laporan</Link></Button>}
+        {canExport && <Button type="button" variant="outline" className="h-12 rounded-lg justify-start" onClick={downloadExcel}><Download className="mr-2 h-4 w-4" />Download Excel</Button>}
       </section>
 
       <section className="mt-6">
