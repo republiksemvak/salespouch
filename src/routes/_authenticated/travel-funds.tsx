@@ -151,23 +151,30 @@ function TravelFundsPage() {
 
       {canManage && (
         <section className="mt-6 rounded-2xl border bg-card p-4">
-          <div className="flex rounded-lg border bg-muted/30 p-1">
-            <button type="button" onClick={() => setTransactionType("in")} className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-medium ${transactionType === "in" ? "bg-background shadow-sm" : "text-muted-foreground"}`}><Plus className="h-4 w-4" />Uang Masuk</button>
-            <button type="button" onClick={() => setTransactionType("out")} className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-medium ${transactionType === "out" ? "bg-background shadow-sm" : "text-muted-foreground"}`}><Minus className="h-4 w-4" />Kurangi</button>
-          </div>
-          <h2 className="font-semibold">{transactionType === "in" ? "Tambah Uang Jalan" : "Kurangi Uang Jalan"}</h2>
-          <select required value={salesId} onChange={(e) => setSalesId(e.target.value)} className="h-11 w-full rounded-md border bg-background px-3 text-sm">
-            <option value="">Pilih Sales</option>
-            {members.map((member) => <option key={member.user_id} value={member.user_id}>{displayName(member)}</option>)}
-          </select>
-          <Input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Nominal, contoh 500000" className="h-11" />
-          <Input type="date" value={givenAt} onChange={(e) => setGivenAt(e.target.value)} className="h-11" />
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={transactionType === "in" ? "Catatan (opsional)" : "Alasan pengurangan (opsional)"} className="h-11" />
-          <Button disabled={saving || membersLoading} className="h-11 w-full">
-            {transactionType === "in" ? <Plus className="mr-2 h-4 w-4" /> : <Minus className="mr-2 h-4 w-4" />}
-            {saving ? "Menyimpan..." : transactionType === "in" ? "Tambah Uang Jalan" : "Kurangi Uang Jalan"}
-          </Button>
-          </form>}
+          <button type="button" onClick={() => setFormOpen((open) => !open)} className="flex w-full items-center justify-between text-left">
+            <div className="flex items-center gap-2 font-semibold"><Plus className="h-4 w-4" />Input Uang Jalan Sales</div>
+            {formOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {formOpen && (
+            <form onSubmit={addFund} className="mt-4 space-y-3">
+              <div className="flex rounded-lg border bg-muted/30 p-1">
+                <button type="button" onClick={() => setTransactionType("in")} className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-medium ${transactionType === "in" ? "bg-background shadow-sm" : "text-muted-foreground"}`}><Plus className="h-4 w-4" />Uang Masuk</button>
+                <button type="button" onClick={() => setTransactionType("out")} className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-medium ${transactionType === "out" ? "bg-background shadow-sm" : "text-muted-foreground"}`}><Minus className="h-4 w-4" />Kurangi</button>
+              </div>
+              <h2 className="font-semibold">{transactionType === "in" ? "Tambah Uang Jalan" : "Kurangi Uang Jalan"}</h2>
+              <select required value={salesId} onChange={(e) => setSalesId(e.target.value)} className="h-11 w-full rounded-md border bg-background px-3 text-sm">
+                <option value="">Pilih Sales</option>
+                {members.map((member) => <option key={member.user_id} value={member.user_id}>{displayName(member)}</option>)}
+              </select>
+              <Input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Nominal, contoh 500000" className="h-11" />
+              <Input type="date" value={givenAt} onChange={(e) => setGivenAt(e.target.value)} className="h-11" />
+              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={transactionType === "in" ? "Catatan (opsional)" : "Alasan pengurangan (opsional)"} className="h-11" />
+              <Button disabled={saving || membersLoading} className="h-11 w-full">
+                {transactionType === "in" ? <Plus className="mr-2 h-4 w-4" /> : <Minus className="mr-2 h-4 w-4" />}
+                {saving ? "Menyimpan..." : transactionType === "in" ? "Tambah Uang Jalan" : "Kurangi Uang Jalan"}
+              </Button>
+            </form>
+          )}
         </section>
       )}
 
