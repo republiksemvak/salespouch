@@ -32,7 +32,8 @@ function SalesExpenses() {
   const queryClient = useQueryClient();
   const fetchTeam = useServerFn(listTeam);
   const role = profileData?.role;
-  // IMPORTANT: for Sales, profileData.profile is the OWNER profile. Use auth userId for sales_expenses.sales_id/created_by and edit guards.\n  const userId = profileData?.userId;
+  // For Sales, profileData.profile is the OWNER profile; userId is the authenticated Sales account.
+  const userId = profileData?.userId;
   const ownerId = profileData?.ownerId;
   const isSuperAdmin = isSuperAdminEmail(profileData?.email) || !!isAdmin;
   const isOwner = role === "owner";
