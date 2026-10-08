@@ -75,3 +75,21 @@ export const ACCESS_GROUPS: AccessGroup[] = [
 export function hasAccess(permissions: string[], key: string) {
   return permissions.includes(key);
 }
+
+
+export const MANAGED_ROUTE_PERMISSIONS: Record<string, string> = {
+  "/team": "team.view",
+  "/outlets": "outlets.view",
+  "/schedule": "schedule.view",
+  "/sales-stock-day": "sales_stock.view",
+  "/transactions": "transactions.view",
+  "/operations": "operations.view",
+  "/travel-funds": "travel_funds.view",
+  "/expenses": "expenses.view",
+  "/reports": "reports.view",
+  "/warehouse-direct-sale": "direct_selling.view",
+  "/products": "products.view",
+  "/master-stock": "master_stock.view",
+  "/notes": "notes.view",
+  "/profile": "profile.view",
+};
