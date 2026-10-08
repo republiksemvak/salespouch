@@ -137,7 +137,19 @@ function SalesExpenses() {
         });
     setSaving(false);
     if (result.error) return setErrorMessage(result.error.message);
-    resetForm(); await queryClient.invalidateQueries({ queryKey: ["sales-expenses"] });
+
+    // Keep the newly created expense visible immediately, then revalidate from the database.
+    if (!editingExpense && result.data) {
+      const createdExpense = result.data as Expense;
+      queryClient.setQueryData<Expense[]>(
+        ["sales-expenses", ownerId, role, userId],
+        (current) => current ? [createdExpense, ...current] : [createdExpense],
+      );
+    }
+
+    resetForm();
+    await queryClient.invalidateQueries({ queryKey: ["sales-expenses", ownerId, role, userId] });
+    await queryClient.refetchQueries({ queryKey: ["sales-expenses", ownerId, role, userId], type: "active" });
   }
 
   if (profileLoading || adminLoading) return <main className="mx-auto max-w-md px-5 py-10 text-sm text-muted-foreground">Memuat...</main>;
