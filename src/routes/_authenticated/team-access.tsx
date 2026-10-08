@@ -26,16 +26,7 @@ type TeamMember = {
   profiles: { display_name?: string; username?: string } | null;
 };
 
-const managerAdminGroups: PermissionGroup[] = ACCESS_GROUPS.map((group) => ({
-  title: group.title,
-  items: group.items.map((item) => ({
-    key: item.key,
-    label: item.label,
-    description: item.description,
-    ...(item.viewKey ? { viewKey: item.viewKey } : {}),
-    ...(item.children ? { children: item.children.map((child) => ({ ...child })) } : {}),
-  })),
-}));
+const managerAdminGroups: PermissionGroup[] = ACCESS_GROUPS;
 
 const salesGroups: PermissionGroup[] = [
   { title: "Operasional", items: [
