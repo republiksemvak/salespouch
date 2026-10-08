@@ -5,7 +5,6 @@ import { ArrowLeft, Calendar, Download, Phone, Store, TrendingUp } from "lucide-
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
-import { aggregateProductSales } from "@/lib/product-sales";
 import { rp, type LineItem } from "@/lib/visit";
 import { packSize } from "@/lib/units";
 import { Button } from "@/components/ui/button";
@@ -172,13 +171,37 @@ function FinancialReportTab() {
     const totalDibayar = rows.reduce((s, r) => s + r.dibayar, 0);
     const totalSisa = rows.reduce((s, r) => s + r.sisa, 0);
 
-    const fieldSales = aggregateProductSales(reportData?.txs ?? []);
-    const productRows: ProductReport[] = fieldSales
-      .map(p => ({
-        ...p,
-        hpp: hppByProduct.get(key(p.name)) ?? 0,
-        profit: p.omset - (hppByProduct.get(key(p.name)) ?? 0),
-      }))
+    const productMap = new Map<string, { name: string; qty: number; omset: number }>();
+    for (const t of reportData?.txs ?? []) {
+      const gross = Number(t.total_sales) || 0;
+      const discount = Number(t.discount_amount) || 0;
+      const factor = gross ? (gross - discount) / gross : 1;
+      for (const li of (t.line_items as LineItem[]) ?? []) {
+        const qty = Number(li.sold) || 0;
+        if (!qty || !li.name) continue;
+        const k = key(li.name);
+        const cur = productMap.get(k) ?? { name: li.name, qty: 0, omset: 0 };
+        cur.qty += qty;
+        cur.omset += (Number(li.subtotal) || 0) * factor;
+        productMap.set(k, cur);
+      }
+    }
+    for (const w of reportData?.wds ?? []) {
+      const gross = Number(w.total_sales) || 0;
+      const discount = Number(w.discount_amount) || 0;
+      const factor = gross ? (gross - discount) / gross : 1;
+      for (const li of (w.line_items as any[]) ?? []) {
+        const qty = Number(li.qty) || 0;
+        if (!qty || !li.name) continue;
+        const k = key(li.name);
+        const cur = productMap.get(k) ?? { name: li.name, qty: 0, omset: 0 };
+        cur.qty += qty;
+        cur.omset += (Number(li.subtotal) || 0) * factor;
+        productMap.set(k, cur);
+      }
+    }
+    const productRows: ProductReport[] = [...productMap.values()]
+      .map(p => ({ ...p, hpp: hppByProduct.get(key(p.name)) ?? 0, profit: p.omset - (hppByProduct.get(key(p.name)) ?? 0) }))
       .sort((a, b) => b.omset - a.omset);
 
     return {
