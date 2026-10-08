@@ -411,16 +411,16 @@ function PermissionIconMenu({
 
 function PermissionDashboardMenu({ permissions }: { permissions: string[] }) {
   const items = [
-    { to: "/products", icon: Package, label: "Produk", permission: "products", badgeColor: "bg-amber-500/10 text-amber-600" },
-    { to: "/master-stock", icon: Warehouse, label: "Gudang", permission: "master_stock", badgeColor: "bg-blue-500/10 text-blue-600" },
-    { to: "/warehouse-direct-sale", icon: History, label: "Direct Sale", permission: "direct_selling", badgeColor: "bg-emerald-500/10 text-emerald-600" },
-    { to: "/reports", icon: BarChart3, label: "Laporan", permission: "reports", badgeColor: "bg-purple-500/10 text-purple-600" },
-    { to: "/team", icon: Users, label: "Tim Sales", permission: "team", badgeColor: "bg-sky-500/10 text-sky-600" },
-    { to: "/operations", icon: Settings2, label: "Operasional", permission: "operations", badgeColor: "bg-slate-500/10 text-slate-600" },
-    { to: "/travel-funds", icon: Wallet, label: "Uang Jalan", permission: "travel_funds", badgeColor: "bg-orange-500/10 text-orange-600" },
-    { to: "/expenses", icon: FileText, label: "Pengeluaran", permission: "expenses", badgeColor: "bg-rose-500/10 text-rose-600" },
-    { to: "/notes", icon: FileText, label: "Catatan", permission: "notes", badgeColor: "bg-orange-500/10 text-orange-600" },
-    { to: "/profile", icon: Building2, label: "Profil", permission: "profile", badgeColor: "bg-teal-500/10 text-teal-600" },
+    { to: "/products", icon: Package, label: "Produk", permission: "products.view", badgeColor: "bg-amber-500/10 text-amber-600" },
+    { to: "/master-stock", icon: Warehouse, label: "Gudang", permission: "master_stock.view", badgeColor: "bg-blue-500/10 text-blue-600" },
+    { to: "/warehouse-direct-sale", icon: History, label: "Direct Sale", permission: "direct_selling.view", badgeColor: "bg-emerald-500/10 text-emerald-600" },
+    { to: "/reports", icon: BarChart3, label: "Laporan", permission: "reports.view", badgeColor: "bg-purple-500/10 text-purple-600" },
+    { to: "/team", icon: Users, label: "Tim Sales", permission: "team.view", badgeColor: "bg-sky-500/10 text-sky-600" },
+    { to: "/operations", icon: Settings2, label: "Operasional", permission: "operations.view", badgeColor: "bg-slate-500/10 text-slate-600" },
+    { to: "/travel-funds", icon: Wallet, label: "Uang Jalan", permission: "travel_funds.view", badgeColor: "bg-orange-500/10 text-orange-600" },
+    { to: "/expenses", icon: FileText, label: "Pengeluaran", permission: "expenses.view", badgeColor: "bg-rose-500/10 text-rose-600" },
+    { to: "/notes", icon: FileText, label: "Catatan", permission: "notes.view", badgeColor: "bg-orange-500/10 text-orange-600" },
+    { to: "/profile", icon: Building2, label: "Profil", permission: "profile.view", badgeColor: "bg-teal-500/10 text-teal-600" },
   ];
 
   return (
@@ -439,9 +439,9 @@ function PermissionDashboardMenu({ permissions }: { permissions: string[] }) {
 
 function PermissionQuickActions({ permissions }: { permissions: string[] }) {
   const items = [
-    { to: "/transactions", icon: ShoppingCart, label: "Penjualan", hint: "Nota & Kasir", permission: "transactions", color: "bg-purple-500/10 text-purple-600" },
-    { to: "/sales-stock-day", icon: Truck, label: "Stok Sales", hint: "Muat & Setor", permission: "sales_stock", color: "bg-blue-500/10 text-blue-600" },
-    { to: "/outlets", icon: Store, label: "Outlet", hint: "Data Warung", permission: "outlets", color: "bg-amber-500/10 text-amber-600" },
+    { to: "/transactions", icon: ShoppingCart, label: "Penjualan", hint: "Nota & Kasir", permission: "transactions.view", color: "bg-purple-500/10 text-purple-600" },
+    { to: "/sales-stock-day", icon: Truck, label: "Stok Sales", hint: "Muat & Setor", permission: "sales_stock.view", color: "bg-blue-500/10 text-blue-600" },
+    { to: "/outlets", icon: Store, label: "Outlet", hint: "Data Warung", permission: "outlets.view", color: "bg-amber-500/10 text-amber-600" },
   ];
 
   return (
