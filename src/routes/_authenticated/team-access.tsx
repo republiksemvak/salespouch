@@ -8,6 +8,7 @@ import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { listTeam, replaceTeamPermissions, setTeamMemberRole } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
+import { ACCESS_GROUPS, MANAGER_ADMIN_DEFAULTS, SALES_DEFAULTS } from "@/lib/team-access";
 
 export const Route = createFileRoute("/_authenticated/team-access")({
   head: () => ({ meta: [{ title: "Jabatan & Akses — Sales Pouch" }, { name: "description", content: "Owner menentukan jabatan dan hak akses setiap anggota tim." }] }),
@@ -25,38 +26,30 @@ type TeamMember = {
   profiles: { display_name?: string; username?: string } | null;
 };
 
-const groups: PermissionGroup[] = [
+const managerAdminGroups: PermissionGroup[] = ACCESS_GROUPS.map((group) => ({
+  title: group.title,
+  items: group.items.map((item) => ({
+    key: item.key,
+    label: item.label,
+    description: item.description,
+  })),
+}));
+
+const salesGroups: PermissionGroup[] = [
   { title: "Operasional", items: [
-    { key: "team", label: "Tim", description: "Melihat dan mengelola tim sesuai kewenangan." },
     { key: "outlets", label: "Outlet", description: "Melihat dan mengelola data outlet." },
-    { key: "schedule", label: "Jadwal Toko", description: "Mengatur jadwal kunjungan outlet." },
     { key: "sales_stock", label: "Stok Sales", description: "Melihat dan mengelola stok Sales." },
     { key: "transactions", label: "Transaksi", description: "Melihat transaksi Sales." },
-    { key: "operations", label: "↳ Ringkasan Operasional", description: "Submenu: saldo dan rekap operasional Sales." },
-    { key: "travel_funds", label: "↳ Uang Jalan", description: "Submenu: input dan pengelolaan uang jalan Sales." },
-    { key: "expenses", label: "↳ Pengeluaran", description: "Submenu: pencatatan dan riwayat pengeluaran Sales." },
-    { key: "direct_selling", label: "Direct Selling", description: "Mengelola penjualan langsung dari gudang." },
-  ] },
-  { title: "Analitik", items: [
-    { key: "reports", label: "Laporan", description: "Melihat laporan bisnis dan penjualan." },
-    { key: "kpi", label: "KPI", description: "Akses KPI dan penilaian kinerja." },
-  ] },
-  { title: "Keuangan & SDM", items: [
-    { key: "travel_funds", label: "Uang Jalan", description: "Melihat dan mengelola uang jalan Sales." },
+    { key: "travel_funds", label: "Uang Jalan", description: "Melihat uang jalan Sales." },
     { key: "notes", label: "Catatan", description: "Melihat dan mengelola catatan operasional." },
-    { key: "payroll", label: "Payroll", description: "Akses penggajian dan data payroll." },
-  ] },
-  { title: "Master", items: [
-    { key: "products", label: "Master Produk", description: "Mengelola produk bisnis." },
-    { key: "master_stock", label: "Master Stok", description: "Mengelola stok gudang." },
-    { key: "profile", label: "Profil Usaha", description: "Mengelola profil dan pengaturan usaha." },
+    { key: "expenses", label: "Pengeluaran", description: "Mencatat pengeluaran Sales." },
   ] },
 ];
 
 const levelDefaults: Record<JobLevel, string[]> = {
-  admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
-  manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
-  sales: ["outlets", "sales_stock", "transactions", "travel_funds", "notes", "expenses"],
+  admin: [...MANAGER_ADMIN_DEFAULTS],
+  manager: [...MANAGER_ADMIN_DEFAULTS],
+  sales: [...SALES_DEFAULTS],
 };
 
 function TeamAccessPage() {
@@ -162,7 +155,7 @@ function TeamAccessPage() {
 
       <section className="mt-5 space-y-5">
         <div className="rounded-xl border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">Level <strong className="text-foreground">{level === "manager" ? "Manajer" : level === "admin" ? "Admin" : "Sales"}</strong> hanya menjadi jabatan. Owner tetap menentukan hak akses menu di bawah.</div>
-        {groups.map((group) => <div key={group.title}><h2 className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h2><div className="overflow-hidden rounded-2xl border bg-card">{group.items.map((item, index) => { const checked = permissions.includes(item.key); return <button type="button" key={item.key} onClick={() => toggle(item.key)} className={`flex w-full items-center gap-3 p-3 text-left ${index ? "border-t" : ""}`}><span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}>{checked && <Check className="h-4 w-4" />}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">{item.description}</span></span></button>; })}</div></div>)}
+        {(level === "sales" ? salesGroups : managerAdminGroups).map((group) => <div key={group.title}><h2 className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h2><div className="overflow-hidden rounded-2xl border bg-card">{group.items.map((item, index) => { const checked = permissions.includes(item.key); return <button type="button" key={item.key} onClick={() => toggle(item.key)} className={`flex w-full items-center gap-3 p-3 text-left ${index ? "border-t" : ""}`}><span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}>{checked && <Check className="h-4 w-4" />}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.label}</span><span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">{item.description}</span></span></button>; })}</div></div>)}
       </section>
 
       <Button disabled={saving} onClick={save} className="mt-6 h-12 w-full rounded-xl">{saving ? "Menyimpan…" : "Simpan Jabatan & Akses"}</Button>
