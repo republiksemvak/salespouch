@@ -18,8 +18,14 @@ export function useProfile() {
       const email = u.user.email ?? null;
       const testMode = isSuperAdminEmail(email) ? getTestMode() : null;
 
-      const { data, error } = await supabase.from("profiles").select(profileFields).eq("id", u.user.id).maybeSingle();
+      // Load the user's profile and team membership in parallel.
+      // This removes one sequential network round-trip for employee accounts.
+      const [{ data, error }, { data: membership, error: teamError }] = await Promise.all([
+        supabase.from("profiles").select(profileFields).eq("id", u.user.id).maybeSingle(),
+        supabase.from("team_members").select("owner_id,position").eq("user_id", u.user.id).maybeSingle(),
+      ]);
       if (error) throw error;
+      if (teamError) throw teamError;
 
       if (isSuperAdminEmail(email)) {
         return {
@@ -31,13 +37,6 @@ export function useProfile() {
           testMode,
         } as const;
       }
-
-      const { data: membership, error: teamError } = await supabase
-        .from("team_members")
-        .select("owner_id,position")
-        .eq("user_id", u.user.id)
-        .maybeSingle();
-      if (teamError) throw teamError;
 
       let profile = data as Profile | null;
       if (membership) {
