@@ -164,5 +164,6 @@ export const MANAGED_ROUTE_PERMISSIONS: Record<string, string> = {
   "/products": "products.view",
   "/master-stock": "master_stock.view",
   "/stock-opening": "master_stock.opening",
+  "/admin-stock-reset": "master_stock.reset",
   "/notes": "notes.view",
 };
