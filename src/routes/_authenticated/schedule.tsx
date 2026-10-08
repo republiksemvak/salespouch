@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, CheckCircle2, GripVertical, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -33,12 +33,6 @@ function SchedulePage() {
   const [salesId, setSalesId] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const dragPointerId = useRef<number | null>(null);
-  const dragCandidateId = useRef<string | null>(null);
-  const dragStartPoint = useRef({ x: 0, y: 0 });
-  const dragOverRef = useRef<string | null>(null);
 
   const today = new Date();
   const todayDay = today.getDay() || 7;
@@ -78,10 +72,9 @@ function SchedulePage() {
       const client = supabase as any;
       let query = client
         .from("store_schedules")
-        .select("id,outlet_id,sales_id,day_of_week,note,visit_order,outlets(name),profiles!store_schedules_sales_id_fkey(display_name,username,user_email)")
+        .select("id,outlet_id,sales_id,day_of_week,note,outlets(name),profiles!store_schedules_sales_id_fkey(display_name,username,user_email)")
         .eq("owner_id", ownerId)
         .order("day_of_week")
-        .order("visit_order", { ascending: true, nullsFirst: false })
         .order("created_at");
       if (!isOwner && profile?.userId) query = query.eq("sales_id", profile.userId).eq("day_of_week", todayDay);
       const { data, error } = await query;
@@ -89,6 +82,77 @@ function SchedulePage() {
       return data ?? [];
     },
   });
+
+  const { data: habitVisits = [] } = useQuery({
+    queryKey: ["schedule-habit-visits", ownerId, profile?.userId, todayDay],
+    enabled: !!ownerId && !isOwner && !!profile?.userId,
+    queryFn: async () => {
+      const lookback = new Date(todayStart);
+      lookback.setDate(lookback.getDate() - 84);
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("outlet_id,visit_date")
+        .eq("user_id", ownerId)
+        .eq("sales_user_id", profile!.userId)
+        .gte("visit_date", lookback.toISOString())
+        .lt("visit_date", tomorrowStart.toISOString())
+        .not("outlet_id", "is", null)
+        .order("visit_date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+  const orderedSchedules = useMemo(() => {
+    if (isOwner || schedules.length <= 1) return schedules;
+
+    const scheduledIds = new Set((schedules as any[]).map((item) => item.outlet_id));
+    const stats = new Map<string, { score: number; visits: number; lastVisit: number }>();
+
+    for (const row of habitVisits as any[]) {
+      if (!row.outlet_id || !scheduledIds.has(row.outlet_id) || !row.visit_date) continue;
+      const date = new Date(row.visit_date);
+      if ((date.getDay() || 7) !== todayDay) continue;
+      const current = stats.get(row.outlet_id) ?? { score: 0, visits: 0, lastVisit: 0 };
+      current.visits += 1;
+      current.lastVisit = Math.max(current.lastVisit, date.getTime());
+      stats.set(row.outlet_id, current);
+    }
+
+    const byDate = new Map<string, { outletId: string; time: number }[]>();
+    for (const row of habitVisits as any[]) {
+      if (!row.outlet_id || !scheduledIds.has(row.outlet_id) || !row.visit_date) continue;
+      const date = new Date(row.visit_date);
+      if ((date.getDay() || 7) !== todayDay) continue;
+      const dateKey = date.toISOString().slice(0, 10);
+      const list = byDate.get(dateKey) ?? [];
+      if (!list.some((x) => x.outletId === row.outlet_id)) {
+        list.push({ outletId: row.outlet_id, time: date.getTime() });
+      }
+      byDate.set(dateKey, list);
+    }
+
+    for (const list of byDate.values()) {
+      list.sort((a, b) => a.time - b.time);
+      for (let i = 0; i < list.length; i++) {
+        const stat = stats.get(list[i].outletId);
+        if (stat) stat.score += list.length - i;
+      }
+    }
+
+    return [...(schedules as any[])].sort((a, b) => {
+      const sa = stats.get(a.outlet_id);
+      const sb = stats.get(b.outlet_id);
+      const scoreDiff = (sb?.score ?? 0) - (sa?.score ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      const visitDiff = (sb?.visits ?? 0) - (sa?.visits ?? 0);
+      if (visitDiff !== 0) return visitDiff;
+      const lastVisitDiff = (sb?.lastVisit ?? 0) - (sa?.lastVisit ?? 0);
+      if (lastVisitDiff !== 0) return lastVisitDiff;
+      return String(a.outlets?.name ?? "").localeCompare(String(b.outlets?.name ?? ""), "id");
+    });
+  }, [habitVisits, isOwner, schedules, todayDay]);
 
   const grouped = useMemo(() => DAYS.map((d) => ({
     ...d,
@@ -149,97 +213,6 @@ function SchedulePage() {
     () => new Map<string, number>(outstandingDebts.map((row) => [row.outletId, row.amount])),
     [outstandingDebts]
   );
-
-  const reorderSchedules = async (fromIndex: number, toIndex: number) => {
-    if (isOwner || busy || fromIndex === toIndex) return;
-    if (fromIndex < 0 || toIndex < 0 || fromIndex >= schedules.length || toIndex >= schedules.length) return;
-    const fromItem = schedules[fromIndex] as any;
-    const toItem = schedules[toIndex] as any;
-    if (fromItem.day_of_week !== todayDay || toItem.day_of_week !== todayDay) {
-      toast.error("Jadwal yang dipilih tidak valid untuk diurutkan.");
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const step = fromIndex < toIndex ? 1 : -1;
-      let currentIndex = fromIndex;
-      while (currentIndex !== toIndex) {
-        const nextIndex = currentIndex + step;
-        const current = schedules[currentIndex] as any;
-        const target = schedules[nextIndex] as any;
-        const { error } = await (supabase as any).rpc("swap_sales_schedule_order", {
-          _first_id: current.id,
-          _second_id: target.id,
-        });
-        if (error) throw error;
-        currentIndex = nextIndex;
-      }
-      await qc.invalidateQueries({ queryKey: ["store-schedules", ownerId, profile?.userId, profile?.role] });
-      toast.success("Urutan kunjungan diperbarui");
-    } catch (error) {
-      toast.error((error as Error).message || "Urutan gagal diperbarui.");
-    } finally {
-      setBusy(false);
-      setDraggingId(null);
-      setDragOverId(null);
-    }
-  };
-
-  useEffect(() => {
-    if (!draggingId) return;
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (dragPointerId.current !== null && event.pointerId !== dragPointerId.current) return;
-      event.preventDefault();
-
-      const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
-      const card = target?.closest("[data-schedule-id]") as HTMLElement | null;
-      const id = card?.dataset.scheduleId;
-      if (!id || id === draggingId) return;
-
-      const over = schedules.find((item: any) => item.id === id) as any;
-      if (over?.day_of_week === todayDay) {
-        dragOverRef.current = id;
-        setDragOverId(id);
-      }
-    };
-
-    const finishDrag = () => {
-      const currentDraggingId = dragCandidateId.current;
-      const currentOverId = dragOverRef.current;
-      dragPointerId.current = null;
-      dragCandidateId.current = null;
-      dragOverRef.current = null;
-
-      if (!currentDraggingId) {
-        setDraggingId(null);
-        setDragOverId(null);
-        return;
-      }
-
-      const fromIndex = schedules.findIndex((item: any) => item.id === currentDraggingId);
-      const toIndex = currentOverId ? schedules.findIndex((item: any) => item.id === currentOverId) : fromIndex;
-
-      setDragOverId(null);
-
-      if (fromIndex >= 0 && toIndex >= 0 && fromIndex !== toIndex) {
-        void reorderSchedules(fromIndex, toIndex);
-      } else {
-        setDraggingId(null);
-      }
-    };
-
-    window.addEventListener("pointermove", handlePointerMove, { passive: false });
-    window.addEventListener("pointerup", finishDrag);
-    window.addEventListener("pointercancel", finishDrag);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", finishDrag);
-      window.removeEventListener("pointercancel", finishDrag);
-    };
-  }, [draggingId, schedules, todayDay]);
 
   async function addSchedule(e: FormEvent) {
     e.preventDefault();
@@ -314,7 +287,7 @@ function SchedulePage() {
           <div className="rounded-xl border bg-primary/5 p-3 text-sm">
             <div className="font-semibold">Jadwal Hari Ini · {DAYS.find((d) => d.value === todayDay)?.label}</div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {schedules.length} outlet dijadwalkan untuk dikunjungi
+              {orderedSchedules.length} outlet dijadwalkan untuk dikunjungi
               {!visitsLoading && ` · ${schedules.filter((item: any) => paidOutletIds.has(item.outlet_id)).length} sudah tertagih`}
             </div>
           </div>
@@ -357,30 +330,10 @@ function SchedulePage() {
                 {DAYS.find((d) => d.value === todayDay)?.label}
               </span>
             </h2>
-            <p className="mb-3 text-xs text-muted-foreground">Tekan lalu geser kartu toko untuk mengatur urutan tagihan.</p>
+            <p className="mb-3 text-xs text-muted-foreground">Urutan otomatis mengikuti kebiasaan kunjungan Anda pada hari yang sama berdasarkan riwayat kunjungan.</p>
             <div className="space-y-2">
-              {schedules.map((item: any, index: number) => (
-                <div
-                  key={item.id}
-                  data-schedule-id={item.id}
-                  onPointerDown={(event) => {
-                    if (busy || isOwner) return;
-                    dragPointerId.current = event.pointerId;
-                    dragCandidateId.current = item.id;
-                    dragStartPoint.current = { x: event.clientX, y: event.clientY };
-                  }}
-                  onPointerMove={(event) => {
-                    if (busy || dragCandidateId.current !== item.id || dragPointerId.current !== event.pointerId) return;
-                    const dx = event.clientX - dragStartPoint.current.x;
-                    const dy = event.clientY - dragStartPoint.current.y;
-                    if (!draggingId && Math.hypot(dx, dy) > 8) {
-                      setDraggingId(item.id);
-                      dragOverRef.current = item.id;
-                      setDragOverId(item.id);
-                    }
-                  }}
-                  className={`rounded-xl border bg-card p-3 transition-all ${draggingId === item.id ? "touch-none scale-[0.99] opacity-60" : ""} ${dragOverId === item.id ? "border-primary ring-2 ring-primary/20" : ""}`}
-                >
+              {orderedSchedules.map((item: any, index: number) => (
+                <div key={item.id} className="rounded-xl border bg-card p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
