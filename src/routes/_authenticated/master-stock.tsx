@@ -359,7 +359,7 @@ function MasterStockPage() {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-700"><Boxes className="h-7 w-7" /></div>
         <h2 className="mt-4 text-lg font-bold">Stok Pembukaan</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">Tentukan mode usaha dan catat stok fisik awal per Gudang, Toko, atau Sales. Setelah final, halaman ini otomatis berubah menjadi monitoring Stok Gudang.</p>
-        <Button asChild className="mt-5 h-11 w-full rounded-xl"><Link to="/stock-opening">Mulai Stok Pembukaan</Link></Button>
+        {canOpening && <Button asChild className="mt-5 h-11 w-full rounded-xl"><Link to="/stock-opening">Mulai Stok Pembukaan</Link></Button>}
       </section>
     </main>
   );
@@ -380,7 +380,7 @@ function MasterStockPage() {
             <b>{setup.mode === "migration" ? "Migrasi Usaha" : "Mulai dari Awal"}</b>
           </div>
         </div>
-        <Button asChild className="mt-5 h-11 w-full rounded-xl"><Link to="/stock-opening">Lanjutkan Stok Pembukaan</Link></Button>
+        {canOpening && <Button asChild className="mt-5 h-11 w-full rounded-xl"><Link to="/stock-opening">Lanjutkan Stok Pembukaan</Link></Button>}
       </section>
     </main>
   );
