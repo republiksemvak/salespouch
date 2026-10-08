@@ -143,7 +143,19 @@ function SalesStockDayPage() {
     } 
   });
 
-  const currentStock = useMemo(() => {\n    const map = new Map<string, number>();\n    if (account?.role === "sales") {\n      for (const x of salesCurrentStock) map.set(x.product_id, Number(x.quantity));\n      return map;\n    }\n    for (const x of openings) map.set(x.product_id, (map.get(x.product_id) ?? 0) + Number(x.quantity));\n    for (const x of movements) {\n      if (x.to_location_id === salesLocation?.id) map.set(x.product_id, (map.get(x.product_id) ?? 0) + Number(x.quantity));\n      if (x.from_location_id === salesLocation?.id) map.set(x.product_id, (map.get(x.product_id) ?? 0) - Number(x.quantity));\n    }\n    return map;\n  }, [account?.role, salesCurrentStock, openings, movements, salesLocation?.id]);
+  const currentStock = useMemo(() => {
+    const map = new Map<string, number>();
+    if (account?.role === "sales") {
+      for (const x of salesCurrentStock) map.set(x.product_id, Number(x.quantity));
+      return map;
+    }
+    for (const x of openings) map.set(x.product_id, (map.get(x.product_id) ?? 0) + Number(x.quantity));
+    for (const x of movements) {
+      if (x.to_location_id === salesLocation?.id) map.set(x.product_id, (map.get(x.product_id) ?? 0) + Number(x.quantity));
+      if (x.from_location_id === salesLocation?.id) map.set(x.product_id, (map.get(x.product_id) ?? 0) - Number(x.quantity));
+    }
+    return map;
+  }, [account?.role, salesCurrentStock, openings, movements, salesLocation?.id]);
 
   async function refresh() { 
     await Promise.all([
@@ -151,7 +163,8 @@ function SalesStockDayPage() {
       queryClient.invalidateQueries({ queryKey: ["sales-stock-movements"] }), 
       queryClient.invalidateQueries({ queryKey: ["sales-stock-openings"] }),
       queryClient.invalidateQueries({ queryKey: ["master-stock-warehouse"] }),
-      queryClient.invalidateQueries({ queryKey: ["visit-sales-stock"] }),\n      queryClient.invalidateQueries({ queryKey: ["sales-current-stock"] })
+      queryClient.invalidateQueries({ queryKey: ["visit-sales-stock"] }),
+      queryClient.invalidateQueries({ queryKey: ["sales-current-stock"] })
     ]); 
   }
 
