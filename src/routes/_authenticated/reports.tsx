@@ -29,7 +29,7 @@ type ProductReport = { name: string; qty: number; omset: number; hpp: number; pr
 function ReportsPage() {
   const { data: account, isLoading } = useProfile();
   if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
-  if (account?.role !== "owner" && account?.role !== "manager" && account?.role !== "admin") return <div className="p-10 text-center text-destructive">Akses laporan belum diberikan Owner.</div>;
+  if (!account) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
   return <OwnerReportsPage />;
 }
 
