@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSuperAdminEmail } from "@/lib/access";
 import { salesAuthEmail, normalizeSalesUsername } from "@/lib/sales-auth";
+import { MANAGER_ADMIN_DEFAULTS, SALES_DEFAULTS } from "@/lib/team-access";
 
 type TeamPosition = "admin" | "manager" | "sales";
 type TeamActor = { ownerId: string; position: "owner" | TeamPosition };
@@ -47,9 +48,9 @@ export const getMyTeamPermissions = createServerFn({ method: "GET" })
     if (actor.position === "owner") return { role: "owner" as const, permissions: [] as string[] };
 
     const roleDefaults: Record<"admin" | "manager" | "sales", string[]> = {
-      admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
-      manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
-      sales: ["outlets", "sales_stock", "transactions", "travel_funds", "notes", "expenses"],
+      admin: [...MANAGER_ADMIN_DEFAULTS],
+      manager: [...MANAGER_ADMIN_DEFAULTS],
+      sales: [...SALES_DEFAULTS],
     };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -63,10 +64,22 @@ export const getMyTeamPermissions = createServerFn({ method: "GET" })
     // Existing saved permissions are authoritative. If none have ever been
     // saved, use the role's recommended defaults instead of locking everything.
     const savedPermissions = (data ?? []).map((item) => item.permission_key);
+    const { data: memberState, error: memberStateError } = await supabaseAdmin
+      .from("team_members")
+      .select("permissions_configured")
+      .eq("owner_id", actor.ownerId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (memberStateError) throw memberStateError;
+
+    const configured = actor.position === "sales"
+      ? savedPermissions.length > 0
+      : memberState?.permissions_configured === true;
+
     return {
       role: actor.position,
-      permissions: savedPermissions.length ? savedPermissions : roleDefaults[actor.position],
-      hasCustomPermissions: savedPermissions.length > 0,
+      permissions: configured ? savedPermissions : roleDefaults[actor.position],
+      hasCustomPermissions: configured,
     };
   });
 
@@ -86,7 +99,7 @@ export const listTeam = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const actor = await assertTeamManager(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: members, error } = await supabaseAdmin.from("team_members").select("user_id,owner_id,position,manager_id,created_at").eq("owner_id", actor.ownerId).order("created_at", { ascending: false });
+    const { data: members, error } = await supabaseAdmin.from("team_members").select("user_id,owner_id,position,manager_id,created_at,permissions_configured").eq("owner_id", actor.ownerId).order("created_at", { ascending: false });
     if (error) throw error;
     if (!members?.length) return [];
     const ids = [...new Set(members.flatMap((member) => [member.user_id, member.manager_id].filter((id): id is string => typeof id === "string")))];
@@ -104,7 +117,9 @@ export const listTeam = createServerFn({ method: "GET" })
         profiles: profileMap.get(member.user_id) ?? null,
         manager: member.manager_id ? profileMap.get(member.manager_id) ?? null : null,
         permissions: savedPermissions,
-        hasCustomPermissions: permissions.some((item) => item.user_id === member.user_id),
+        hasCustomPermissions: member.position === "sales"
+          ? savedPermissions.length > 0
+          : member.permissions_configured === true,
       };
     });
   });
@@ -129,6 +144,7 @@ export const setTeamMemberRole = createServerFn({ method: "POST" })
       .update({
         position: data.position,
         manager_id: null,
+        permissions_configured: data.position === "sales" ? false : false,
       })
       .eq("user_id", data.userId)
       .eq("owner_id", actor.ownerId);
@@ -145,7 +161,7 @@ export const replaceTeamPermissions = createServerFn({ method: "POST" })
 
     const { data: target, error: targetError } = await supabaseAdmin
       .from("team_members")
-      .select("user_id,owner_id")
+      .select("user_id,owner_id,position")
       .eq("user_id", data.userId)
       .eq("owner_id", actor.ownerId)
       .maybeSingle();
@@ -169,6 +185,15 @@ export const replaceTeamPermissions = createServerFn({ method: "POST" })
         .from("team_permissions")
         .insert(rows);
       if (insertError) throw insertError;
+    }
+
+    if (target.position !== "sales") {
+      const { error: stateError } = await supabaseAdmin
+        .from("team_members")
+        .update({ permissions_configured: true })
+        .eq("owner_id", actor.ownerId)
+        .eq("user_id", data.userId);
+      if (stateError) throw stateError;
     }
 
     return { ok: true };
