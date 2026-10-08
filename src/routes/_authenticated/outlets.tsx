@@ -186,6 +186,7 @@ function AllOutlets() {
   }
 
   return (
+    <>
     <main className="mx-auto min-h-screen max-w-md px-5 pb-8 pt-6">
       <header>
         <div className="flex items-center justify-between gap-2">
