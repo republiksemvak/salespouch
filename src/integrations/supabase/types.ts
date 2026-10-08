@@ -1208,6 +1208,24 @@ export type Database = {
         }
         Returns: string
       }
+      record_sales_expense: {
+        Args: {
+          p_amount: number
+          p_category: string
+          p_note?: string | null
+          p_spent_at?: string
+        }
+        Returns: {
+          amount: number
+          category: string
+          created_at: string
+          id: string
+          note: string | null
+          owner_id: string
+          sales_id: string
+          spent_at: string
+        }
+      }
       record_sales_morning_load: {
         Args: {
           _items: Json
