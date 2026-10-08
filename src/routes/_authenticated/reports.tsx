@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Calendar, Download, Phone, Store, TrendingUp } from "lucide-react";
+import { ArrowLeft, Download, Phone, Store, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
@@ -332,8 +332,6 @@ function OutletReceivablesTab() {
   );
 }
 
-function Bucket({ label, value }: { label: string; value: number }) { return <div className="rounded-lg bg-muted/60 p-2"><div className="text-[10px] uppercase font-semibold">{label}</div><div className="font-bold">{rp(value)}</div></div>; }
-function AgingCell({ label, value }: { label: string; value: number }) { return <div><div className="text-muted-foreground">{label} hr</div><div className="font-semibold">{value ? rp(Number(value)) : "-"}</div></div>; }
 function ProductInsights({ topSelling, topRevenue }: { topSelling: ProductReport[]; topRevenue: ProductReport[] }) { return <section className="mt-5 overflow-hidden rounded-2xl border bg-card"><div className="flex items-center justify-between border-b px-3.5 py-3"><div><div className="text-sm font-bold">Insight Produk</div><div className="text-[10px] text-muted-foreground">Sesuai rentang tanggal di atas</div></div><TrendingUp className="h-4 w-4 text-muted-foreground" /></div><div className="grid grid-cols-2 divide-x"><InsightList title="Terlaris" rows={topSelling} max={topSelling[0]?.qty || 1} value={p => `${p.qty} pcs`} /><InsightList title="Omset Terbesar" rows={topRevenue} max={topRevenue[0]?.omset || 1} value={p => rp(p.omset)} revenue /></div><div className="border-t px-3.5 py-2.5 text-[10px] text-muted-foreground"><b className="text-foreground">Catatan:</b> Terlaris = pcs terjual. Omset = setelah diskon.</div></section>; }
 function InsightList({ title, rows, max, value, revenue }: { title: string; rows: ProductReport[]; max: number; value: (p: ProductReport) => string; revenue?: boolean }) { return <div className="min-w-0 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</div><div className="mt-2 space-y-2.5">{!rows.length && <div className="text-[11px] text-muted-foreground">Belum ada data</div>}{rows.map(p => <div key={`${title}-${p.name}`}><div className="flex items-center justify-between gap-2 text-[11px]"><span className="truncate font-medium">{p.name}</span><span className="shrink-0 text-muted-foreground">{value(p)}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(8, Math.round(((revenue ? p.omset : p.qty) / max) * 100))}%` }} /></div></div>)}</div></div>; }
 function Box({ label, v, strong }: { label: string; v: string; strong?: boolean }) { return <div><div className="text-[10px] uppercase text-muted-foreground">{label}</div><div className={strong ? "text-lg font-bold text-primary" : "font-semibold"}>{v}</div></div>; }
