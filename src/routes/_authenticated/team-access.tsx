@@ -21,6 +21,7 @@ type TeamMember = {
   user_id: string;
   position: JobLevel;
   permissions?: string[];
+  hasCustomPermissions?: boolean;
   profiles: { display_name?: string; username?: string } | null;
 };
 
@@ -31,7 +32,9 @@ const groups: PermissionGroup[] = [
     { key: "schedule", label: "Jadwal Toko", description: "Mengatur jadwal kunjungan outlet." },
     { key: "sales_stock", label: "Stok Sales", description: "Melihat dan mengelola stok Sales." },
     { key: "transactions", label: "Transaksi", description: "Melihat transaksi Sales." },
-    { key: "operations", label: "Operasional", description: "Melihat uang jalan, pengeluaran, saldo, dan rekap operasional." },
+    { key: "operations", label: "↳ Ringkasan Operasional", description: "Submenu: saldo dan rekap operasional Sales." },
+    { key: "travel_funds", label: "↳ Uang Jalan", description: "Submenu: input dan pengelolaan uang jalan Sales." },
+    { key: "expenses", label: "↳ Pengeluaran", description: "Submenu: pencatatan dan riwayat pengeluaran Sales." },
     { key: "direct_selling", label: "Direct Selling", description: "Mengelola penjualan langsung dari gudang." },
   ] },
   { title: "Analitik", items: [
@@ -51,9 +54,9 @@ const groups: PermissionGroup[] = [
 ];
 
 const levelDefaults: Record<JobLevel, string[]> = {
-  admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
-  manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
-  sales: ["outlets", "sales_stock", "transactions", "travel_funds", "notes"],
+  admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
+  manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
+  sales: ["outlets", "sales_stock", "transactions", "travel_funds", "notes", "expenses"],
 };
 
 function TeamAccessPage() {
@@ -85,7 +88,7 @@ function TeamAccessPage() {
     setSelectedId(userId);
     if (!member) return;
     setLevel(member.position);
-    setPermissions(member.permissions?.length ? member.permissions : levelDefaults[member.position]);
+    setPermissions(member.hasCustomPermissions ? (member.permissions ?? []) : levelDefaults[member.position]);
   }
 
   function changeLevel(next: JobLevel) {
