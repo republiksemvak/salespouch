@@ -8,6 +8,8 @@ import { useProfile } from "@/hooks/use-profile";
 import { rp, type LineItem } from "@/lib/visit";
 import { packSize } from "@/lib/units";
 import { Button } from "@/components/ui/button";
+import { useTeamPermissions } from "@/hooks/use-team-permissions";
+import { hasAccess } from "@/lib/team-access";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/reports")({
@@ -27,27 +29,33 @@ type ProductReport = { name: string; qty: number; omset: number; hpp: number; pr
 function ReportsPage() {
   const { data: account, isLoading } = useProfile();
   if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
-  if (account?.role !== "owner") return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat melihat laporan.</div>;
+  if (account?.role !== "owner" && account?.role !== "manager" && account?.role !== "admin") return <div className="p-10 text-center text-destructive">Akses laporan belum diberikan Owner.</div>;
   return <OwnerReportsPage />;
 }
 
 function OwnerReportsPage() {
-  const [tab, setTab] = useState<"finance" | "aging">("finance");
+  const { data: account } = useProfile();
+  const { data: access } = useTeamPermissions(account?.role === "manager" || account?.role === "admin");
+  const permissions = access?.permissions ?? [];
+  const canFinance = account?.role === "owner" || hasAccess(permissions, "reports.finance");
+  const canReceivables = account?.role === "owner" || hasAccess(permissions, "reports.receivables");
+  const canExport = account?.role === "owner" || hasAccess(permissions, "reports.export");
+  const [tab, setTab] = useState<"finance" | "aging">(canFinance ? "finance" : "aging");
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-12 pt-6">
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
       <h1 className="mt-4 text-2xl font-bold">Laporan</h1>
-      <div className="mt-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-xs font-semibold">
+      {canFinance && canReceivables && <div className="mt-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-xs font-semibold">
         <button onClick={() => setTab("finance")} className={`rounded-lg py-2 ${tab === "finance" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Laba Rugi & Omset</button>
         <button onClick={() => setTab("aging")} className={`rounded-lg py-2 ${tab === "aging" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Piutang Outlet</button>
-      </div>
-      {tab === "finance" ? <FinancialReportTab /> : <OutletReceivablesTab />}
+      </div>}
+      {canFinance && tab === "finance" ? <FinancialReportTab canExport={canExport} /> : canReceivables ? <OutletReceivablesTab /> : <div className="mt-6 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Belum ada akses laporan.</div>}
     </main>
   );
 }
 
 // Direct Gudang included in financial report totals.
-function FinancialReportTab() {
+function FinancialReportTab({ canExport = true }: { canExport?: boolean }) {
   const now = new Date();
   const [from, setFrom] = useState(ymd(new Date(now.getFullYear(), now.getMonth(), 1)));
   const [to, setTo] = useState(ymd(now));
@@ -241,7 +249,7 @@ function FinancialReportTab() {
     <div className="mt-4">
       <div className="grid grid-cols-2 gap-2"><label className="text-xs text-muted-foreground">Dari<Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-11" /></label><label className="text-xs text-muted-foreground">Sampai<Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-11" /></label></div>
       <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border bg-card p-4"><Box label="Omset Bersih" v={rp(report.totals.omset)} /><Box label="HPP" v={rp(report.totals.hpp)} /><Box label="Profit" v={rp(report.totals.profit)} strong /><Box label="Margin" v={`${margin.toFixed(1)}%`} /><div className="col-span-2 border-t border-dashed pt-2 text-xs text-muted-foreground">Uang diterima: <b className="text-foreground">{rp(report.totals.dibayar)}</b> · {report.rows.length} transaksi</div></div>
-      <Button onClick={download} disabled={!report.rows.length} className="mt-4 h-12 w-full"><Download className="mr-1 h-4 w-4" /> Download Excel</Button>
+      {canExport && <Button onClick={download} disabled={!report.rows.length} className="mt-4 h-12 w-full"><Download className="mr-1 h-4 w-4" /> Download Excel</Button>}
       <ProductInsights topSelling={topSelling} topRevenue={topRevenue} />
       <h2 className="mt-6 font-semibold">Performa Produk</h2>
       <div className="mt-2 space-y-2">{isLoading && <p className="text-sm text-muted-foreground">Memuat data…</p>}{!isLoading && !report.products.length && <p className="text-sm text-muted-foreground">Belum ada transaksi di periode ini.</p>}{report.products.map(p => <div key={p.name} className="rounded-xl border bg-card p-3 text-sm"><div className="flex justify-between font-medium"><span className="truncate">{p.name}</span><span>{p.qty} pcs</span></div><div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Omset {rp(p.omset)}</span><span>HPP {rp(p.hpp)}</span><b className={p.profit < 0 ? "text-destructive" : "text-primary"}>{rp(p.profit)}</b></div></div>)}</div>
