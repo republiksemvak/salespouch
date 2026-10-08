@@ -313,7 +313,7 @@ export function SuperAdminDashboard() {
   );
 }
 
-export function SalesDashboard({ businessName, profile }: DashboardProps) {
+export function SalesDashboard({ businessName, profile, salesUserId }: DashboardProps & { salesUserId?: string }) {
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
       <Header title="Sales Field" subtitle={businessName || "Mode Kunjungan Lapangan"} />
@@ -327,7 +327,9 @@ export function SalesDashboard({ businessName, profile }: DashboardProps) {
         </Button>
       </div>
 
-      <SalesFinancialSummary salesId={profile?.id} />
+      <SalesFinancialSummary salesId={salesUserId ?? profile?.id} />
+
+      <SalesStockSummary salesId={salesUserId} />
 
       <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
         <div className="mb-2.5 flex items-center justify-between px-1">
@@ -409,6 +411,42 @@ export function AdminDashboard({ businessName, permissions }: PermissionDashboar
   );
 }
 
+
+// Ringkasan stok yang sedang dibawa Sales.
+function SalesStockSummary({ salesId }: { salesId?: string }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["sales-dashboard-stock-summary", salesId],
+    enabled: !!salesId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_sales_current_stock", {
+        _sales_user_id: salesId!,
+      });
+      if (error) throw error;
+      return (data ?? []) as { product_id: string; quantity: number }[];
+    },
+    staleTime: 5_000,
+  });
+
+  const total = (data ?? []).reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
+
+  return (
+    <section className="mt-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3 shadow-xs">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-blue-800">Stok Dibawa</div>
+          <div className="mt-0.5 text-[10px] text-muted-foreground">Stok yang saat ini ada di tangan Anda</div>
+        </div>
+        <Truck className="h-4 w-4 text-blue-700" />
+      </div>
+      <div className="mt-2 text-xl font-bold text-foreground">
+        {isLoading ? "…" : isError ? "—" : `${total.toLocaleString("id-ID")} pcs`}
+      </div>
+      {!isLoading && !isError && total === 0 && (
+        <div className="mt-1 text-[10px] text-muted-foreground">Belum ada stok yang dimuat ke Sales.</div>
+      )}
+    </section>
+  );
+}
 
 // Ringkasan informasi Sales hari ini.
 function SalesFinancialSummary({ salesId }: { salesId?: string }) {
