@@ -159,7 +159,7 @@ function SchedulePage() {
       toast.success("Urutan kunjungan diperbarui");
     } catch (error) { toast.error((error as Error).message || "Urutan gagal diperbarui."); }
     finally { setBusy(false); }
-
+  };
 
   async function addSchedule(e: FormEvent) {
     e.preventDefault();
