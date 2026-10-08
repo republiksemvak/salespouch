@@ -76,11 +76,48 @@ function CompactSummary({ ownerId }: { ownerId?: string }) {
     queryKey: ["owner-dashboard-summary", ownerId],
     enabled: !!ownerId,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("get_owner_dashboard_summary", {
+      // Fast path: one server-side aggregate. Fallback keeps the dashboard
+      // working if the new RPC has not reached the database yet.
+      const { data: summary, error: rpcError } = await (supabase as any).rpc("get_owner_dashboard_summary", {
         _owner_id: ownerId!,
       });
-      if (error) throw error;
-      return data?.[0] ?? null;
+
+      if (!rpcError && summary?.[0]) {
+        return summary[0];
+      }
+
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+
+      const [{ data: txs, error: txError }, { data: wds, error: wdsError }] = await Promise.all([
+        supabase
+          .from("transactions")
+          .select("outlet_id,total_sales,discount_amount")
+          .eq("user_id", ownerId!)
+          .gte("visit_date", start)
+          .lt("visit_date", end),
+        supabase
+          .from("warehouse_direct_sales")
+          .select("total_sales,discount_amount")
+          .eq("owner_id", ownerId!)
+          .gte("sale_date", start)
+          .lt("sale_date", end),
+      ]);
+
+      if (txError) throw txError;
+      if (wdsError) throw wdsError;
+
+      const fieldRows = txs ?? [];
+      const warehouseRows = wds ?? [];
+      return {
+        omzet: [...fieldRows, ...warehouseRows].reduce(
+          (sum, row) => sum + (Number(row.total_sales) || 0) - (Number(row.discount_amount) || 0),
+          0,
+        ),
+        transactions: fieldRows.length + warehouseRows.length,
+        visited: new Set(fieldRows.map(row => row.outlet_id).filter(Boolean)).size,
+      };
     },
     staleTime: 30_000,
   });
