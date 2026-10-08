@@ -31,7 +31,7 @@ function Dashboard() {
   if (effectiveRole === "super-admin") return <SuperAdminDashboard />;
   if (effectiveRole === "manager") return <ManagerDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} permissions={permissions} />;
   if (effectiveRole === "admin") return <AdminDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} permissions={permissions} />;
-  if (effectiveRole === "sales") return <SalesDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} />;
+  if (effectiveRole === "sales") return <SalesDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} salesUserId={p.userId} />;
 
   return <OwnerDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} />;
 }
