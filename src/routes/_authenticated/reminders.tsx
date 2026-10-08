@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Bell, CalendarDays, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Bell, CalendarDays, ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProfile } from "@/hooks/use-profile";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ function Reminders() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [reminderFormOpen, setReminderFormOpen] = useState(false);
 
   const query = useQuery({
     queryKey: ["personal-reminders", userId],
@@ -47,7 +48,7 @@ function Reminders() {
     const { error } = await supabase.from("personal_reminders").insert({ account_id: userId, title: title.trim(), note: note.trim() || null, reminder_date: reminderDate || null });
     setSaving(false);
     if (error) return setErrorMessage(error.message);
-    setTitle(""); setNote(""); setReminderDate("");
+    setTitle(""); setNote(""); setReminderDate(""); setReminderFormOpen(false);
     await queryClient.invalidateQueries({ queryKey: ["personal-reminders"] });
   }
 
@@ -71,12 +72,13 @@ function Reminders() {
       </header>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border p-4">
-        <div className="flex items-center gap-2 font-semibold"><Plus className="h-4 w-4" /> Tambah Pengingat</div>
-        <div className="space-y-2"><Label htmlFor="title">Pengingat</Label><Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contoh: Tagih Toko Maju" required /></div>
+        <button type="button" onClick={() => setReminderFormOpen((open) => !open)} className="flex w-full items-center justify-between text-left"><div className="flex items-center gap-2 font-semibold"><Plus className="h-4 w-4" /> Tambah Pengingat</div>{reminderFormOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}</button>
+        {reminderFormOpen && <div className="mt-4 space-y-4"><Label htmlFor="title">Pengingat</Label><Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contoh: Tagih Toko Maju" required /></div>
         <div className="space-y-2"><Label htmlFor="reminderDate">Tanggal <span className="font-normal text-muted-foreground">(opsional)</span></Label><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="reminderDate" type="date" className="pl-9" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} /></div></div>
         <div className="space-y-2"><Label htmlFor="note">Catatan <span className="font-normal text-muted-foreground">(opsional)</span></Label><Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Detail yang perlu diingat" rows={3} /></div>
         {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
         <Button type="submit" className="w-full" disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}Simpan Pengingat</Button>
+        </div>}
       </form>
 
       <section className="mt-6"><div className="mb-3"><h2 className="font-semibold">Daftar Pengingat</h2><p className="text-xs text-muted-foreground">Catatan ini hanya milik akun Anda.</p></div>
