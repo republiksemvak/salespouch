@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Store, Receipt, Wallet } from "lucide-react";
+import { Store, Receipt, Wallet, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,6 +19,35 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const navigate = useNavigate();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return;
+      if (session?.user) {
+        navigate({ to: "/dashboard", replace: true });
+      } else {
+        setCheckingAuth(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
+
+  if (checkingAuth) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-3 text-xs text-muted-foreground font-mono">Membuka Dashboard…</p>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-10">
       <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
@@ -41,7 +72,7 @@ function Index() {
       </ul>
       <div className="mt-auto pt-10">
         <Button asChild size="lg" className="h-14 w-full text-base">
-          <Link to="/dashboard">Mulai — Trial 24 Jam Gratis</Link>
+          <Link to="/auth">Mulai — Masuk Akun</Link>
         </Button>
       </div>
     </main>
