@@ -23,6 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatQty, packSize, toPieces } from "@/lib/units";
+import { useTeamPermissions } from "@/hooks/use-team-permissions";
+import { hasAccess } from "@/lib/team-access";
 
 export const Route = createFileRoute("/_authenticated/master-stock")({
   head: () => ({
@@ -52,6 +54,8 @@ function MasterStockPage() {
   const { data: account, isLoading: accountLoading } = useProfile();
   const queryClient = useQueryClient();
   const fetchOwnerProducts = useServerFn(getOwnerProducts);
+  const { data: access } = useTeamPermissions(account?.role === "manager" || account?.role === "admin");
+  const permissions = access?.permissions ?? [];
 
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState<"all" | "warehouse" | "outlet" | "sales">("all");
@@ -334,7 +338,12 @@ function MasterStockPage() {
   };
 
   if (accountLoading || setupLoading) return <main className="mx-auto max-w-md px-4 pt-12 text-center text-sm text-muted-foreground">Memuat Stok Gudang…</main>;
-  if (account?.role !== "owner") return <main className="mx-auto max-w-md px-4 pt-12 text-center text-destructive">Stok Gudang hanya dapat dilihat Owner.</main>;
+  const canOpen = account?.role === "owner" || ((account?.role === "manager" || account?.role === "admin") && hasAccess(permissions, "master_stock.view"));
+  const canOpening = account?.role === "owner" || hasAccess(permissions, "master_stock.opening");
+  const canIncoming = account?.role === "owner" || hasAccess(permissions, "master_stock.incoming");
+  const canDamage = account?.role === "owner" || hasAccess(permissions, "master_stock.damage");
+  const canReset = account?.role === "owner" || hasAccess(permissions, "master_stock.reset");
+  if (!canOpen) return <main className="mx-auto max-w-md px-4 pt-12 text-center text-destructive">Akses Stok Gudang belum diberikan Owner.</main>;
 
   if (!setup) return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-5">
@@ -401,9 +410,9 @@ function MasterStockPage() {
             <h1 className="text-2xl font-bold tracking-tight truncate">Stok Produk</h1>
           </div>
         </div>
-        <Button type="button" size="sm" className="shrink-0 rounded-xl" onClick={() => { setShowOpening(true); setOpeningMessage(""); }}>
+{canOpening && <Button type="button" size="sm" className="shrink-0 rounded-xl" onClick={() => { setShowOpening(true); setOpeningMessage(""); }}>
           <ClipboardPlus className="mr-1 h-4 w-4" /> Stok Awal
-        </Button>
+        </Button>}
       </header>
 
       <section className="mt-4 rounded-2xl border bg-card p-4 shadow-sm">
@@ -420,6 +429,7 @@ function MasterStockPage() {
         </div>
       </section>
 
+{canIncoming && (
       <section className="mt-3 rounded-2xl border bg-blue-50/50 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -482,6 +492,9 @@ function MasterStockPage() {
         )}
       </section>
 
+      )}
+
+{canDamage && (
       {/* Form 2: Pemusnahan / Barang Rusak */}
       <section className="mt-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
@@ -538,6 +551,8 @@ function MasterStockPage() {
           </div>
         )}
       </section>
+
+      )}
 
       <div className="mt-4 flex gap-2">
         <div className="relative flex-1">
@@ -597,7 +612,7 @@ function MasterStockPage() {
         </div>
       </section>
 
-      <section className="mt-4 rounded-2xl border border-orange-200 bg-orange-50/60 p-4">
+      {canReset && <section className="mt-4 rounded-2xl border border-orange-200 bg-orange-50/60 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-semibold">Pengaturan Stok Awal</div>
@@ -605,7 +620,7 @@ function MasterStockPage() {
           </div>
           <Link to="/admin-stock-reset" className="shrink-0 text-sm font-semibold text-orange-700 underline underline-offset-4">Reset</Link>
         </div>
-      </section>
+      </section>}
 
       <Dialog open={showOpening} onOpenChange={setShowOpening}>
         <DialogContent className="max-w-sm rounded-2xl">
