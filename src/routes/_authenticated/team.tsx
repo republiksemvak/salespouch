@@ -2,9 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, UserMinus, ShieldCheck } from "lucide-react";
+import { ArrowLeft, UserMinus, ShieldCheck, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
+import { supabase } from "@/integrations/supabase/client";
+import { useProducts } from "@/lib/products";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { listTeam, createSales, removeSales } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,7 @@ function TeamPage() {
   const create = useServerFn(createSales);
   const remove = useServerFn(removeSales);
   const qc = useQueryClient();
+  const { data: products = [] } = useProducts();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -42,7 +45,32 @@ function TeamPage() {
     queryFn: () => fetchTeam({ data: {} }),
   });
 
-  const managers = useMemo(() => (members ?? []).filter((member) => member.position === "manager"), [members]);
+  const managers = useMemo(() => (members ?? []).filter((member) => member.position === "manager"), [members]);\n\n  const salesMembers = useMemo(() => (members ?? []).filter((member) => member.position === "sales"), [members]);
+
+  const { data: salesStock = {} } = useQuery<Record<string, { total: number; items: { name: string; qty: number }[] }>>({
+    queryKey: ["team-sales-current-stock", activeOwnerId, salesMembers.map((m) => m.user_id).join(",")],
+    enabled: !!activeOwnerId && salesMembers.length > 0,
+    queryFn: async () => {
+      const rows = await Promise.all(
+        salesMembers.map(async (member) => {
+          const { data, error } = await (supabase as any).rpc("get_sales_current_stock", {
+            _sales_user_id: member.user_id,
+          });
+          if (error) throw error;
+          const items = ((data ?? []) as { product_id: string; quantity: number }[])
+            .map((row) => ({
+              name: products.find((p) => p.id === row.product_id)?.name ?? "Produk",
+              qty: Number(row.quantity) || 0,
+            }))
+            .filter((row) => row.qty > 0)
+            .sort((a, b) => b.qty - a.qty);
+          return [member.user_id, { total: items.reduce((sum, item) => sum + item.qty, 0), items }] as const;
+        }),
+      );
+      return Object.fromEntries(rows);
+    },
+    staleTime: 5_000,
+  });
 
   if (profileLoading || adminLoading) return <div className="p-10 text-center">Memuat…</div>;
   if (!canManage) return <div className="p-10 text-center text-destructive">Hanya Owner, Admin atau Manager yang dapat mengelola tim.</div>;
@@ -121,9 +149,26 @@ function TeamPage() {
         const canRemove = !isOwn && (owner || superAdmin || (manager && member.position === "sales" && member.manager_id === profile?.userId));
         const positionLabel = member.position === "admin" ? "admin" : member.position;
         return <div key={member.user_id} className={`flex items-center justify-between gap-3 rounded border bg-card p-3 ${member.position === "sales" && member.manager_id ? "ml-5" : ""}`}>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 truncate text-sm font-medium"><span>{p?.display_name ?? p?.username ?? p?.user_email ?? "Karyawan"}</span><span className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium uppercase">{positionLabel}</span></div>
             <div className="truncate text-xs text-muted-foreground">{p?.username ? `@${p.username}` : ""}{member.position === "sales" && managerProfile ? ` · Manager: ${managerProfile.display_name ?? managerProfile.username ?? "Manager"}` : ""}</div>
+            {member.position === "sales" && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-blue-50/70 px-2.5 py-2 text-[11px] text-blue-900">
+                <Package className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-semibold">
+                    Stok dibawa: {salesStock[member.user_id] ? `${salesStock[member.user_id].total} pcs` : "Memuat…"}
+                  </div>
+                  {salesStock[member.user_id]?.items.length ? (
+                    <div className="mt-0.5 truncate text-[10px] text-blue-800/80">
+                      {salesStock[member.user_id].items.map((item) => `${item.name} ${item.qty} pcs`).join(" · ")}
+                    </div>
+                  ) : salesStock[member.user_id] ? (
+                    <div className="mt-0.5 text-[10px] text-blue-800/80">Tidak ada stok di tangan</div>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
           {canRemove && <Button variant="ghost" size="icon" aria-label="Keluarkan karyawan" title="Keluarkan dari tim" onClick={async () => { if (!confirm("Keluarkan karyawan dari tim?")) return; try { await remove({ data: { userId: member.user_id } }); qc.invalidateQueries({ queryKey: ["team", activeOwnerId] }); toast.success("Karyawan dikeluarkan"); } catch (err) { toast.error((err as Error).message); } }}><UserMinus className="h-4 w-4" /></Button>}
         </div>;
