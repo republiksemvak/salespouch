@@ -24,18 +24,6 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10);
 const key = (n: string) => n.trim().toLowerCase();
 type ProductReport = { name: string; qty: number; omset: number; hpp: number; profit: number };
 
-type AgingRow = {
-  outlet_id: string;
-  outlet_name: string;
-  phone: string | null;
-  total_debt: number;
-  current_0_7: number;
-  aging_8_14: number;
-  aging_15_30: number;
-  over_30: number;
-  last_transaction_date: string | null;
-};
-
 function ReportsPage() {
   const { data: account, isLoading } = useProfile();
   if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
@@ -267,18 +255,88 @@ function OutletReceivablesTab() {
     queryKey: ["outlet-receivables", account?.ownerId],
     enabled: !!account?.ownerId,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_outlet_receivables_v1", {
-        _owner_id: account!.ownerId,
-      });
-      if (error) throw error;
-      return (data ?? []) as Array<{
+      const ownerId = account!.ownerId;
+
+      // Read the owner's own consignment transactions and calculate the current
+      // outlet stock locally. This keeps the report usable even when an older
+      // database function is still cached in PostgREST.
+      const [{ data: txs, error: txError }, { data: outlets, error: outletError }] = await Promise.all([
+        supabase
+          .from("transactions")
+          .select("id,outlet_id,visit_date,created_at,stock_scheme,line_items,new_consignment_items")
+          .eq("user_id", ownerId)
+          .eq("transaction_type", "Consignment")
+          .order("visit_date", { ascending: false })
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("outlets")
+          .select("id,name,owner_phone")
+          .eq("user_id", ownerId),
+      ]);
+
+      if (txError) throw txError;
+      if (outletError) throw outletError;
+
+      type Tx = {
+        id: string;
         outlet_id: string;
-        outlet_name: string;
-        phone: string | null;
-        stock_pcs: number;
-        receivable_value: number;
-        stock_since: string | null;
-      }>;
+        visit_date: string;
+        created_at: string;
+        stock_scheme: string | null;
+        line_items: any[] | null;
+        new_consignment_items: any[] | null;
+      };
+
+      const latest = new Map<string, Tx>();
+      for (const raw of (txs ?? []) as Tx[]) {
+        const activeOld = raw.stock_scheme === "accumulation"
+          ? (raw.line_items ?? []).reduce((sum, item) => sum + Math.max(0, Number(item?.remaining) || 0), 0)
+          : 0;
+        const activeNew = (raw.new_consignment_items ?? []).reduce(
+          (sum, item) => sum + Math.max(0, Number(item?.qty) || 0),
+          0,
+        );
+        if (activeOld + activeNew > 0 && !latest.has(raw.outlet_id)) {
+          latest.set(raw.outlet_id, raw);
+        }
+      }
+
+      return (outlets ?? [])
+        .map((outlet) => {
+          const visit = latest.get(outlet.id);
+          if (!visit) return null;
+
+          const oldItems = visit.stock_scheme === "accumulation" ? (visit.line_items ?? []) : [];
+          const newItems = visit.new_consignment_items ?? [];
+          const values = [
+            ...oldItems.map((item) => ({
+              qty: Math.max(0, Number(item?.remaining) || 0),
+              price: Math.max(0, Number(item?.price) || 0),
+              pcsPerPack: Math.max(1, Number(item?.pcs_per_pack) || 1),
+            })),
+            ...newItems.map((item) => ({
+              qty: Math.max(0, Number(item?.qty) || 0),
+              price: Math.max(0, Number(item?.price) || 0),
+              pcsPerPack: Math.max(1, Number(item?.pcs_per_pack) || 1),
+            })),
+          ];
+          const stockPcs = values.reduce((sum, item) => sum + item.qty, 0);
+          const receivableValue = values.reduce(
+            (sum, item) => sum + (item.qty * item.price) / item.pcsPerPack,
+            0,
+          );
+
+          return {
+            outlet_id: outlet.id,
+            outlet_name: outlet.name,
+            phone: outlet.owner_phone ?? null,
+            stock_pcs: stockPcs,
+            receivable_value: receivableValue,
+            stock_since: visit.visit_date,
+          };
+        })
+        .filter((row): row is NonNullable<typeof row> => !!row && row.receivable_value > 0)
+        .sort((a, b) => b.receivable_value - a.receivable_value || a.outlet_name.localeCompare(b.outlet_name));
     },
   });
 
