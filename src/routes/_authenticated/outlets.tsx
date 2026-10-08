@@ -297,6 +297,7 @@ function AllOutlets() {
 
     <Dialog open={!!infoId} onOpenChange={(open) => !open && setInfoId(null)}>
       <DialogContent className="max-h-[88vh] w-[calc(100%-24px)] max-w-md overflow-hidden rounded-2xl p-0">
+        {/* Outlet info preview: intentionally isolated scroll container for mobile */}
         <div className="max-h-[88vh] overflow-y-auto">
           <DialogHeader className="border-b bg-muted/30 px-5 pb-4 pt-5">
             <div className="pr-6">
