@@ -71,13 +71,17 @@ function Reminders() {
         <p className="mt-1 text-sm text-muted-foreground">Catat hal yang perlu Anda ingat: tagih toko, follow up, kirim barang, cek stok, dan lainnya.</p>
       </header>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-2xl border p-4">
-        <button type="button" onClick={() => setReminderFormOpen((open) => !open)} className="flex w-full items-center justify-between text-left"><div className="flex items-center gap-2 font-semibold"><Plus className="h-4 w-4" /> Tambah Pengingat</div>{reminderFormOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}</button>
-        {reminderFormOpen && <div className="mt-4 space-y-4"><Label htmlFor="title">Pengingat</Label><Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contoh: Tagih Toko Maju" required /></div>
-        <div className="space-y-2"><Label htmlFor="reminderDate">Tanggal <span className="font-normal text-muted-foreground">(opsional)</span></Label><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="reminderDate" type="date" className="pl-9" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} /></div></div>
-        <div className="space-y-2"><Label htmlFor="note">Catatan <span className="font-normal text-muted-foreground">(opsional)</span></Label><Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Detail yang perlu diingat" rows={3} /></div>
-        {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
-        <Button type="submit" className="w-full" disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}Simpan Pengingat</Button>
+      <form onSubmit={handleSubmit} className="mt-6 rounded-2xl border p-4">
+        <button type="button" onClick={() => setReminderFormOpen((open) => !open)} className="flex w-full items-center justify-between text-left">
+          <div className="flex items-center gap-2 font-semibold"><Plus className="h-4 w-4" /> Tambah Pengingat</div>
+          {reminderFormOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
+        {reminderFormOpen && <div className="mt-4 space-y-4">
+          <div className="space-y-2"><Label htmlFor="title">Pengingat</Label><Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contoh: Tagih Toko Maju" required /></div>
+          <div className="space-y-2"><Label htmlFor="reminderDate">Tanggal <span className="font-normal text-muted-foreground">(opsional)</span></Label><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="reminderDate" type="date" className="pl-9" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} /></div></div>
+          <div className="space-y-2"><Label htmlFor="note">Catatan <span className="font-normal text-muted-foreground">(opsional)</span></Label><Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Detail yang perlu diingat" rows={3} /></div>
+          {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+          <Button type="submit" className="w-full" disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}Simpan Pengingat</Button>
         </div>}
       </form>
 
