@@ -37,7 +37,7 @@ function SalesExpenses() {
   const ownerId = profileData?.ownerId;
   const isSuperAdmin = isSuperAdminEmail(profileData?.email) || !!isAdmin;
   const isOwner = role === "owner";
-  const canAccess = isSuperAdmin || isOwner || role === "sales";
+  const canAccess = isSuperAdmin || isOwner || role === "sales" || role === "manager" || role === "admin";
   const canInput = isSuperAdmin || role === "sales";
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
