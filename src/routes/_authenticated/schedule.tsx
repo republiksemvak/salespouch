@@ -88,48 +88,190 @@ function SchedulePage() {
     ...d,
     items: schedules.filter((item: any) => item.day_of_week === d.value),
   })), [schedules]);
-  const { data: collectedToday = [], isLoading: collectionsLoading } = useQuery({
-    queryKey: ["schedule-collected-today", ownerId, profile?.userId, todayStart.toISOString().slice(0, 10)],
+  const { data: visitStatus = { visited: [], paid: [] }, isLoading: visitsLoading } = useQuery({
+    queryKey: ["schedule-visited-today", ownerId, profile?.userId, todayStart.toISOString().slice(0, 10)],
     enabled: !!ownerId,
     queryFn: async () => {
-      const client = supabase as any;
-      let query = client
-        .from("sales_payment_collections")
-        .select("transaction_id,amount")
-        .eq("owner_id", ownerId)
-        .gte("collected_at", todayStart.toISOString())
-        .lt("collected_at", tomorrowStart.toISOString());
-      if (!isOwner && profile?.userId) query = query.eq("sales_id", profile.userId);
-
-      const { data: collections, error } = await query;
+      let query = supabase.from("transactions").select("outlet_id,amount_paid,visit_date").eq("user_id", ownerId).gte("visit_date", todayStart.toISOString()).lt("visit_date", tomorrowStart.toISOString());
+      if (!isOwner && profile?.userId) query = query.eq("sales_user_id", profile.userId);
+      const { data, error } = await query;
       if (error) throw error;
-      const rows = (collections ?? []) as Array<{ transaction_id: string; amount: number }>;
-      const transactionIds = [...new Set(rows.map((row) => row.transaction_id).filter(Boolean))];
-      if (transactionIds.length === 0) return [];
-
-      const { data: transactions, error: transactionError } = await client
-        .from("transactions")
-        .select("id,outlet_id")
-        .in("id", transactionIds);
-      if (transactionError) throw transactionError;
-
-      const outletAmounts = new Map<string, number>();
-      const outletByTransaction = new Map<string, string>();
-      for (const transaction of transactions ?? []) {
-        if (transaction.outlet_id) outletByTransaction.set(transaction.id, transaction.outlet_id);
+      const visited = new Set<string>();
+      const paid = new Set<string>();
+      for (const row of data ?? []) {
+        if (!row.outlet_id) continue;
+        visited.add(row.outlet_id);
+        if (Number(row.amount_paid) > 0) paid.add(row.outlet_id);
       }
-      for (const row of rows) {
-        const outletId = outletByTransaction.get(row.transaction_id);
-        if (!outletId) continue;
-        outletAmounts.set(outletId, (outletAmounts.get(outletId) ?? 0) + Number(row.amount || 0));
-      }
-      return [...outletAmounts.entries()]
-        .filter(([, amount]) => amount > 0)
-        .map(([outletId]) => outletId);
+      return { visited: [...visited], paid: [...paid] };
     },
     staleTime: 15_000,
   });
 
+  const visitedOutletIds = useMemo(() => new Set(visitStatus.visited), [visitStatus]);
+  const paidOutletIds = useMemo(() => new Set(visitStatus.paid), [visitStatus]);
+  const collectedOutletIds = useMemo(() => new Set(collectedToday), [collectedToday]);
+  const todayOutletIds = useMemo<string[]>(
+    () => [...new Set((schedules as any[]).map((item) => item.outlet_id).filter(Boolean))] as string[],
+    [schedules]
+  );
+
+  type OutletDebt = { outletId: string; amount: number };
+  const { data: outstandingDebts = [], isLoading: debtsLoading } = useQuery<OutletDebt[]>({
+    queryKey: ["schedule-outlet-debts", ownerId, todayOutletIds.join(",")],
+    enabled: !!ownerId && todayOutletIds.length > 0,
+    queryFn: async () => {
+      const client = supabase as any;
+      const { data, error } = await client
+        .from("transactions")
+        .select("outlet_id,remaining_debt,visit_date,created_at")
+        .in("outlet_id", todayOutletIds)
+        .eq("user_id", ownerId)
+        .order("visit_date", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const latest = new Map<string, number>();
+      for (const row of data ?? []) {
+        if (!latest.has(row.outlet_id)) latest.set(row.outlet_id, Number(row.remaining_debt) || 0);
+      }
+      return [...latest.entries()].map(([outletId, amount]) => ({ outletId, amount })) as OutletDebt[];
+    },
+    staleTime: 15_000,
+  });
+
+  const outstandingByOutlet = useMemo(
+    () => new Map<string, number>(outstandingDebts.map((row) => [row.outletId, row.amount])),
+    [outstandingDebts]
+  );
+
+  const moveSchedule = async (index: number, direction: -1 | 1) => {
+    if (isOwner || busy) return;
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= schedules.length) return;
+    const current = schedules[index] as any;
+    const target = schedules[nextIndex] as any;
+    if (current.day_of_week !== target.day_of_week) return;
+    setBusy(true);
+    try {
+      const { error } = await (supabase as any).rpc("swap_sales_schedule_order", { _first_id: current.id, _second_id: target.id });
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["store-schedules", ownerId] });
+      toast.success("Urutan kunjungan diperbarui");
+    } catch (error) { toast.error((error as Error).message || "Urutan gagal diperbarui."); }
+    finally { setBusy(false); }
+  };rt { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState, type FormEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useProfile } from "@/hooks/use-profile";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+export const Route = createFileRoute("/_authenticated/schedule")({
+  head: () => ({ meta: [{ title: "Jadwal Toko — Sales Pouch" }, { name: "description", content: "Jadwal kunjungan toko dan PIC Sales." }] }),
+  component: SchedulePage,
+});
+
+const DAYS = [
+  { value: 1, label: "Senin" },
+  { value: 2, label: "Selasa" },
+  { value: 3, label: "Rabu" },
+  { value: 4, label: "Kamis" },
+  { value: 5, label: "Jumat" },
+  { value: 6, label: "Sabtu" },
+  { value: 7, label: "Minggu" },
+];
+
+function SchedulePage() {
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const qc = useQueryClient();
+  const ownerId = profile?.ownerId;
+  const isOwner = profile?.role === "owner";
+  const [day, setDay] = useState(1);
+  const [outletId, setOutletId] = useState("");
+  const [salesId, setSalesId] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const today = new Date();
+  const todayDay = today.getDay() || 7;
+  const todayStart = new Date(today);
+  todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+  const { data: outlets = [], isLoading: outletsLoading } = useQuery({
+    queryKey: ["schedule-outlets", ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("outlets").select("id,name").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: members = [], isLoading: membersLoading } = useQuery({
+    queryKey: ["schedule-team", ownerId],
+    enabled: !!ownerId && isOwner,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("user_id,profiles!team_members_user_id_fkey(display_name,username,user_email)")
+        .eq("owner_id", ownerId ?? "")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: schedules = [], isLoading: schedulesLoading } = useQuery({
+    queryKey: ["store-schedules", ownerId, profile?.userId, profile?.role],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const client = supabase as any;
+      let query = client
+        .from("store_schedules")
+        .select("id,outlet_id,sales_id,day_of_week,note,visit_order,outlets(name),profiles!store_schedules_sales_id_fkey(display_name,username,user_email)")
+        .eq("owner_id", ownerId)
+        .order("day_of_week")
+        .order("visit_order", { ascending: true, nullsFirst: false })
+        .order("created_at");
+      if (!isOwner && profile?.userId) query = query.eq("sales_id", profile.userId).eq("day_of_week", todayDay);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const grouped = useMemo(() => DAYS.map((d) => ({
+    ...d,
+    items: schedules.filter((item: any) => item.day_of_week === d.value),
+  })), [schedules]);
+  const { data: visitStatus = { visited: [], paid: [] }, isLoading: visitsLoading } = useQuery({
+    queryKey: ["schedule-visited-today", ownerId, profile?.userId, todayStart.toISOString().slice(0, 10)],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      let query = supabase.from("transactions").select("outlet_id,amount_paid,visit_date").eq("user_id", ownerId).gte("visit_date", todayStart.toISOString()).lt("visit_date", tomorrowStart.toISOString());
+      if (!isOwner && profile?.userId) query = query.eq("sales_user_id", profile.userId);
+      const { data, error } = await query;
+      if (error) throw error;
+      const visited = new Set<string>();
+      const paid = new Set<string>();
+      for (const row of data ?? []) {
+        if (!row.outlet_id) continue;
+        visited.add(row.outlet_id);
+        if (Number(row.amount_paid) > 0) paid.add(row.outlet_id);
+      }
+      return { visited: [...visited], paid: [...paid] };
+    },
+    staleTime: 15_000,
+  });
+
+  const visitedOutletIds = useMemo(() => new Set(visitStatus.visited), [visitStatus]);
+  const paidOutletIds = useMemo(() => new Set(visitStatus.paid), [visitStatus]);
   const collectedOutletIds = useMemo(() => new Set(collectedToday), [collectedToday]);
   const todayOutletIds = useMemo<string[]>(
     () => [...new Set((schedules as any[]).map((item) => item.outlet_id).filter(Boolean))] as string[],
@@ -268,7 +410,7 @@ function SchedulePage() {
             <div className="font-semibold">Jadwal Hari Ini · {DAYS.find((d) => d.value === todayDay)?.label}</div>
             <div className="mt-1 text-xs text-muted-foreground">
               {schedules.length} outlet dijadwalkan untuk dikunjungi
-              {!collectionsLoading && ` · ${schedules.filter((item: any) => collectedOutletIds.has(item.outlet_id)).length} sudah tertagih`}
+              {!collectionsLoading && ` · ${schedules.filter((item: any) => visitedOutletIds.has(item.outlet_id)).length} sudah tertagih`}
             </div>
           </div>
         )}
@@ -286,7 +428,7 @@ function SchedulePage() {
                           <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
                           {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
                             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                              <CheckCircle2 className="h-3 w-3" /> Sudah tertagih
+                              <CheckCircle2 className="h-3 w-3" /> {paidOutletIds.has(item.outlet_id) ? "Sudah tertagih" : "Sudah dikunjungi"}
                             </span>
                           )}
                         </div>
@@ -319,7 +461,7 @@ function SchedulePage() {
                       <div className="flex items-center gap-2">
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>
                         <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
-                        {collectedOutletIds.has(item.outlet_id) && (
+                        {visitedOutletIds.has(item.outlet_id) && (
                           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
                             <CheckCircle2 className="h-3 w-3" /> Sudah tertagih
                           </span>
