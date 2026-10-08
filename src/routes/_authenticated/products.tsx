@@ -21,7 +21,7 @@ const emptyForm: ProductForm = { name: "", price: "", priceGrosir: "", priceAgen
 function ProductsPage() {
   const { data: account, isLoading } = useProfile();
   if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
-  if (account?.role !== "owner") return <div className="p-10 text-center text-destructive">Hanya Owner yang dapat melihat Master Produk.</div>;
+  if (!account || !["owner", "manager", "admin"].includes(account.role)) return <div className="p-10 text-center text-destructive">Akses akun tidak tersedia.</div>;
   return <OwnerProductsPage />;
 }
 
