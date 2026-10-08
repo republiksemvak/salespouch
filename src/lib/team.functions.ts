@@ -10,7 +10,15 @@ type TeamActor = { ownerId: string; position: "owner" | TeamPosition };
 async function getTeamActor(context: { supabase: any; userId: string }): Promise<TeamActor> {
   const { data: authUser, error: authError } = await context.supabase.auth.getUser();
   if (!authError && authUser.user && authUser.user.id === context.userId && isSuperAdminEmail(authUser.user.email)) return { ownerId: context.userId, position: "owner" };
-  const { data: member, error: memberError } = await context.supabase.from("team_members").select("owner_id,position").eq("user_id", context.userId).maybeSingle();
+  // Use the service-role client for team identity lookup. A Manager/Admin
+  // may not have SELECT visibility on team_members under the normal RLS policy,
+  // which would otherwise make this function incorrectly fall back to Owner.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: member, error: memberError } = await supabaseAdmin
+    .from("team_members")
+    .select("owner_id,position")
+    .eq("user_id", context.userId)
+    .maybeSingle();
   if (memberError) throw memberError;
   if (member) return { ownerId: member.owner_id, position: member.position as TeamPosition };
   const { data: profile, error: profileError } = await context.supabase.from("profiles").select("id").eq("id", context.userId).maybeSingle();
