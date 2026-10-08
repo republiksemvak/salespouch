@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Wallet, Plus, Minus } from "lucide-react";
+import { ArrowLeft, Wallet, Plus, Minus, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -38,6 +38,7 @@ function TravelFundsPage() {
   const [givenAt, setGivenAt] = useState(new Date().toISOString().slice(0, 10));
   const [transactionType, setTransactionType] = useState<"in" | "out">("in");
   const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ["travel-fund-team", ownerId],
@@ -149,7 +150,7 @@ function TravelFundsPage() {
       </header>
 
       {canManage && (
-        <form onSubmit={addFund} className="mt-6 space-y-3 rounded-2xl border bg-card p-4">
+        <section className="mt-6 rounded-2xl border bg-card p-4">
           <div className="flex rounded-lg border bg-muted/30 p-1">
             <button type="button" onClick={() => setTransactionType("in")} className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-medium ${transactionType === "in" ? "bg-background shadow-sm" : "text-muted-foreground"}`}><Plus className="h-4 w-4" />Uang Masuk</button>
             <button type="button" onClick={() => setTransactionType("out")} className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-medium ${transactionType === "out" ? "bg-background shadow-sm" : "text-muted-foreground"}`}><Minus className="h-4 w-4" />Kurangi</button>
@@ -166,7 +167,8 @@ function TravelFundsPage() {
             {transactionType === "in" ? <Plus className="mr-2 h-4 w-4" /> : <Minus className="mr-2 h-4 w-4" />}
             {saving ? "Menyimpan..." : transactionType === "in" ? "Tambah Uang Jalan" : "Kurangi Uang Jalan"}
           </Button>
-        </form>
+          </form>}
+        </section>
       )}
 
       {!canManage && ownBalance && (
