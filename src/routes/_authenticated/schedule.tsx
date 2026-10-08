@@ -410,7 +410,7 @@ function SchedulePage() {
             <div className="font-semibold">Jadwal Hari Ini · {DAYS.find((d) => d.value === todayDay)?.label}</div>
             <div className="mt-1 text-xs text-muted-foreground">
               {schedules.length} outlet dijadwalkan untuk dikunjungi
-              {!collectionsLoading && ` · ${schedules.filter((item: any) => visitedOutletIds.has(item.outlet_id)).length} sudah tertagih`}
+              {!visitsLoading && ` · ${schedules.filter((item: any) => paidOutletIds.has(item.outlet_id)).length} sudah tertagih`}
             </div>
           </div>
         )}
@@ -426,7 +426,7 @@ function SchedulePage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
-                          {item.day_of_week === todayDay && collectedOutletIds.has(item.outlet_id) && (
+                          {item.day_of_week === todayDay && visitedOutletIds.has(item.outlet_id) && (
                             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
                               <CheckCircle2 className="h-3 w-3" /> {paidOutletIds.has(item.outlet_id) ? "Sudah tertagih" : "Sudah dikunjungi"}
                             </span>
