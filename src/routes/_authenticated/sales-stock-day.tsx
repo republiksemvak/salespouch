@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, RefreshCw, Truck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Plus, RefreshCw, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
 import { useProducts } from "@/lib/products";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/sales-stock-day")({
   head: () => ({ 
@@ -36,6 +37,10 @@ function SalesStockDayPage() {
   const [stockDate, setStockDate] = useState(today);
   const [busy, setBusy] = useState(false);
   const ownerId = account?.ownerId;
+  const isOwner = account?.role === "owner";
+  const [loadProductId, setLoadProductId] = useState("");
+  const [loadPacks, setLoadPacks] = useState("");
+  const [loadPcs, setLoadPcs] = useState("");
 
   const { data: members = [] } = useQuery<Member[]>({ 
     queryKey: ["sales-stock-members", ownerId], 
@@ -51,9 +56,11 @@ function SalesStockDayPage() {
     } 
   });
 
-  if (account?.role === "sales" && account.userId && salesUserId !== account.userId) {
-    setSalesUserId(account.userId);
-  }
+  useEffect(() => {
+    if (account?.role === "sales" && account.userId && salesUserId !== account.userId) {
+      setSalesUserId(account.userId);
+    }
+  }, [account?.role, account?.userId, salesUserId]);
 
   const selectedMember = members.find((m) => m.user_id === salesUserId);
   const selectedSalesName =
@@ -139,6 +146,31 @@ function SalesStockDayPage() {
       queryClient.invalidateQueries({ queryKey: ["master-stock-warehouse"] }),
       queryClient.invalidateQueries({ queryKey: ["visit-sales-stock"] })
     ]); 
+  }
+
+  async function handleLoadStock(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isOwner) return;
+    if (!salesUserId) return toast.error("Pilih Sales tujuan.");
+    if (!loadProductId) return toast.error("Pilih produk yang dimuat.");
+    const prod = products.find((p) => p.id === loadProductId);
+    const pSize = Math.max(1, Number(prod?.pcs_per_pack ?? 1));
+    const totalPcs = (Number(loadPacks) || 0) * pSize + (Number(loadPcs) || 0);
+    if (totalPcs <= 0) return toast.error("Masukkan jumlah muatan minimal 1 pcs.");
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc("record_sales_morning_load", {
+        _sales_user_id: salesUserId,
+        _items: [{ product_id: loadProductId, quantity: totalPcs }],
+        _stock_date: stockDate,
+        _occurred_at: new Date().toISOString(),
+      } as any);
+      if (error) throw error;
+      toast.success(`Berhasil memuat ${totalPcs} pcs ke Sales.`);
+      setLoadProductId(""); setLoadPacks(""); setLoadPcs("");
+      await refresh();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setBusy(false); }
   }
 
   async function handleReturnStock() {
@@ -252,7 +284,7 @@ function SalesStockDayPage() {
         )}
       </section>
 
-      <section className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-sm">
+      {isOwner && <section className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
             <RefreshCw className="h-5 w-5" />
@@ -274,6 +306,6 @@ function SalesStockDayPage() {
         >
           {busy ? "Memproses…" : "Kembalikan Semua Stok ke Gudang"}
         </Button>
-      </section>
+      </section>}
     </main>
   );}
