@@ -49,10 +49,13 @@ function SalesExpenses() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const expensesQuery = useQuery({
-    queryKey: ["sales-expenses", ownerId, role],
+    queryKey: ["sales-expenses", ownerId, role, userId],
     enabled: Boolean(ownerId && canAccess),
     queryFn: async () => {
-      const { data, error } = await supabase.from("sales_expenses").select("id,category,amount,note,spent_at,sales_id").order("spent_at", { ascending: false }).order("created_at", { ascending: false });
+      let query = supabase.from("sales_expenses").select("id,category,amount,note,spent_at,sales_id").order("spent_at", { ascending: false }).order("created_at", { ascending: false });
+      if (role === "sales" && userId) query = query.eq("sales_id", userId);
+      else if (isOwner && ownerId) query = query.eq("owner_id", ownerId);
+      const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as Expense[];
     },
@@ -76,7 +79,12 @@ function SalesExpenses() {
     for (const member of teamMembers ?? []) { const p = member.profiles; map.set(member.user_id, p?.display_name ?? p?.username ?? p?.user_email ?? "Sales"); }
     return map;
   }, [teamMembers]);
-  const categories = categoriesQuery.data ?? [];
+  const DEFAULT_CATEGORIES = ["Bensin", "Parkir", "Makan", "Tol", "Pulsa", "Operasional"];
+  const categories = useMemo(() => {
+    const db = categoriesQuery.data ?? [];
+    const existing = new Set(db.map((item) => item.name.toLowerCase()));
+    return [...DEFAULT_CATEGORIES.filter((name) => !existing.has(name.toLowerCase())).map((name) => ({ id: `default-${name}`, name, created_by: "system" })), ...db];
+  }, [categoriesQuery.data]);
 
   useEffect(() => { if (!category && categories[0]) setCategory(categories[0].name); }, [categories, category]);
   const total = useMemo(() => (expensesQuery.data ?? []).reduce((sum, item) => sum + Number(item.amount), 0), [expensesQuery.data]);
