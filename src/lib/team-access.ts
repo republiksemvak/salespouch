@@ -134,6 +134,17 @@ export function hasAccess(permissions: string[], key: string) {
   return permissions.includes(key);
 }
 
+export function expandLegacyManagerPermissions(saved: string[]) {
+  const result = new Set(saved);
+  for (const group of ACCESS_GROUPS) for (const item of group.items) {
+    if (!item.children?.length) continue;
+    const hasChild = item.children.some((child) => result.has(child.key));
+    if (result.has(item.key) && !hasChild) item.children.forEach((child) => result.add(child.key));
+    if (hasChild) result.add(item.key);
+  }
+  return [...result];
+}
+
 export function hasAnyAccess(permissions: string[], keys: string[]) {
   return keys.some((key) => permissions.includes(key));
 }
