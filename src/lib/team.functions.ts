@@ -37,10 +37,28 @@ export const getMyTeamPermissions = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const actor = await getTeamActor(context);
     if (actor.position === "owner") return { role: "owner" as const, permissions: [] as string[] };
+
+    const roleDefaults: Record<"admin" | "manager" | "sales", string[]> = {
+      admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
+      manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
+      sales: ["outlets", "sales_stock", "transactions", "travel_funds", "notes"],
+    };
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.from("team_permissions").select("permission_key").eq("owner_id", actor.ownerId).eq("user_id", context.userId);
+    const { data, error } = await supabaseAdmin
+      .from("team_permissions")
+      .select("permission_key")
+      .eq("owner_id", actor.ownerId)
+      .eq("user_id", context.userId);
     if (error) throw error;
-    return { role: actor.position, permissions: (data ?? []).map((item) => item.permission_key) };
+
+    // Existing saved permissions are authoritative. If none have ever been
+    // saved, use the role's recommended defaults instead of locking everything.
+    const savedPermissions = (data ?? []).map((item) => item.permission_key);
+    return {
+      role: actor.position,
+      permissions: savedPermissions.length ? savedPermissions : roleDefaults[actor.position],
+    };
   });
 
 export const getOwnerProducts = createServerFn({ method: "GET" })
