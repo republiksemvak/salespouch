@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CalendarDays, CheckCircle2, GripVertical, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -35,6 +35,10 @@ function SchedulePage() {
   const [busy, setBusy] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const dragPointerId = useRef<number | null>(null);
+  const dragCandidateId = useRef<string | null>(null);
+  const dragStartPoint = useRef({ x: 0, y: 0 });
+  const dragOverRef = useRef<string | null>(null);
 
   const today = new Date();
   const todayDay = today.getDay() || 7;
@@ -186,23 +190,39 @@ function SchedulePage() {
     if (!draggingId) return;
 
     const handlePointerMove = (event: PointerEvent) => {
+      if (dragPointerId.current !== null && event.pointerId !== dragPointerId.current) return;
+      event.preventDefault();
+
       const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
       const card = target?.closest("[data-schedule-id]") as HTMLElement | null;
       const id = card?.dataset.scheduleId;
       if (!id || id === draggingId) return;
 
-      const dragged = schedules.find((item: any) => item.id === draggingId) as any;
       const over = schedules.find((item: any) => item.id === id) as any;
-      if (dragged?.day_of_week === todayDay && over?.day_of_week === todayDay) {
+      if (over?.day_of_week === todayDay) {
+        dragOverRef.current = id;
         setDragOverId(id);
       }
     };
 
-    const handlePointerUp = () => {
-      if (!draggingId) return;
-      const fromIndex = schedules.findIndex((item: any) => item.id === draggingId);
-      const toIndex = dragOverId ? schedules.findIndex((item: any) => item.id === dragOverId) : fromIndex;
+    const finishDrag = () => {
+      const currentDraggingId = dragCandidateId.current;
+      const currentOverId = dragOverRef.current;
+      dragPointerId.current = null;
+      dragCandidateId.current = null;
+      dragOverRef.current = null;
+
+      if (!currentDraggingId) {
+        setDraggingId(null);
+        setDragOverId(null);
+        return;
+      }
+
+      const fromIndex = schedules.findIndex((item: any) => item.id === currentDraggingId);
+      const toIndex = currentOverId ? schedules.findIndex((item: any) => item.id === currentOverId) : fromIndex;
+
       setDragOverId(null);
+
       if (fromIndex >= 0 && toIndex >= 0 && fromIndex !== toIndex) {
         void reorderSchedules(fromIndex, toIndex);
       } else {
@@ -210,15 +230,16 @@ function SchedulePage() {
       }
     };
 
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
-    window.addEventListener("pointercancel", handlePointerUp);
+    window.addEventListener("pointermove", handlePointerMove, { passive: false });
+    window.addEventListener("pointerup", finishDrag);
+    window.addEventListener("pointercancel", finishDrag);
+
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-      window.removeEventListener("pointercancel", handlePointerUp);
+      window.removeEventListener("pointerup", finishDrag);
+      window.removeEventListener("pointercancel", finishDrag);
     };
-  }, [draggingId, dragOverId, schedules, todayDay, isOwner, busy]);
+  }, [draggingId, schedules, todayDay]);
 
   async function addSchedule(e: FormEvent) {
     e.preventDefault();
@@ -336,13 +357,29 @@ function SchedulePage() {
                 {DAYS.find((d) => d.value === todayDay)?.label}
               </span>
             </h2>
-            <p className="mb-3 text-xs text-muted-foreground">Atur sendiri urutan toko yang ingin ditagih. Nilai tagihan di bawah adalah sisa tagihan terakhir toko.</p>
+            <p className="mb-3 text-xs text-muted-foreground">Tekan lalu geser kartu toko untuk mengatur urutan tagihan.</p>
             <div className="space-y-2">
               {schedules.map((item: any, index: number) => (
                 <div
                   key={item.id}
                   data-schedule-id={item.id}
-                  className={`rounded-xl border bg-card p-3 transition-all ${dragOverId === item.id ? "border-primary ring-2 ring-primary/20" : ""} ${draggingId === item.id ? "scale-[0.99] opacity-60" : ""}`}
+                  onPointerDown={(event) => {
+                    if (busy || isOwner) return;
+                    dragPointerId.current = event.pointerId;
+                    dragCandidateId.current = item.id;
+                    dragStartPoint.current = { x: event.clientX, y: event.clientY };
+                  }}
+                  onPointerMove={(event) => {
+                    if (busy || dragCandidateId.current !== item.id || dragPointerId.current !== event.pointerId) return;
+                    const dx = event.clientX - dragStartPoint.current.x;
+                    const dy = event.clientY - dragStartPoint.current.y;
+                    if (!draggingId && Math.hypot(dx, dy) > 8) {
+                      setDraggingId(item.id);
+                      dragOverRef.current = item.id;
+                      setDragOverId(item.id);
+                    }
+                  }}
+                  className={`rounded-xl border bg-card p-3 transition-all ${draggingId === item.id ? "touch-none scale-[0.99] opacity-60" : ""} ${dragOverId === item.id ? "border-primary ring-2 ring-primary/20" : ""}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -354,10 +391,9 @@ function SchedulePage() {
                           disabled={busy}
                           onPointerDown={(event) => {
                             if (busy) return;
-                            event.preventDefault();
-                            setDraggingId(item.id);
-                            setDragOverId(item.id);
-                            event.currentTarget.setPointerCapture?.(event.pointerId);
+                            dragPointerId.current = event.pointerId;
+                            dragCandidateId.current = item.id;
+                            dragStartPoint.current = { x: event.clientX, y: event.clientY };
                           }}
                           className="flex h-8 w-8 shrink-0 touch-none items-center justify-center rounded-lg bg-primary/10 text-primary active:bg-primary/20"
                         >
