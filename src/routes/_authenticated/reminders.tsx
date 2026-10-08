@@ -19,7 +19,8 @@ type Reminder = { id: string; title: string; note: string | null; reminder_date:
 function Reminders() {
   const { data: profileData, isLoading } = useProfile();
   const queryClient = useQueryClient();
-  // For Sales, profileData.profile is the OWNER profile; userId is the authenticated account that owns these personal reminders.\n  const userId = profileData?.userId;
+  // For Sales, profileData.profile is the OWNER profile; userId is the authenticated account that owns these personal reminders.
+  const userId = profileData?.userId;
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [reminderDate, setReminderDate] = useState("");
