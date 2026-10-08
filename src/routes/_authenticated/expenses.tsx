@@ -129,7 +129,7 @@ function SalesExpenses() {
     const payload = { category: category.trim(), amount: numericAmount, note: note.trim() || null, spent_at: spentAt };
     const result = editingExpense
       ? await supabase.from("sales_expenses").update(payload).eq("id", editingExpense.id).eq("sales_id", userId)
-      : await (supabase as any).rpc("record_sales_expense", {
+      : await supabase.rpc("record_sales_expense", {
           p_category: payload.category,
           p_amount: payload.amount,
           p_note: payload.note,
