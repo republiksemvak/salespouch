@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ChevronRight,
   ShoppingCart,
+  LockKeyhole,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeSwitcher } from "@/components/mode-switcher";
@@ -370,52 +371,145 @@ export function SalesDashboard({ businessName, profile, salesUserId }: Dashboard
   );
 }
 
-export function ManagerDashboard({ businessName, permissions }: PermissionDashboardProps) {
-  const can = (key: string) => permissions.includes(key);
+function PermissionIconMenu({
+  to,
+  icon: Icon,
+  label,
+  permission,
+  permissions,
+  badgeColor = "text-primary bg-primary/10",
+}: {
+  to: string;
+  icon: typeof Store;
+  label: string;
+  permission: string;
+  permissions: string[];
+  badgeColor?: string;
+}) {
+  const allowed = permissions.includes(permission);
+
+  if (!allowed) {
+    return (
+      <div
+        aria-disabled="true"
+        title="Akses dikunci Owner"
+        className="relative flex flex-col items-center justify-center rounded-xl p-2 text-center opacity-45"
+      >
+        <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+          <Icon className="h-5 w-5" />
+          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-amber-100 text-amber-700">
+            <LockKeyhole className="h-2.5 w-2.5" />
+          </span>
+        </div>
+        <span className="mt-1.5 text-[11px] font-medium leading-tight text-muted-foreground line-clamp-2">{label}</span>
+      </div>
+    );
+  }
+
+  return <CompactIconMenu to={to} icon={Icon} label={label} badgeColor={badgeColor} />;
+}
+
+function PermissionDashboardMenu({ permissions }: { permissions: string[] }) {
+  const items = [
+    { to: "/products", icon: Package, label: "Produk", permission: "products", badgeColor: "bg-amber-500/10 text-amber-600" },
+    { to: "/master-stock", icon: Warehouse, label: "Gudang", permission: "master_stock", badgeColor: "bg-blue-500/10 text-blue-600" },
+    { to: "/warehouse-direct-sale", icon: History, label: "Direct Sale", permission: "direct_selling", badgeColor: "bg-emerald-500/10 text-emerald-600" },
+    { to: "/reports", icon: BarChart3, label: "Laporan", permission: "reports", badgeColor: "bg-purple-500/10 text-purple-600" },
+    { to: "/team", icon: Users, label: "Tim Sales", permission: "team", badgeColor: "bg-sky-500/10 text-sky-600" },
+    { to: "/operations", icon: Settings2, label: "Operasional", permission: "operations", badgeColor: "bg-slate-500/10 text-slate-600" },
+    { to: "/notes", icon: FileText, label: "Catatan", permission: "notes", badgeColor: "bg-orange-500/10 text-orange-600" },
+    { to: "/profile", icon: Building2, label: "Profil", permission: "profile", badgeColor: "bg-teal-500/10 text-teal-600" },
+  ];
+
+  return (
+    <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
+      <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        Manajemen & Data Master
+      </div>
+      <div className="grid grid-cols-4 gap-1">
+        {items.map((item) => (
+          <PermissionIconMenu key={item.permission} {...item} permissions={permissions} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PermissionQuickActions({ permissions }: { permissions: string[] }) {
+  const items = [
+    { to: "/transactions", icon: ShoppingCart, label: "Penjualan", hint: "Nota & Kasir", permission: "transactions", color: "bg-purple-500/10 text-purple-600" },
+    { to: "/sales-stock-day", icon: Truck, label: "Stok Sales", hint: "Muat & Setor", permission: "sales_stock", color: "bg-blue-500/10 text-blue-600" },
+    { to: "/outlets", icon: Store, label: "Outlet", hint: "Data Warung", permission: "outlets", color: "bg-amber-500/10 text-amber-600" },
+  ];
+
+  return (
+    <div className="mt-3 grid grid-cols-3 gap-2">
+      {items.map((item) => {
+        const allowed = permissions.includes(item.permission);
+        if (!allowed) {
+          return (
+            <div key={item.permission} aria-disabled="true" className="relative flex items-center gap-2 rounded-lg border bg-muted/40 p-2.5 opacity-45">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <item.icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold leading-tight">{item.label}</div>
+                <div className="text-[10px] text-muted-foreground">🔒 Terkunci</div>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <Link key={item.permission} to={item.to as never} className="flex items-center gap-2 rounded-lg border bg-card p-2.5 transition-colors hover:bg-muted/50">
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${item.color}`}>
+              <item.icon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold leading-tight">{item.label}</div>
+              <div className="text-[10px] text-muted-foreground">{item.hint}</div>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function RolePermissionDashboard({
+  roleTitle,
+  subtitle,
+  permissions,
+}: {
+  roleTitle: string;
+  subtitle: string;
+  permissions: string[];
+}) {
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
-      <Header title="Manager" subtitle={businessName || "Operasional Tim"} />
-      <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
-        <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          Menu Akses Manager
-        </div>
-        <div className="grid grid-cols-4 gap-1">
-          {can("team") && <CompactIconMenu to="/team" icon={Users} label="Tim" />}
-          {can("outlets") && <CompactIconMenu to="/outlets" icon={Store} label="Outlet" />}
-          {can("schedule") && <CompactIconMenu to="/schedule" icon={CalendarDays} label="Jadwal" />}
-          {can("reports") && <CompactIconMenu to="/reports" icon={BarChart3} label="Laporan" />}
-          {can("sales_stock") && <CompactIconMenu to="/sales-stock-day" icon={Truck} label="Stok Sales" />}
-          {can("transactions") && <CompactIconMenu to="/transactions" icon={History} label="Transaksi" />}
-          {can("travel_funds") && <CompactIconMenu to="/travel-funds" icon={Wallet} label="Uang Jalan" />}
-          {can("operations") && <CompactIconMenu to="/operations" icon={Settings2} label="Operasional" />}
+      <Header title={roleTitle} subtitle={subtitle} />
+
+      <section className="mt-3 rounded-xl border bg-card/60 p-3 shadow-xs">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-primary" />
+          <div>
+            <div className="text-xs font-semibold">Akses Menu</div>
+            <div className="text-[10px] text-muted-foreground">Menu yang terkunci ditandai 🔒 dan hanya dapat dibuka Owner.</div>
+          </div>
         </div>
       </section>
+
+      <PermissionQuickActions permissions={permissions} />
+      <PermissionDashboardMenu permissions={permissions} />
     </main>
   );
 }
 
+export function ManagerDashboard({ businessName, permissions }: PermissionDashboardProps) {
+  return <RolePermissionDashboard roleTitle="Manager" subtitle={businessName || "Operasional Tim"} permissions={permissions} />;
+}
+
 export function AdminDashboard({ businessName, permissions }: PermissionDashboardProps) {
-  const can = (key: string) => permissions.includes(key);
-  return (
-    <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
-      <Header title="Admin" subtitle={businessName || "Administrasi Usaha"} />
-      <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
-        <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          Menu Akses Admin
-        </div>
-        <div className="grid grid-cols-4 gap-1">
-          {can("team") && <CompactIconMenu to="/team" icon={Users} label="Tim" />}
-          {can("outlets") && <CompactIconMenu to="/outlets" icon={Store} label="Outlet" />}
-          {can("schedule") && <CompactIconMenu to="/schedule" icon={CalendarDays} label="Jadwal" />}
-          {can("reports") && <CompactIconMenu to="/reports" icon={BarChart3} label="Laporan" />}
-          {can("sales_stock") && <CompactIconMenu to="/sales-stock-day" icon={Truck} label="Stok Sales" />}
-          {can("transactions") && <CompactIconMenu to="/transactions" icon={History} label="Transaksi" />}
-          {can("travel_funds") && <CompactIconMenu to="/travel-funds" icon={Wallet} label="Uang Jalan" />}
-          {can("notes") && <CompactIconMenu to="/notes" icon={FileText} label="Catatan" />}
-        </div>
-      </section>
-    </main>
-  );
+  return <RolePermissionDashboard roleTitle="Admin" subtitle={businessName || "Administrasi Usaha"} permissions={permissions} />;
 }
 
 
