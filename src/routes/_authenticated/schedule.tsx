@@ -337,21 +337,6 @@ function SchedulePage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          aria-label="Geser untuk mengatur urutan"
-                          title="Tekan dan geser untuk mengatur urutan"
-                          disabled={busy}
-                          onPointerDown={(event) => {
-                            if (busy) return;
-                            dragPointerId.current = event.pointerId;
-                            dragCandidateId.current = item.id;
-                            dragStartPoint.current = { x: event.clientX, y: event.clientY };
-                          }}
-                          className="flex h-8 w-8 shrink-0 touch-none items-center justify-center rounded-lg bg-primary/10 text-primary active:bg-primary/20"
-                        >
-                          <GripVertical className="h-4 w-4" />
-                        </button>
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>
                         <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
                         {visitedOutletIds.has(item.outlet_id) && (
