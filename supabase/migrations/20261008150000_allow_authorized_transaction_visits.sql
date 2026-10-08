@@ -29,11 +29,6 @@ WITH CHECK (
         AND tm.position = 'sales'
     )
   )
-  AND (
-    public.is_business_owner()
-    OR public.has_team_permission('transactions')
-    OR sales_user_id = auth.uid()
-  )
 );
 
 NOTIFY pgrst, 'reload schema';
