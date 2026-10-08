@@ -161,24 +161,21 @@ function VisitPage() {
 
   const selectedSalesId = findSalesUser(salesName);
   const salesStock = useQuery({
-    queryKey: ["visit-sales-stock", account?.ownerId, selectedSalesId, products.map((p) => p.id).join(",")],
-    enabled: started && !!account?.ownerId && !!selectedSalesId && products.length > 0,
+    queryKey: ["visit-sales-stock", account?.ownerId, selectedSalesId],
+    enabled: started && !!account?.ownerId && !!selectedSalesId,
     staleTime: 0,
     queryFn: async () => {
       if (!account?.ownerId || !selectedSalesId) throw new Error("Sales belum dipilih");
-      const { data: location, error } = await supabase.from("stock_locations")
-        .select("id").eq("owner_id", account.ownerId).eq("location_type", "sales")
-        .eq("team_member_user_id", selectedSalesId).eq("is_active", true).maybeSingle();
+      const { data, error } = await (supabase as any).rpc("get_sales_current_stock", {
+        _sales_user_id: selectedSalesId,
+      });
       if (error) throw error;
-      if (!location) return new Map<string, number>();
-      const balances = await Promise.all(products.map(async (product) => {
-        const { data, error: balanceError } = await (supabase as any).rpc("sales_location_balance", {
-          _owner_id: account.ownerId, _sales_location_id: location.id, _product_id: product.id,
-        });
-        if (balanceError) throw balanceError;
-        return [product.id, Number(data) || 0] as const;
-      }));
-      return new Map(balances);
+
+      const balances = new Map<string, number>();
+      for (const row of (data ?? []) as { product_id: string; quantity: number }[]) {
+        balances.set(row.product_id, Number(row.quantity) || 0);
+      }
+      return balances;
     },
   });
 
