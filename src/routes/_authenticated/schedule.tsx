@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, GripVertical, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, GripVertical, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -180,12 +180,6 @@ function SchedulePage() {
       setDraggingId(null);
       setDragOverId(null);
     }
-  };
-
-  const moveSchedule = async (index: number, direction: -1 | 1) => {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= schedules.length) return;
-    await reorderSchedules(index, nextIndex);
   };
 
   useEffect(() => {
@@ -382,14 +376,6 @@ function SchedulePage() {
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">PIC: {item.profiles?.display_name ?? item.profiles?.username ?? item.profiles?.user_email ?? "Sales"}</div>
                       {item.note && <div className="mt-1 text-xs text-muted-foreground">{item.note}</div>}
-                      <div className="mt-3 flex gap-1">
-                        <Button variant="outline" size="sm" disabled={busy || index === 0} onClick={() => moveSchedule(index, -1)}>
-                          <ArrowUp className="mr-1 h-3.5 w-3.5" /> Naik
-                        </Button>
-                        <Button variant="outline" size="sm" disabled={busy || index === schedules.length - 1} onClick={() => moveSchedule(index, 1)}>
-                          <ArrowDown className="mr-1 h-3.5 w-3.5" /> Turun
-                        </Button>
-                      </div>
                     </div>
                   </div>
                 </div>
