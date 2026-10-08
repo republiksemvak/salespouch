@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, Camera, Crosshair, MapPin, Pencil, Phone, Plus, Search, Store } from "lucide-react";
+import { ArrowLeft, CalendarDays, Camera, Crosshair, Info, MapPin, Pencil, Phone, Plus, Search, Store } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signedPhotoUrls, uploadStorePhoto } from "@/lib/photos";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { loadLastVisit } from "@/lib/visit";
 
 export const Route = createFileRoute("/_authenticated/outlets")({
   head: () => ({
@@ -49,6 +51,9 @@ function AllOutlets() {
   const [sort, setSort] = useState<RegistrationSort>("newest");
   const [scheduleDay, setScheduleDay] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [infoId, setInfoId] = useState<string | null>(null);
+  const [infoLoading, setInfoLoading] = useState(false);
+  const [infoData, setInfoData] = useState<any>(null);
   const [showCreate, setShowCreate] = useState(false);
   const ownerId = account?.ownerId;
   const [q, setQ] = useState("");
@@ -124,6 +129,32 @@ function AllOutlets() {
   const hasScheduleFilter = !!scheduleDay;
   const outlets = (data?.outlets ?? []).filter((outlet) => !hasScheduleFilter || filteredOutletIds.includes(outlet.id));
   const count = data?.count ?? 0;
+
+  async function openOutletInfo(outletId: string) {
+    setInfoId(outletId);
+    setInfoLoading(true);
+    setInfoData(null);
+    try {
+      const [{ data: outlet, error: outletError }, stockResult] = await Promise.all([
+        supabase.from("outlets").select("id,name,owner_name,owner_phone,address,map_location,route_notes").eq("id", outletId).single(),
+        loadLastVisit(outletId),
+      ]);
+      if (outletError) throw outletError;
+      const scheduleRows = (schedules as any[]).filter((row) => row.outlet_id === outletId);
+      const stock = (stockResult.stock ?? []).map((item) => ({
+        ...item,
+        value: (Number(item.qty) || 0) * ((Number(item.price) || 0) / (Number(item.pcs_per_pack) || 1)),
+      }));
+      setInfoData({ outlet, stock, scheduleRows });
+    } catch (error) {
+      toast.error(`Gagal memuat info outlet: ${(error as Error).message}`);
+      setInfoId(null);
+    } finally {
+      setInfoLoading(false);
+    }
+  }
+
+  const infoOutlet = outlets.find((outlet) => outlet.id === infoId);
 
   if (showCreate) {
     return <InlineCreateOutlet onBack={() => setShowCreate(false)} onSaved={async () => {
@@ -248,14 +279,73 @@ function AllOutlets() {
               {outlet.owner_phone && <a href={`tel:${outlet.owner_phone}`} className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Phone className="h-3 w-3" />{outlet.owner_phone}</a>}
               {outlet.map_location && <a href={outlet.map_location.startsWith("http") ? outlet.map_location : `https://maps.google.com/?q=${encodeURIComponent(outlet.map_location)}`} target="_blank" rel="noreferrer" className="mt-0.5 flex items-center gap-1 text-[11px] text-accent underline"><MapPin className="h-3 w-3" />Buka peta</a>}
             </div>
-            <Button type="button" variant="outline" aria-label={`Edit ${outlet.name}`} className="h-9 shrink-0 gap-1.5 px-2.5 text-sm" onClick={() => setEditingId(outlet.id)}>
-              <Pencil className="h-4 w-4" />
-              Edit
-            </Button>
+            <div className="flex shrink-0 gap-1.5">
+              <Button type="button" variant="outline" aria-label={`Info ${outlet.name}`} className="h-9 gap-1.5 px-2.5 text-sm" onClick={() => void openOutletInfo(outlet.id)}>
+                <Info className="h-4 w-4" />
+                Info
+              </Button>
+              <Button type="button" variant="outline" aria-label={`Edit ${outlet.name}`} className="h-9 gap-1.5 px-2.5 text-sm" onClick={() => setEditingId(outlet.id)}>
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+            </div>
           </div>
         ))}
       </div>
     </main>
+  );
+
+  return (
+    <Dialog open={!!infoId} onOpenChange={(open) => !open && setInfoId(null)}>
+      <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{infoData?.outlet?.name ?? infoOutlet?.name ?? "Info Outlet"}</DialogTitle>
+          <DialogDescription>Ringkasan kondisi outlet saat ini.</DialogDescription>
+        </DialogHeader>
+        {infoLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Memuat informasi outlet…</div>
+        ) : infoData ? (
+          <div className="space-y-4 text-sm">
+            <section className="rounded-xl border bg-muted/30 p-3">
+              <div className="font-semibold">Profil Outlet</div>
+              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                <div>Pemilik: <span className="font-medium text-foreground">{infoData.outlet.owner_name || "—"}</span></div>
+                <div>Telepon: <span className="font-medium text-foreground">{infoData.outlet.owner_phone || "—"}</span></div>
+                <div>Alamat: <span className="font-medium text-foreground">{infoData.outlet.address || "—"}</span></div>
+              </div>
+              {infoData.outlet.map_location && <a href={infoData.outlet.map_location.startsWith("http") ? infoData.outlet.map_location : `https://maps.google.com/?q=${encodeURIComponent(infoData.outlet.map_location)}`} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-accent underline"><MapPin className="h-3 w-3" />Buka lokasi peta</a>}
+            </section>
+
+            <section className="rounded-xl border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-semibold">Nilai Tagihan / Stok Outlet</div>
+                <div className="font-bold">Rp {Math.round(infoData.stock.reduce((sum: number, item: any) => sum + item.value, 0)).toLocaleString("id-ID")}</div>
+              </div>
+              <div className="mt-1 text-[11px] text-muted-foreground">Nilai barang titipan yang masih berada di outlet.</div>
+              {infoData.stock.length > 0 ? (
+                <div className="mt-3 space-y-2">
+                  {infoData.stock.map((item: any) => (
+                    <div key={item.name} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2">
+                      <div className="min-w-0"><div className="truncate font-medium">{item.name}</div><div className="text-[11px] text-muted-foreground">{item.qty} pcs · Rp {Math.round(item.price / (Number(item.pcs_per_pack) || 1)).toLocaleString("id-ID")}/pcs</div></div>
+                      <div className="shrink-0 text-xs font-semibold">Rp {Math.round(item.value).toLocaleString("id-ID")}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : <div className="mt-3 text-xs text-muted-foreground">Tidak ada stok titipan aktif.</div>}
+            </section>
+
+            <section className="rounded-xl border p-3">
+              <div className="font-semibold">PIC & Jadwal Kunjungan</div>
+              {infoData.scheduleRows.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  {infoData.scheduleRows.map((row: any) => <div key={row.id ?? `${row.sales_id}-${row.day_of_week}`} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2"><div><div className="font-medium">{row.profiles?.display_name ?? row.profiles?.username ?? row.profiles?.user_email ?? "Sales"}</div><div className="text-[11px] text-muted-foreground">{SCHEDULE_DAYS.find((d) => d.value === String(row.day_of_week))?.label ?? "Hari tidak diketahui"}</div></div>{row.note && <div className="max-w-[45%] text-right text-[11px] text-muted-foreground">{row.note}</div>}</div>)}
+                </div>
+              ) : <div className="mt-2 text-xs text-muted-foreground">Belum ada PIC/jadwal yang ditetapkan.</div>}
+            </section>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
 
