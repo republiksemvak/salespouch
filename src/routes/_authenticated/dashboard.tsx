@@ -31,8 +31,8 @@ function Dashboard() {
   const testMode = superAdmin ? getTestMode() : null;
   const effectiveRole = superAdmin ? testMode ?? "super-admin" : p.role;
   const roleDefaults: Record<string, string[]> = {
-    manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
-    admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
+    manager: ["team.view", "outlets.view", "schedule.view", "sales_stock.view", "transactions.view", "operations.view", "travel_funds.view", "expenses.view", "reports.view", "kpi.view", "direct_selling.view", "products.view", "master_stock.view", "notes.view"],
+    admin: ["team.view", "outlets.view", "schedule.view", "sales_stock.view", "transactions.view", "operations.view", "travel_funds.view", "expenses.view", "reports.view", "kpi.view", "direct_selling.view", "products.view", "master_stock.view", "notes.view"],
   };
   // Keep the role defaults visible while the server permission request resolves.
   // Once the server responds, its saved permissions are authoritative.
