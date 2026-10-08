@@ -29,7 +29,7 @@ type Movement = { product_id: string; from_location_id: string | null; to_locati
 type Opening = { product_id: string; location_id: string; quantity: number };
 const today = () => new Date().toISOString().slice(0, 10);
 
-function SalesStockDayPage() {
+// Sales stock visibility: Sales accounts read their own current balance through a server-side RPC.\nfunction SalesStockDayPage() {
   const { data: account, isLoading: accountLoading } = useProfile();
   const { data: products = [] } = useProducts();
   const queryClient = useQueryClient();
