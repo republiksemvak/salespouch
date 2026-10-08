@@ -47,9 +47,9 @@ export const getMyTeamPermissions = createServerFn({ method: "GET" })
     if (actor.position === "owner") return { role: "owner" as const, permissions: [] as string[] };
 
     const roleDefaults: Record<"admin" | "manager" | "sales", string[]> = {
-      admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
-      manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes"],
-      sales: ["outlets", "sales_stock", "transactions", "travel_funds", "notes"],
+      admin: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
+      manager: ["team", "outlets", "schedule", "sales_stock", "transactions", "reports", "travel_funds", "notes", "operations", "expenses"],
+      sales: ["outlets", "sales_stock", "transactions", "travel_funds", "notes", "expenses"],
     };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -97,7 +97,16 @@ export const listTeam = createServerFn({ method: "GET" })
     const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
     const permissionMap = new Map<string, string[]>();
     for (const permission of permissions ?? []) permissionMap.set(permission.user_id, [...(permissionMap.get(permission.user_id) ?? []), permission.permission_key]);
-    return members.map((member) => ({ ...member, profiles: profileMap.get(member.user_id) ?? null, manager: member.manager_id ? profileMap.get(member.manager_id) ?? null : null, permissions: permissionMap.get(member.user_id) ?? [] }));
+    return members.map((member) => {
+      const savedPermissions = permissionMap.get(member.user_id) ?? [];
+      return {
+        ...member,
+        profiles: profileMap.get(member.user_id) ?? null,
+        manager: member.manager_id ? profileMap.get(member.manager_id) ?? null : null,
+        permissions: savedPermissions,
+        hasCustomPermissions: permissions.some((item) => item.user_id === member.user_id),
+      };
+    });
   });
 
 export const setTeamMemberRole = createServerFn({ method: "POST" })
