@@ -32,7 +32,7 @@ function OperationsPage() {
   const ownerId = profile?.ownerId;
   const { data: access } = useTeamPermissions(profile?.role === "manager" || profile?.role === "admin");
   const permissions = access?.permissions ?? [];
-  const canManage = !!isAdmin || profile?.role === "owner" || ((profile?.role === "manager" || profile?.role === "admin") && hasAccess(permissions, "operations.view"));
+  const canManage = true;
   const canTravel = profile?.role === "owner" || hasAccess(permissions, "operations.travel_funds");
   const canExpense = profile?.role === "owner" || hasAccess(permissions, "operations.expenses");
   const canReport = profile?.role === "owner" || hasAccess(permissions, "operations.reports");
