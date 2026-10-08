@@ -32,6 +32,8 @@ const managerAdminGroups: PermissionGroup[] = ACCESS_GROUPS.map((group) => ({
     key: item.key,
     label: item.label,
     description: item.description,
+    viewKey: item.viewKey,
+    children: item.children?.map((child) => ({ ...child })),
   })),
 }));
 
