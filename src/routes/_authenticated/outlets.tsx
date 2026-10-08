@@ -293,9 +293,7 @@ function AllOutlets() {
         ))}
       </div>
     </main>
-  );
 
-  return (
     <Dialog open={!!infoId} onOpenChange={(open) => !open && setInfoId(null)}>
       <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
         <DialogHeader>
@@ -346,6 +344,7 @@ function AllOutlets() {
         ) : null}
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 
