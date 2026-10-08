@@ -417,6 +417,8 @@ function PermissionDashboardMenu({ permissions }: { permissions: string[] }) {
     { to: "/reports", icon: BarChart3, label: "Laporan", permission: "reports", badgeColor: "bg-purple-500/10 text-purple-600" },
     { to: "/team", icon: Users, label: "Tim Sales", permission: "team", badgeColor: "bg-sky-500/10 text-sky-600" },
     { to: "/operations", icon: Settings2, label: "Operasional", permission: "operations", badgeColor: "bg-slate-500/10 text-slate-600" },
+    { to: "/travel-funds", icon: Wallet, label: "Uang Jalan", permission: "travel_funds", badgeColor: "bg-orange-500/10 text-orange-600" },
+    { to: "/expenses", icon: FileText, label: "Pengeluaran", permission: "expenses", badgeColor: "bg-rose-500/10 text-rose-600" },
     { to: "/notes", icon: FileText, label: "Catatan", permission: "notes", badgeColor: "bg-orange-500/10 text-orange-600" },
     { to: "/profile", icon: Building2, label: "Profil", permission: "profile", badgeColor: "bg-teal-500/10 text-teal-600" },
   ];
