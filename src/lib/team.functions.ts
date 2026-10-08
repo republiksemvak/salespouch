@@ -58,6 +58,7 @@ export const getMyTeamPermissions = createServerFn({ method: "GET" })
     return {
       role: actor.position,
       permissions: savedPermissions.length ? savedPermissions : roleDefaults[actor.position],
+      hasCustomPermissions: savedPermissions.length > 0,
     };
   });
 
