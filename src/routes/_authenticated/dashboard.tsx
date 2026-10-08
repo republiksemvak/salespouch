@@ -16,7 +16,7 @@ function Dashboard() {
   const { data: p, isLoading } = useProfile();
   const fetchPermissions = useServerFn(getMyTeamPermissions);
   const { data: access } = useQuery({
-    queryKey: ["my-team-permissions", p?.userId],
+    queryKey: ["my-team-permissions", p?.userId, p?.role],
     // Only Manager/Admin dashboards consume permissions.
     // Owner and Sales do not need this extra request on dashboard load.
     enabled: !!p && (p.role === "manager" || p.role === "admin"),
@@ -44,7 +44,9 @@ function Dashboard() {
   const permissions =
     (effectiveRole === "manager" || effectiveRole === "admin")
       ? access?.role === effectiveRole
-        ? access.permissions
+        ? access.permissions.length > 0
+          ? access.permissions
+          : (roleDefaults[effectiveRole] ?? [])
         : (roleDefaults[effectiveRole] ?? [])
       : [];
 
