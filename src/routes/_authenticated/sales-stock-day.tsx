@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, Plus, RefreshCw, Truck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Plus, RefreshCw, Truck, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -41,6 +41,7 @@ function SalesStockDayPage() {
   const [loadProductId, setLoadProductId] = useState("");
   const [loadPacks, setLoadPacks] = useState("");
   const [loadPcs, setLoadPcs] = useState("");
+  const [loadFormOpen, setLoadFormOpen] = useState(false);
 
   const { data: members = [] } = useQuery<Member[]>({ 
     queryKey: ["sales-stock-members", ownerId], 
@@ -168,6 +169,7 @@ function SalesStockDayPage() {
       if (error) throw error;
       toast.success(`Berhasil memuat ${totalPcs} pcs ke Sales.`);
       setLoadProductId(""); setLoadPacks(""); setLoadPcs("");
+      setLoadFormOpen(false);
       await refresh();
     } catch (e) { toast.error((e as Error).message); }
     finally { setBusy(false); }
@@ -258,6 +260,81 @@ function SalesStockDayPage() {
           <Truck className="h-5 w-5 text-blue-700" />
         </div>
       </section>
+
+      {isOwner && (
+        <section className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/40 p-4 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setLoadFormOpen((open) => !open)}
+            className="flex w-full items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2 font-semibold text-blue-900">
+              <Plus className="h-4 w-4" />
+              Input Stok dari Gudang ke Sales
+            </div>
+            {loadFormOpen ? <ChevronUp className="h-4 w-4 text-blue-700" /> : <ChevronDown className="h-4 w-4 text-blue-700" />}
+          </button>
+
+          {loadFormOpen && (
+            <form onSubmit={handleLoadStock} className="mt-4 space-y-3">
+              <div className="text-xs leading-relaxed text-blue-800/80">
+                Muat barang dari Gudang Utama ke Sales yang dipilih. Stok Gudang akan berkurang dan stok Sales bertambah.
+              </div>
+
+              <select
+                required
+                value={salesUserId}
+                onChange={(e) => setSalesUserId(e.target.value)}
+                className="h-11 w-full rounded-xl border bg-background px-3 text-sm"
+              >
+                <option value="">Pilih Sales</option>
+                {members.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.profiles?.display_name || m.profiles?.username || m.user_id.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                required
+                value={loadProductId}
+                onChange={(e) => setLoadProductId(e.target.value)}
+                className="h-11 w-full rounded-xl border bg-background px-3 text-sm"
+              >
+                <option value="">Pilih Produk</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  inputMode="numeric"
+                  min="0"
+                  value={loadPacks}
+                  onChange={(e) => setLoadPacks(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Jumlah pack"
+                  className="h-11"
+                />
+                <Input
+                  inputMode="numeric"
+                  min="0"
+                  value={loadPcs}
+                  onChange={(e) => setLoadPcs(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Tambahan pcs"
+                  className="h-11"
+                />
+              </div>
+
+              <Button type="submit" disabled={busy || !salesUserId || !loadProductId} className="h-11 w-full rounded-xl">
+                {busy ? "Memproses…" : "Muat Stok ke Sales"}
+              </Button>
+            </form>
+          )}
+        </section>
+      )}
 
       <section className="mt-4 rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between">
