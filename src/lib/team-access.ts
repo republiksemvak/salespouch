@@ -4,7 +4,7 @@ export type AccessItem = {
   key: string;
   label: string;
   description: string;
-  viewKey: string;
+  viewKey?: string;
   children?: { key: string; label: string; description: string }[];
 };
 
