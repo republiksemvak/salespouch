@@ -36,7 +36,17 @@ function Dashboard() {
   };
   // Keep the role defaults visible while the server permission request resolves.
   // Once the server responds, its saved permissions are authoritative.
-  const permissions = access ? access.permissions : (roleDefaults[p.role] ?? []);
+  // Super Admin test mode is not a real team membership, so the server
+  // correctly identifies that account as Owner. In Manager/Admin test mode,
+  // use the selected role defaults instead of treating Owner's empty permission
+  // list as "everything locked". Real Manager/Admin accounts still use the
+  // Owner-saved permissions returned by the server.
+  const permissions =
+    (effectiveRole === "manager" || effectiveRole === "admin")
+      ? access?.role === effectiveRole
+        ? access.permissions
+        : (roleDefaults[effectiveRole] ?? [])
+      : [];
 
   if (effectiveRole === "super-admin") return <SuperAdminDashboard />;
   if (effectiveRole === "manager") return <ManagerDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} permissions={permissions} />;
