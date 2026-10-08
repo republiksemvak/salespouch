@@ -6,8 +6,7 @@ import { LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, profileQueryKey } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { accessStatus, ADMIN_TELEGRAM, ADMIN_WHATSAPP, isSuperAdminEmail } from "@/lib/access";
-import { MANAGED_ROUTE_PERMISSIONS } from "@/lib/team-access";
+import { accessStatus, ADMIN_TELEGRAM, ADMIN_WHATSAPP } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +16,7 @@ const businessModels = ["Titip Jual", "Cash", "Grosir", "Retail", "Campuran", "L
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
 
