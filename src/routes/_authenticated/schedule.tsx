@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, GripVertical, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/use-profile";
@@ -33,6 +33,8 @@ function SchedulePage() {
   const [salesId, setSalesId] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const today = new Date();
   const todayDay = today.getDay() || 7;
@@ -144,22 +146,85 @@ function SchedulePage() {
     [outstandingDebts]
   );
 
-  const moveSchedule = async (index: number, direction: -1 | 1) => {
-    if (isOwner || busy) return;
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= schedules.length) return;
-    const current = schedules[index] as any;
-    const target = schedules[nextIndex] as any;
-    if (current.day_of_week !== target.day_of_week) return;
+  const reorderSchedules = async (fromIndex: number, toIndex: number) => {
+    if (isOwner || busy || fromIndex === toIndex) return;
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= schedules.length || toIndex >= schedules.length) return;
+    const fromItem = schedules[fromIndex] as any;
+    const toItem = schedules[toIndex] as any;
+    if (fromItem.day_of_week !== todayDay || toItem.day_of_week !== todayDay) {
+      toast.error("Jadwal yang dipilih tidak valid untuk diurutkan.");
+      return;
+    }
+
     setBusy(true);
     try {
-      const { error } = await (supabase as any).rpc("swap_sales_schedule_order", { _first_id: current.id, _second_id: target.id });
-      if (error) throw error;
-      await qc.invalidateQueries({ queryKey: ["store-schedules", ownerId] });
+      const step = fromIndex < toIndex ? 1 : -1;
+      let currentIndex = fromIndex;
+      while (currentIndex !== toIndex) {
+        const nextIndex = currentIndex + step;
+        const current = schedules[currentIndex] as any;
+        const target = schedules[nextIndex] as any;
+        const { error } = await (supabase as any).rpc("swap_sales_schedule_order", {
+          _first_id: current.id,
+          _second_id: target.id,
+        });
+        if (error) throw error;
+        currentIndex = nextIndex;
+      }
+      await qc.invalidateQueries({ queryKey: ["store-schedules", ownerId, profile?.userId, profile?.role] });
       toast.success("Urutan kunjungan diperbarui");
-    } catch (error) { toast.error((error as Error).message || "Urutan gagal diperbarui."); }
-    finally { setBusy(false); }
+    } catch (error) {
+      toast.error((error as Error).message || "Urutan gagal diperbarui.");
+    } finally {
+      setBusy(false);
+      setDraggingId(null);
+      setDragOverId(null);
+    }
   };
+
+  const moveSchedule = async (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= schedules.length) return;
+    await reorderSchedules(index, nextIndex);
+  };
+
+  useEffect(() => {
+    if (!draggingId) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+      const card = target?.closest("[data-schedule-id]") as HTMLElement | null;
+      const id = card?.dataset.scheduleId;
+      if (!id || id === draggingId) return;
+
+      const dragged = schedules.find((item: any) => item.id === draggingId) as any;
+      const over = schedules.find((item: any) => item.id === id) as any;
+      if (dragged?.day_of_week === todayDay && over?.day_of_week === todayDay) {
+        setDragOverId(id);
+      }
+    };
+
+    const handlePointerUp = () => {
+      if (!draggingId) return;
+      const fromIndex = schedules.findIndex((item: any) => item.id === draggingId);
+      const toIndex = dragOverId ? schedules.findIndex((item: any) => item.id === dragOverId) : fromIndex;
+      setDragOverId(null);
+      if (fromIndex >= 0 && toIndex >= 0 && fromIndex !== toIndex) {
+        void reorderSchedules(fromIndex, toIndex);
+      } else {
+        setDraggingId(null);
+      }
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [draggingId, dragOverId, schedules, todayDay, isOwner, busy]);
 
   async function addSchedule(e: FormEvent) {
     e.preventDefault();
@@ -280,10 +345,30 @@ function SchedulePage() {
             <p className="mb-3 text-xs text-muted-foreground">Atur sendiri urutan toko yang ingin ditagih. Nilai tagihan di bawah adalah sisa tagihan terakhir toko.</p>
             <div className="space-y-2">
               {schedules.map((item: any, index: number) => (
-                <div key={item.id} className="rounded-xl border bg-card p-3">
+                <div
+                  key={item.id}
+                  data-schedule-id={item.id}
+                  className={`rounded-xl border bg-card p-3 transition-all ${dragOverId === item.id ? "border-primary ring-2 ring-primary/20" : ""} ${draggingId === item.id ? "scale-[0.99] opacity-60" : ""}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          aria-label="Geser untuk mengatur urutan"
+                          title="Tekan dan geser untuk mengatur urutan"
+                          disabled={busy}
+                          onPointerDown={(event) => {
+                            if (busy) return;
+                            event.preventDefault();
+                            setDraggingId(item.id);
+                            setDragOverId(item.id);
+                            event.currentTarget.setPointerCapture?.(event.pointerId);
+                          }}
+                          className="flex h-8 w-8 shrink-0 touch-none items-center justify-center rounded-lg bg-primary/10 text-primary active:bg-primary/20"
+                        >
+                          <GripVertical className="h-4 w-4" />
+                        </button>
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>
                         <div className="font-semibold">{item.outlets?.name ?? "Toko"}</div>
                         {visitedOutletIds.has(item.outlet_id) && (
