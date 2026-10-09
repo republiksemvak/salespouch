@@ -506,12 +506,50 @@ function RolePermissionDashboard({
   );
 }
 
-export function ManagerDashboard({ businessName, profile }: PermissionDashboardProps) {
-  return <OwnerDashboard profile={profile} businessName={businessName || "Manager"} />;
+export function ManagerDashboard({ businessName, profile, permissions }: PermissionDashboardProps) {
+  const subtitle = profile?.display_name
+    ? `${profile.display_name} • Manajer Distribusi`
+    : "Supervisi Distribusi & Tim Sales";
+
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
+      <Header title={businessName || "Manajer Area"} subtitle={subtitle} />
+      <section className="mt-3 rounded-xl border border-blue-200/80 bg-blue-50/40 p-3 shadow-xs">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-blue-700" />
+          <div>
+            <div className="text-xs font-bold text-blue-900">Dashboard Supervisi Manajer</div>
+            <div className="text-[10px] text-blue-700">Hak akses menu dan operasional dikontrol oleh Owner usaha.</div>
+          </div>
+        </div>
+      </section>
+      <PermissionQuickActions permissions={permissions} />
+      <PermissionDashboardMenu permissions={permissions} />
+    </main>
+  );
 }
 
-export function AdminDashboard({ businessName, profile }: PermissionDashboardProps) {
-  return <OwnerDashboard profile={profile} businessName={businessName || "Admin"} />;
+export function AdminDashboard({ businessName, profile, permissions }: PermissionDashboardProps) {
+  const subtitle = profile?.display_name
+    ? `${profile.display_name} • Administrasi & Gudang`
+    : "Pengelolaan Data & Pergudangan";
+
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
+      <Header title={businessName || "Admin Operasional"} subtitle={subtitle} />
+      <section className="mt-3 rounded-xl border border-slate-200 bg-slate-50/50 p-3 shadow-xs">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-slate-700" />
+          <div>
+            <div className="text-xs font-bold text-slate-900">Dashboard Administrasi</div>
+            <div className="text-[10px] text-slate-600">Akses input barang, nota, dan pencatatan sesuai kewenangan dari Owner.</div>
+          </div>
+        </div>
+      </section>
+      <PermissionQuickActions permissions={permissions} />
+      <PermissionDashboardMenu permissions={permissions} />
+    </main>
+  );
 }
 
 
