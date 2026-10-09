@@ -150,7 +150,8 @@ export function expandLegacyManagerPermissions(saved: string[]) {
   for (const group of ACCESS_GROUPS) for (const item of group.items) {
     if (!item.children?.length) continue;
     const hasChild = item.children.some((child) => result.has(child.key));
-    if (result.has(item.key) && !hasChild) item.children.forEach((child) => result.add(child.key));
+    // Keep parent access separate from child permissions. Expanding a parent
+    // with no saved children would silently re-enable features an Owner disabled.
     if (hasChild) result.add(item.key);
   }
   return [...result];
