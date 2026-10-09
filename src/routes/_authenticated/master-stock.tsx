@@ -510,7 +510,6 @@ function MasterStockPage() {
       )}
 
 {canDamage && (
-      {/* Form 2: Pemusnahan / Barang Rusak */}
       <section className="mt-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
