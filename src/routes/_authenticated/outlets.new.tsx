@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, Camera, Crosshair } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadStorePhoto } from "@/lib/photos";
 import { useProfile } from "@/hooks/use-profile";
+import { hasPremiumAccess } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,17 @@ export const Route = createFileRoute("/_authenticated/outlets/new")({
 
 function NewOutlet() {
   const { data: account } = useProfile();
+  const { data: outletTotal = 0, isLoading: outletTotalLoading } = useQuery({
+    queryKey: ["freemium-outlet-count", account?.ownerId],
+    enabled: !!account?.ownerId,
+    queryFn: async () => {
+      const { count, error } = await supabase.from("outlets").select("id", { count: "exact", head: true }).eq("user_id", account!.ownerId);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    staleTime: 30_000,
+  });
+  const canAddOutlet = hasPremiumAccess(account?.profile, account?.email) || (!outletTotalLoading && outletTotal < 10);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [name, setName] = useState("");
@@ -44,6 +56,10 @@ function NewOutlet() {
     e.preventDefault();
     if (!name.trim()) {
       toast.error("Nama outlet wajib diisi");
+      return;
+    }
+    if (!canAddOutlet) {
+      toast.error("Paket Gratis maksimal 10 outlet. Upgrade ke Premium untuk menambah outlet.");
       return;
     }
     if (account?.role !== "owner" && account?.role !== "admin" && account?.role !== "manager") {
@@ -104,6 +120,7 @@ function NewOutlet() {
     <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link>
       <h1 className="mt-4 text-2xl font-bold">Tambah Outlet</h1>
+      {!hasPremiumAccess(account?.profile, account?.email) && <p className="mt-2 rounded-xl border bg-muted/50 p-3 text-sm text-muted-foreground">Paket Gratis: {outletTotal}/10 outlet digunakan.{outletTotal >= 10 ? " Batas outlet tercapai. Upgrade ke Premium untuk menambah outlet." : ""}</p>}
       <form onSubmit={save} className="mt-6 space-y-5">
         <label className="flex aspect-video cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed bg-card">
           {file ? <img src={URL.createObjectURL(file)} alt="Foto toko" className="h-full w-full object-cover" />
@@ -124,7 +141,7 @@ function NewOutlet() {
           </div>
         </div>
         <div className="space-y-2"><Label>Catatan Rute</Label><Textarea value={routeNotes} onChange={(e) => setRouteNotes(e.target.value)} placeholder="Patokan atau petunjuk menuju toko" rows={4} /></div>
-        <Button disabled={busy || !name.trim()} className="h-14 w-full text-base">{busy ? "Menyimpan…" : "Simpan Outlet"}</Button>
+        <Button disabled={busy || !name.trim() || !canAddOutlet} className="h-14 w-full text-base">{busy ? "Menyimpan…" : "Simpan Outlet"}</Button>
       </form>
     </main>
   );
