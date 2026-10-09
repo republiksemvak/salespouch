@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeSwitcher } from "@/components/mode-switcher";
-import type { Profile } from "@/lib/access";
+import { hasPremiumAccess, type Profile } from "@/lib/access";
 
 type DashboardProps = { profile: Profile | null; businessName?: string | null };
 type PermissionDashboardProps = DashboardProps & { permissions: string[] };
@@ -155,7 +155,15 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
         subtitle="Kendali Operasional Lapangan"
       />
 
-      <CompactSummary ownerId={profile?.id} />
+      {hasPremiumAccess(profile) ? (
+        <CompactSummary ownerId={profile?.id} />
+      ) : (
+        <section className="mt-3 rounded-xl border border-dashed bg-card/60 p-3 text-sm">
+          <div className="flex items-center gap-2 font-semibold"><LockKeyhole className="h-4 w-4" /> Ringkasan Omset Premium</div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Ringkasan omset dan analisis keuangan tersedia pada paket Premium.</p>
+          <Link to="/reports" className="mt-2 inline-block text-xs font-semibold text-primary underline">Lihat opsi upgrade</Link>
+        </section>
+      )}
 
       {/* Tombol Utama (Call to Action Terbesar) */}
       <div className="mt-3">
