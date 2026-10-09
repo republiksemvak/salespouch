@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSuperAdminEmail } from "@/lib/access";
 import { salesAuthEmail, normalizeSalesUsername } from "@/lib/sales-auth";
-import { MANAGER_ADMIN_DEFAULTS, SALES_DEFAULTS, expandLegacyManagerPermissions } from "@/lib/team-access";
+import { ADMIN_DEFAULTS, MANAGER_DEFAULTS, SALES_DEFAULTS, expandLegacyManagerPermissions } from "@/lib/team-access";
 
 type TeamPosition = "admin" | "manager" | "sales";
 type TeamActor = { ownerId: string; position: "owner" | TeamPosition };
@@ -48,8 +48,8 @@ export const getMyTeamPermissions = createServerFn({ method: "GET" })
     if (actor.position === "owner") return { role: "owner" as const, permissions: [] as string[] };
 
     const roleDefaults: Record<"admin" | "manager" | "sales", string[]> = {
-      admin: [...MANAGER_ADMIN_DEFAULTS],
-      manager: [...MANAGER_ADMIN_DEFAULTS],
+      admin: [...ADMIN_DEFAULTS],
+      manager: [...MANAGER_DEFAULTS],
       sales: [...SALES_DEFAULTS],
     };
 
