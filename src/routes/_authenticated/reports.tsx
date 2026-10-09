@@ -5,6 +5,7 @@ import { ArrowLeft, Download, Phone, Store, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
+import { hasPremiumAccess, ADMIN_WHATSAPP } from "@/lib/access";
 import { rp, type LineItem } from "@/lib/visit";
 import { packSize } from "@/lib/units";
 import { Button } from "@/components/ui/button";
@@ -29,8 +30,24 @@ type ProductReport = { name: string; qty: number; omset: number; hpp: number; pr
 function ReportsPage() {
   const { data: account, isLoading } = useProfile();
   if (isLoading) return <div className="p-10 text-center">Memuat…</div>;
-  if (!account) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
+  if (!account?.profile) return <div className="p-10 text-center text-muted-foreground">Profil tidak ditemukan.</div>;
+  if (!hasPremiumAccess(account.profile, account.email)) return <PremiumReportsLocked />;
   return <OwnerReportsPage />;
+}
+
+function PremiumReportsLocked() {
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-5 pb-12 pt-6 text-center">
+      <div className="rounded-2xl border bg-card p-5">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted text-2xl">🔒</div>
+        <h1 className="mt-4 text-2xl font-bold">Laporan Premium</h1>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">Laporan omset, laba rugi, profit, piutang outlet, dan ekspor Excel tersedia pada paket Premium.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Paket Gratis tetap dapat digunakan tanpa batas waktu dengan maksimal 10 outlet.</p>
+        <a href={ADMIN_WHATSAPP} target="_blank" rel="noreferrer" className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Hubungi Admin untuk Upgrade</a>
+        <Link to="/dashboard" className="mt-4 inline-block text-sm text-muted-foreground underline">Kembali ke Dashboard</Link>
+      </div>
+    </main>
+  );
 }
 
 function OwnerReportsPage() {
