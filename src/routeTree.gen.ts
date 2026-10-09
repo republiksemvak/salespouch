@@ -25,6 +25,7 @@ import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedRemindersRouteImport } from './routes/_authenticated/reminders'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
+import { Route as AuthenticatedLicenseRouteImport } from './routes/_authenticated/license'
 import { Route as AuthenticatedSalesStockDayRouteImport } from './routes/_authenticated/sales-stock-day'
 import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
 import { Route as AuthenticatedStockOpeningRouteImport } from './routes/_authenticated/stock-opening'
@@ -123,6 +124,11 @@ const AuthenticatedRemindersRoute = AuthenticatedRemindersRouteImport.update({
 const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLicenseRoute = AuthenticatedLicenseRouteImport.update({
+  id: '/license',
+  path: '/license',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSalesStockDayRoute =
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/reminders': typeof AuthenticatedRemindersRoute
   '/reports': typeof AuthenticatedReportsRoute
+  '/license': typeof AuthenticatedLicenseRoute
   '/sales-stock-day': typeof AuthenticatedSalesStockDayRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/stock-opening': typeof AuthenticatedStockOpeningRoute
@@ -291,6 +298,7 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/reminders': typeof AuthenticatedRemindersRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
+  '/_authenticated/license': typeof AuthenticatedLicenseRoute
   '/_authenticated/sales-stock-day': typeof AuthenticatedSalesStockDayRoute
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/stock-opening': typeof AuthenticatedStockOpeningRoute
@@ -325,6 +333,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reminders'
     | '/reports'
+    | '/license'
     | '/sales-stock-day'
     | '/schedule'
     | '/stock-opening'
@@ -528,6 +537,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/license': {
+      id: '/_authenticated/license'
+      path: '/license'
+      fullPath: '/license'
+      preLoaderRoute: typeof AuthenticatedLicenseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/sales-stock-day': {
       id: '/_authenticated/sales-stock-day'
       path: '/sales-stock-day'
@@ -679,6 +695,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedRemindersRoute: typeof AuthenticatedRemindersRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
+  AuthenticatedLicenseRoute: typeof AuthenticatedLicenseRoute
   AuthenticatedSalesStockDayRoute: typeof AuthenticatedSalesStockDayRoute
   AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
   AuthenticatedStockOpeningRoute: typeof AuthenticatedStockOpeningRoute
@@ -706,6 +723,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedRemindersRoute: AuthenticatedRemindersRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
+  AuthenticatedLicenseRoute: AuthenticatedLicenseRoute,
   AuthenticatedSalesStockDayRoute: AuthenticatedSalesStockDayRoute,
   AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
   AuthenticatedStockOpeningRoute: AuthenticatedStockOpeningRoute,
