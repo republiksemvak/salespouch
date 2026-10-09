@@ -13,13 +13,28 @@ export type AccessGroup = {
   items: AccessItem[];
 };
 
-// Manager/Admin keep the simple Sales-style permission model:
-// a menu is available when at least one of its saved permissions exists.
-// Submenus are independently hideable inside the corresponding page.
-export const MANAGER_ADMIN_DEFAULTS = [
+// Default Admin: administrasi data, gudang, direct selling, dan pencatatan.
+export const ADMIN_DEFAULTS = [
+  "outlets.view",
+  "transactions.view",
+  "sales_stock.view",
+  "sales_stock.load",
+  "direct_selling.view",
+  "direct_selling.sale",
+  "direct_selling.return",
+  "expenses.view",
+  "reports.view",
+  "reports.export",
+  "products.view",
+  "master_stock.view",
+  "master_stock.incoming",
+  "master_stock.damage",
+  "notes.view",
+] as const;
+
+// Default Manager: supervisi tim, rute kunjungan, stok sales, uang jalan, dan evaluasi.
+export const MANAGER_DEFAULTS = [
   "team.view",
-  "team.manage",
-  "team.access",
   "outlets.view",
   "schedule.view",
   "sales_stock.view",
@@ -33,22 +48,18 @@ export const MANAGER_ADMIN_DEFAULTS = [
   "operations.export",
   "expenses.view",
   "reports.view",
-  "reports.finance",
   "reports.receivables",
   "reports.export",
-  "direct_selling.view",
-  "direct_selling.sale",
-  "direct_selling.return",
+  "kpi.view",
   "products.view",
   "master_stock.view",
-  "master_stock.opening",
-  "master_stock.incoming",
-  "master_stock.damage",
-  "master_stock.reset",
   "notes.view",
 ] as const;
 
-// Sales access is intentionally left on the existing permission model.
+// Alias untuk kompatibilitas mundur.
+export const MANAGER_ADMIN_DEFAULTS = MANAGER_DEFAULTS;
+
+// Sales tetap menggunakan model hak akses yang sudah berjalan.
 export const SALES_DEFAULTS = [
   "outlets",
   "sales_stock",
