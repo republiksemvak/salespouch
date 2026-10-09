@@ -2,13 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Check, ChevronDown, ShieldCheck, UserCog } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, RotateCcw, ShieldCheck, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { listTeam, replaceTeamPermissions, setTeamMemberRole } from "@/lib/team.functions";
 import { Button } from "@/components/ui/button";
-import { ACCESS_GROUPS, MANAGER_ADMIN_DEFAULTS, SALES_DEFAULTS, type AccessGroup } from "@/lib/team-access";
+import { ACCESS_GROUPS, ADMIN_DEFAULTS, MANAGER_DEFAULTS, SALES_DEFAULTS, type AccessGroup } from "@/lib/team-access";
 
 export const Route = createFileRoute("/_authenticated/team-access")({
   head: () => ({ meta: [{ title: "Jabatan & Akses — Sales Pouch" }, { name: "description", content: "Owner menentukan jabatan dan hak akses setiap anggota tim." }] }),
@@ -40,8 +40,8 @@ const salesGroups: PermissionGroup[] = [
 ];
 
 const levelDefaults: Record<JobLevel, string[]> = {
-  admin: [...MANAGER_ADMIN_DEFAULTS],
-  manager: [...MANAGER_ADMIN_DEFAULTS],
+  admin: [...ADMIN_DEFAULTS],
+  manager: [...MANAGER_DEFAULTS],
   sales: [...SALES_DEFAULTS],
 };
 
@@ -96,55 +96,45 @@ function TeamAccessPage() {
     setPermissions(levelDefaults[next]);
   }
 
-  function toggle(key: string) {
-    setPermissions((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
+  function toggleChild(childKey: string, parentKey: string) {
+    setPermissions((current) => {
+      const exists = current.includes(childKey);
+      const next = exists ? current.filter((key) => key !== childKey) : [...current, childKey];
+      if (!exists && !next.includes(parentKey)) next.push(parentKey);
+      return next;
+    });
   }
 
-  function toggleMenu(item: PermissionGroup["items"][number]) {
-    if (!item.children?.length) return toggle(item.key);
-    const childKeys = item.children.map((child) => child.key);
-    const hasAny = childKeys.some((key) => permissions.includes(key));
+  function toggleParent(item: PermissionGroup["items"][number]) {
+    const childKeys = item.children?.map((child) => child.key) ?? [];
     setPermissions((current) => {
-      const next = current.filter((key) => key !== item.key && !childKeys.includes(key));
-      return hasAny ? next : [...next, item.key, ...childKeys];
+      if (current.includes(item.key)) {
+        return current.filter((key) => key !== item.key && !childKeys.includes(key));
+      }
+      return [...current, item.key];
     });
+  }
+
+  function applyRoleDefaults() {
+    setPermissions(levelDefaults[level]);
+    const label = level === "manager" ? "Manajer" : level === "admin" ? "Admin" : "Sales";
+    toast.info(`Default hak akses ${label} diterapkan.`);
   }
 
   function permissionsForSave() {
     const groups = level === "sales" ? salesGroups : managerAdminGroups;
     const result = new Set<string>();
-
     for (const group of groups) {
       for (const item of group.items) {
-        if (level !== "sales") {
-          // Manager/Admin always see the full Owner menu.
-          // Only the child actions are configurable.
-          result.add(item.key);
-          if (item.children?.length) {
-            item.children
-              .map((child) => child.key)
-              .filter((key) => permissions.includes(key))
-              .forEach((key) => result.add(key));
-          }
-          continue;
-        }
-
-        if (!item.children?.length) {
-          if (permissions.includes(item.key)) result.add(item.key);
-          continue;
-        }
-
-        const selectedChildren = item.children
-          .map((child) => child.key)
-          .filter((key) => permissions.includes(key));
-
-        if (selectedChildren.length) {
-          result.add(item.key);
-          selectedChildren.forEach((key) => result.add(key));
+        if (!permissions.includes(item.key)) continue;
+        result.add(item.key);
+        if (item.children?.length) {
+          item.children.map((child) => child.key)
+            .filter((key) => permissions.includes(key))
+            .forEach((key) => result.add(key));
         }
       }
     }
-
     return [...result];
   }
 
@@ -207,7 +197,12 @@ function TeamAccessPage() {
       </section>
 
       <section className="mt-5 space-y-5">
-        <div className="rounded-xl border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">Level <strong className="text-foreground">{level === "manager" ? "Manajer" : level === "admin" ? "Admin" : "Sales"}</strong> hanya menjadi jabatan. Owner tetap menentukan hak akses menu di bawah.</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">Izin Menu: <strong className="text-foreground">{level === "manager" ? "Manajer" : level === "admin" ? "Admin" : "Sales"}</strong></div>
+          <Button type="button" variant="outline" size="sm" onClick={applyRoleDefaults} className="h-8 gap-1 text-xs">
+            <RotateCcw className="h-3 w-3" /> Terapkan Default Jabatan
+          </Button>
+        </div>
         {(level === "sales" ? salesGroups : managerAdminGroups).map((group) => (
           <div key={group.title}>
             <h2 className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h2>
@@ -216,14 +211,12 @@ function TeamAccessPage() {
                 const isSales = level === "sales";
                 const childKeys = item.children?.map((child) => child.key) ?? [];
                 const hasChildren = childKeys.length > 0;
-                const checked = isSales
-                  ? (hasChildren ? childKeys.some((key) => permissions.includes(key)) : permissions.includes(item.key))
-                  : true;
+                const checked = permissions.includes(item.key);
                 const allChildren = hasChildren && childKeys.every((key) => permissions.includes(key));
 
                 return (
                   <div key={item.key} className={index ? "border-t" : ""}>
-                    <div className="flex w-full items-center gap-3 p-3 text-left">
+                    <button type="button" onClick={() => toggleParent(item)} className="flex w-full items-center gap-3 p-3 text-left transition hover:bg-muted/40">
                       <span className={checked ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-primary bg-primary text-primary-foreground" : "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border bg-background"}>
                         {checked && <Check className="h-4 w-4" />}
                       </span>
@@ -233,17 +226,17 @@ function TeamAccessPage() {
                       </span>
                       {hasChildren ? (
                         <span className="text-[10px] text-muted-foreground">
-                          {isSales ? (allChildren ? "Semua" : checked ? "Sebagian" : "Terkunci") : "Menu aktif"}
+                          {checked ? (allChildren ? "Semua Aktif" : `${childKeys.filter((key) => permissions.includes(key)).length}/${childKeys.length} Fitur`) : "Terkunci"}
                         </span>
                       ) : null}
-                    </div>
+                    </button>
 
-                    {hasChildren ? (
+                    {hasChildren && checked ? (
                       <div className="border-t bg-muted/20 px-3 pb-2">
                         {item.children!.map((child) => {
                           const childChecked = permissions.includes(child.key);
                           return (
-                            <button type="button" key={child.key} onClick={() => toggle(child.key)} className="flex w-full items-center gap-3 py-2.5 pl-9 text-left">
+                            <button type="button" key={child.key} onClick={() => toggleChild(child.key, item.key)} className="flex w-full items-center gap-3 py-2.5 pl-9 text-left">
                               <span className={childChecked ? "flex h-5 w-5 shrink-0 items-center justify-center rounded border border-primary bg-primary text-primary-foreground" : "flex h-5 w-5 shrink-0 items-center justify-center rounded border bg-background"}>
                                 {childChecked && <Check className="h-3.5 w-3.5" />}
                               </span>
