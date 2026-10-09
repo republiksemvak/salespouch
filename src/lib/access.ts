@@ -26,6 +26,9 @@ export type Profile = {
   license_until: string | null;
   stock_scheme: StockScheme;
   created_at: string;
+  display_name?: string | null;
+  username?: string | null;
+  account_type?: string | null;
 };
 
 export type AccessStatus =
