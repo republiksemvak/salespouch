@@ -416,15 +416,30 @@ function MasterStockPage() {
       </header>
 
       <section className="mt-4 rounded-2xl border bg-card p-4 shadow-sm">
-        <div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Ringkasan Gudang</div>
-        <div className="mt-2 flex items-end justify-between gap-3">
-          <div>
-            <div className="text-3xl font-bold tracking-tight">{productCount.toLocaleString("id-ID")}</div>
-            <div className="text-xs text-muted-foreground">produk terdaftar</div>
+        <div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Ringkasan Distribusi & Stok</div>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl bg-muted/40 p-2.5">
+            <div className="text-[10px] uppercase font-semibold text-muted-foreground">Gudang</div>
+            <div className="mt-0.5 text-base font-bold text-foreground">{globalTotal.toLocaleString("id-ID")} <span className="text-[10px] font-normal text-muted-foreground">pcs</span></div>
+            <div className="mt-1 text-[10px] text-muted-foreground">{productCount.toLocaleString("id-ID")} produk</div>
           </div>
-          <div className="text-right">
-            <div className="text-xl font-bold text-blue-700">{globalTotal.toLocaleString("id-ID")} pcs</div>
-            <div className="text-xs text-muted-foreground">total fisik Gudang Utama</div>
+          <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-2.5">
+            <div className="text-[10px] uppercase font-semibold text-blue-700">Dipegang Sales</div>
+            <div className="mt-0.5 text-base font-bold text-blue-900">
+              {products.reduce((acc, product) => {
+                const byLoc = productLocationStock.get(product.id);
+                return acc + locations.filter((location) => location.location_type === "sales").reduce((sum, location) => sum + (byLoc?.get(location.id) ?? 0), 0);
+              }, 0).toLocaleString("id-ID")} <span className="text-[10px] font-normal text-blue-700">pcs</span>
+            </div>
+          </div>
+          <div className="rounded-xl bg-muted/40 p-2.5">
+            <div className="text-[10px] uppercase font-semibold text-muted-foreground">Dititip Toko</div>
+            <div className="mt-0.5 text-base font-bold text-foreground">
+              {products.reduce((acc, product) => {
+                const byLoc = productLocationStock.get(product.id);
+                return acc + locations.filter((location) => location.location_type === "outlet").reduce((sum, location) => sum + (byLoc?.get(location.id) ?? 0), 0);
+              }, 0).toLocaleString("id-ID")} <span className="text-[10px] font-normal text-muted-foreground">pcs</span>
+            </div>
           </div>
         </div>
       </section>
@@ -583,26 +598,31 @@ function MasterStockPage() {
                     <div className="text-[11px] text-muted-foreground">Gudang</div>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                  {locations.filter((l) => l.location_type === "warehouse").slice(0, 1).map((l) => (
-                    <div key={l.id} className="rounded-xl bg-muted/40 p-2 text-center">
-                      <div className="text-[10px] uppercase font-semibold text-muted-foreground">Gudang</div>
-                      <div className="font-semibold mt-0.5">{formatQty(byLocation.get(l.id) ?? 0, p.pcs_per_pack)}</div>
+                {(() => {
+                  const warehouseStock = locations.filter((location) => location.location_type === "warehouse")
+                    .reduce((sum, location) => sum + (byLocation.get(location.id) ?? 0), 0);
+                  const salesStock = locations.filter((location) => location.location_type === "sales")
+                    .reduce((sum, location) => sum + (byLocation.get(location.id) ?? 0), 0);
+                  const outletStock = locations.filter((location) => location.location_type === "outlet")
+                    .reduce((sum, location) => sum + (byLocation.get(location.id) ?? 0), 0);
+
+                  return (
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-xl bg-muted/40 p-2 text-center">
+                        <div className="text-[10px] uppercase font-semibold text-muted-foreground">Gudang</div>
+                        <div className="mt-0.5 font-semibold">{formatQty(warehouseStock, p.pcs_per_pack)}</div>
+                      </div>
+                      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-2 text-center">
+                        <div className="text-[10px] uppercase font-semibold text-blue-700">Total Sales</div>
+                        <div className="mt-0.5 font-semibold text-blue-900">{formatQty(salesStock, p.pcs_per_pack)}</div>
+                      </div>
+                      <div className="rounded-xl bg-muted/40 p-2 text-center">
+                        <div className="text-[10px] uppercase font-semibold text-muted-foreground">Toko</div>
+                        <div className="mt-0.5 font-semibold">{formatQty(outletStock, p.pcs_per_pack)}</div>
+                      </div>
                     </div>
-                  ))}
-                  {locations.filter((l) => l.location_type === "sales").slice(0, 1).map((l) => (
-                    <div key={l.id} className="rounded-xl bg-muted/40 p-2 text-center">
-                      <div className="text-[10px] uppercase font-semibold text-muted-foreground">Sales</div>
-                      <div className="font-semibold mt-0.5">{formatQty(byLocation.get(l.id) ?? 0, p.pcs_per_pack)}</div>
-                    </div>
-                  ))}
-                  {locations.filter((l) => l.location_type === "outlet").slice(0, 1).map((l) => (
-                    <div key={l.id} className="rounded-xl bg-muted/40 p-2 text-center">
-                      <div className="text-[10px] uppercase font-semibold text-muted-foreground">Toko</div>
-                      <div className="font-semibold mt-0.5">{formatQty(byLocation.get(l.id) ?? 0, p.pcs_per_pack)}</div>
-                    </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </div>
             );
           })}
