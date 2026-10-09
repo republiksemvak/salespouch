@@ -36,7 +36,7 @@ export type AccessStatus = {
 };
 
 export function hasPremiumAccess(profile?: Profile | null, email?: string | null): boolean {
-  if (isSuperAdminEmail(email ?? profile?.user_email)) return true;
+  if (isSuperAdminEmail(email) || isSuperAdminEmail(profile?.user_email)) return true;
   return !!profile?.license_until && new Date(profile.license_until) > new Date();
 }
 
