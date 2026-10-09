@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signedPhotoUrls, uploadStorePhoto } from "@/lib/photos";
 import { useProfile } from "@/hooks/use-profile";
+import { hasPremiumAccess } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +57,17 @@ function AllOutlets() {
   const [infoData, setInfoData] = useState<any>(null);
   const [showCreate, setShowCreate] = useState(false);
   const ownerId = account?.ownerId;
+  const { data: outletTotal = 0, isLoading: outletTotalLoading } = useQuery({
+    queryKey: ["freemium-outlet-count", ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const { count, error } = await supabase.from("outlets").select("id", { count: "exact", head: true }).eq("user_id", ownerId!);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    staleTime: 30_000,
+  });
+  const canAddOutlet = hasPremiumAccess(account?.profile, account?.email) || (!outletTotalLoading && outletTotal < 10);
   const [q, setQ] = useState("");
   const search = q.trim();
 
@@ -203,7 +215,7 @@ function AllOutlets() {
                 </Link>
               </Button>
             )}
-            <Button type="button" size="sm" className="rounded-lg shadow-xs" onClick={() => setShowCreate(true)}>
+            <Button type="button" size="sm" className="rounded-lg shadow-xs" disabled={!canAddOutlet} onClick={() => setShowCreate(true)}>
               <Plus className="mr-1.5 h-4 w-4" />
               Tambah Outlet
             </Button>
@@ -213,6 +225,7 @@ function AllOutlets() {
           <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Manajemen Toko</div>
           <h1 className="mt-0.5 text-2xl font-bold tracking-tight">Semua Outlet</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">{count} warung/toko terdaftar</p>
+          {!hasPremiumAccess(account?.profile, account?.email) && <p className="mt-1 text-xs text-muted-foreground">Paket Gratis: {outletTotal}/10 outlet digunakan.{outletTotal >= 10 ? " Batas tercapai; upgrade untuk menambah outlet." : ""}</p>}
         </div>
       </header>
 
@@ -421,6 +434,17 @@ function AllOutlets() {
 
 function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: () => Promise<void> | void }) {
   const { data: account, isLoading: accountLoading } = useProfile();
+  const { data: outletTotal = 0, isLoading: outletTotalLoading } = useQuery({
+    queryKey: ["freemium-outlet-count", account?.ownerId],
+    enabled: !!account?.ownerId,
+    queryFn: async () => {
+      const { count, error } = await supabase.from("outlets").select("id", { count: "exact", head: true }).eq("user_id", account!.ownerId);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    staleTime: 30_000,
+  });
+  const canAddOutlet = hasPremiumAccess(account?.profile, account?.email) || (!outletTotalLoading && outletTotal < 10);
   const [name, setName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
@@ -446,6 +470,7 @@ function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: 
     if (accountLoading || !account?.ownerId) { toast.error("Data akun belum siap. Silakan muat ulang."); return; }
     if (!["owner", "admin", "manager", "sales"].includes(account.role)) { toast.error("Anda tidak memiliki akses untuk menambah outlet."); return; }
     if (!name.trim()) { toast.error("Nama outlet wajib diisi."); return; }
+    if (!canAddOutlet) { toast.error("Paket Gratis maksimal 10 outlet. Upgrade ke Premium untuk menambah outlet."); return; }
     setBusy(true);
     try {
       let storePhoto: string | null = null;
@@ -480,6 +505,7 @@ function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: 
   return <main className="mx-auto min-h-screen max-w-md px-5 pb-10 pt-6">
     <Button type="button" variant="ghost" className="-ml-3 h-9 px-3" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" />Kembali ke Semua Outlet</Button>
     <h1 className="mt-4 text-2xl font-bold">Tambah Outlet</h1>
+    {!hasPremiumAccess(account?.profile, account?.email) && <p className="mt-2 rounded-xl border bg-muted/50 p-3 text-sm text-muted-foreground">Paket Gratis: {outletTotal}/10 outlet digunakan.{outletTotal >= 10 ? " Batas outlet tercapai. Upgrade ke Premium untuk menambah outlet." : ""}</p>}
     <form onSubmit={save} className="mt-6 space-y-4">
       <label className="flex aspect-video cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border-2 border-dashed bg-card">
         {file ? <img src={URL.createObjectURL(file)} alt="Foto outlet" className="h-full w-full object-cover" /> : <><Camera className="h-8 w-8 text-muted-foreground" /><span className="mt-2 text-sm text-muted-foreground">Foto outlet (opsional)</span><span className="mt-1 text-[10px] text-muted-foreground">Otomatis dikompres agar ringan</span></>}
@@ -491,7 +517,7 @@ function InlineCreateOutlet({ onBack, onSaved }: { onBack: () => void; onSaved: 
       <div className="space-y-2"><Label>Alamat Toko</Label><Textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={3} /></div>
       <div className="space-y-2"><Label>Lokasi</Label><div className="flex gap-2"><Input value={map} onChange={(e) => setMap(e.target.value)} placeholder="Link Google Maps" className="h-12" /><Button type="button" variant="secondary" className="h-12 shrink-0" onClick={useGps} disabled={locating}><Crosshair className="h-4 w-4" />{locating ? "…" : "GPS"}</Button></div></div>
       <div className="space-y-2"><Label>Catatan Rute</Label><Textarea value={routeNotes} onChange={(e) => setRouteNotes(e.target.value)} rows={3} placeholder="Patokan menuju toko" /></div>
-      <Button type="submit" disabled={busy || !name.trim()} className="h-14 w-full text-base">{busy ? "Menyimpan…" : "Simpan Outlet"}</Button>
+      <Button type="submit" disabled={busy || !name.trim() || !canAddOutlet} className="h-14 w-full text-base">{busy ? "Menyimpan…" : "Simpan Outlet"}</Button>
     </form>
   </main>;
 }
