@@ -6,7 +6,7 @@ import { getTestMode } from "@/lib/test-mode";
 
 export const profileQueryKey = ["profile"] as const;
 
-const profileFields = "id,business_name,business_category,business_model,main_product,business_address,business_phone,user_email,license_until,stock_scheme,created_at,account_type";
+const profileFields = "id,business_name,business_category,business_model,main_product,business_address,business_phone,user_email,license_until,stock_scheme,created_at,account_type,username,display_name";
 
 export function useProfile() {
   return useQuery({
@@ -42,10 +42,28 @@ export function useProfile() {
       if (membership) {
         const { data: business, error: ownerError } = await supabase.from("profiles").select(profileFields).eq("id", membership.owner_id).single();
         if (ownerError) throw ownerError;
-        profile = business as Profile;
+
+        // Preserve the employee's personal name while using the owner's business details.
+        const personalDisplayName =
+          (data as Profile | null)?.display_name ||
+          u.user.user_metadata?.display_name ||
+          (data as Profile | null)?.username ||
+          u.user.user_metadata?.username ||
+          null;
+
+        const personalUsername =
+          (data as Profile | null)?.username ||
+          u.user.user_metadata?.username ||
+          null;
+
+        profile = {
+          ...(business as Profile),
+          display_name: personalDisplayName,
+          username: personalUsername,
+        };
       }
 
-      const accountType = (data as (Profile & { account_type?: string }) | null)?.account_type;
+      const accountType = (data as Profile | null)?.account_type;
       if (!membership && accountType === "employee") {
         throw new Error("Akun karyawan tidak terhubung ke usaha. Hubungi Owner untuk mendapatkan akses kembali.");
       }
