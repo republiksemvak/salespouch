@@ -30,20 +30,22 @@ export type Profile = {
   account_type?: string | null;
 };
 
-export type AccessStatus =
-  | { allowed: true; reason: "admin" | "licensed" | "trial"; trialEndsAt?: Date }
-  | { allowed: false; reason: "expired" };
+export type AccessStatus = {
+  allowed: true;
+  reason: "admin" | "licensed" | "freemium";
+};
+
+export function hasPremiumAccess(profile?: Profile | null, email?: string | null): boolean {
+  if (isSuperAdminEmail(email ?? profile?.user_email)) return true;
+  return !!profile?.license_until && new Date(profile.license_until) > new Date();
+}
 
 export function accessStatus(profile: Profile, email?: string | null): AccessStatus {
-  if (isSuperAdminEmail(email)) {
+  if (isSuperAdminEmail(email ?? profile.user_email)) {
     return { allowed: true, reason: "admin" };
   }
   if (profile.license_until && new Date(profile.license_until) > new Date()) {
     return { allowed: true, reason: "licensed" };
   }
-  const trialEnd = new Date(new Date(profile.created_at).getTime() + TRIAL_MS);
-  if (trialEnd > new Date()) {
-    return { allowed: true, reason: "trial", trialEndsAt: trialEnd };
-  }
-  return { allowed: false, reason: "expired" };
+  return { allowed: true, reason: "freemium" };
 }
