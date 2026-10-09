@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
 
-const DISMISSED_KEY = "sales-pouch-install-prompt-dismissed";
-
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -28,7 +26,7 @@ export function PwaInstallPrompt() {
       navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     }
 
-    if (isStandalone() || localStorage.getItem(DISMISSED_KEY) === "1") return;
+    if (isStandalone()) return;
 
     const handleBeforeInstall = (event: Event) => {
       event.preventDefault();
@@ -51,7 +49,6 @@ export function PwaInstallPrompt() {
   }, []);
 
   const dismiss = () => {
-    localStorage.setItem(DISMISSED_KEY, "1");
     setVisible(false);
   };
 
@@ -59,9 +56,6 @@ export function PwaInstallPrompt() {
     if (!installEvent) return;
     await installEvent.prompt();
     const choice = await installEvent.userChoice;
-    if (choice.outcome === "accepted") {
-      localStorage.setItem(DISMISSED_KEY, "1");
-    }
     setInstallEvent(null);
     setVisible(false);
   };
