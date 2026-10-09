@@ -322,10 +322,16 @@ export function SuperAdminDashboard() {
 }
 
 export function SalesDashboard({ businessName, profile, salesUserId }: DashboardProps & { salesUserId?: string }) {
+  const activeSalesId = salesUserId ?? profile?.id;
+  const subtitle = profile?.display_name
+    ? `${profile.display_name} • Sales Lapangan`
+    : (businessName || "Mode Kunjungan Lapangan");
+
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
-      <Header title="Sales Field" subtitle={businessName || "Mode Kunjungan Lapangan"} />
+      <Header title="Sales Field" subtitle={subtitle} />
 
+      {/* Tombol Aksi Utama: Mulai Kunjungan */}
       <div className="mt-4">
         <Button asChild className="h-12 w-full rounded-xl text-sm font-semibold shadow-sm">
           <Link to="/visit" search={{ outlet: undefined }}>
@@ -335,35 +341,97 @@ export function SalesDashboard({ businessName, profile, salesUserId }: Dashboard
         </Button>
       </div>
 
-      <SalesFinancialSummary salesId={salesUserId ?? profile?.id} />
+      {/* Ringkasan Finansial, Uang Jalan, & Target Rute Hari Ini */}
+      <SalesFinancialSummary salesId={activeSalesId} />
 
-      <SalesStockSummary salesId={salesUserId} />
+      {/* Kartu Stok Fisik yang Dibawa Sales */}
+      <SalesStockSummary salesId={activeSalesId} />
 
+      {/* Grid Menu Lapangan 6 Pilihan Simetris */}
       <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
         <div className="mb-2.5 flex items-center justify-between px-1">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Menu</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Menu Operasional
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <Link to="/outlets" className="rounded-lg border bg-amber-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
-            <Store className="h-4 w-4 text-amber-600" />
-            <div className="mt-2 text-xs font-semibold text-foreground">Outlet</div>
+          <Link
+            to="/outlets"
+            className="flex items-center gap-3 rounded-lg border bg-amber-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+              <Store className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-foreground">Outlet</div>
+              <div className="text-[10px] text-muted-foreground">Data Warung</div>
+            </div>
           </Link>
-          <Link to="/sales-stock-day" className="rounded-lg border bg-blue-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
-            <Truck className="h-4 w-4 text-blue-600" />
-            <div className="mt-2 text-xs font-semibold text-foreground">Stok Sales</div>
+
+          <Link
+            to="/schedule"
+            className="flex items-center gap-3 rounded-lg border bg-sky-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600">
+              <CalendarDays className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-foreground">Jadwal Rute</div>
+              <div className="text-[10px] text-muted-foreground">Urutan Toko</div>
+            </div>
           </Link>
-          <Link to="/transactions" className="rounded-lg border bg-purple-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
-            <History className="h-4 w-4 text-purple-600" />
-            <div className="mt-2 text-xs font-semibold text-foreground">Riwayat Nota</div>
+
+          <Link
+            to="/sales-stock-day"
+            className="flex items-center gap-3 rounded-lg border bg-blue-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600">
+              <Truck className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-foreground">Stok Sales</div>
+              <div className="text-[10px] text-muted-foreground">Muat & Sisa</div>
+            </div>
           </Link>
-          <Link to="/schedule" className="rounded-lg border bg-sky-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
-            <CalendarDays className="h-4 w-4 text-sky-600" />
-            <div className="mt-2 text-xs font-semibold text-foreground">Jadwal</div>
+
+          <Link
+            to="/transactions"
+            className="flex items-center gap-3 rounded-lg border bg-purple-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600">
+              <History className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-foreground">Riwayat Nota</div>
+              <div className="text-[10px] text-muted-foreground">Penjualan</div>
+            </div>
           </Link>
-          <Link to="/notes" className="rounded-lg border bg-orange-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]">
-            <FileText className="h-4 w-4 text-orange-600" />
-            <div className="mt-2 text-xs font-semibold text-foreground">Catatan</div>
+
+          <Link
+            to="/expenses"
+            className="flex items-center gap-3 rounded-lg border bg-rose-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
+              <Wallet className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-foreground">Pengeluaran</div>
+              <div className="text-[10px] text-muted-foreground">Bensin & Makan</div>
+            </div>
+          </Link>
+
+          <Link
+            to="/notes"
+            className="flex items-center gap-3 rounded-lg border bg-orange-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-foreground">Catatan</div>
+              <div className="text-[10px] text-muted-foreground">Pengingat Toko</div>
+            </div>
           </Link>
         </div>
       </section>
