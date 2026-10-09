@@ -5,7 +5,7 @@ import { ArrowLeft, Download, Phone, Store, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
-import { hasPremiumAccess, ADMIN_WHATSAPP } from "@/lib/access";
+import { hasPremiumAccess } from "@/lib/access";
 import { rp, type LineItem } from "@/lib/visit";
 import { packSize } from "@/lib/units";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ function PremiumReportsLocked() {
         <h1 className="mt-4 text-2xl font-bold">Laporan Premium</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">Laporan omset, laba rugi, profit, piutang outlet, dan ekspor Excel tersedia pada paket Premium.</p>
         <p className="mt-2 text-sm text-muted-foreground">Paket Gratis tetap dapat digunakan tanpa batas waktu dengan maksimal 10 outlet.</p>
-        <a href={ADMIN_WHATSAPP} target="_blank" rel="noreferrer" className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Hubungi Admin untuk Upgrade</a>
+        <Link to="/license" className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Lihat Paket Lisensi</Link>
         <Link to="/dashboard" className="mt-4 inline-block text-sm text-muted-foreground underline">Kembali ke Dashboard</Link>
       </div>
     </main>
