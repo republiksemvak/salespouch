@@ -208,7 +208,6 @@ function TeamAccessPage() {
             <h2 className="mb-2 px-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">{group.title}</h2>
             <div className="overflow-hidden rounded-2xl border bg-card">
               {group.items.map((item, index) => {
-                const isSales = level === "sales";
                 const childKeys = item.children?.map((child) => child.key) ?? [];
                 const hasChildren = childKeys.length > 0;
                 const checked = permissions.includes(item.key);
