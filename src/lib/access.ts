@@ -1,4 +1,3 @@
-export const TRIAL_MS = 24 * 60 * 60 * 1000;
 export const ADMIN_TELEGRAM = "https://t.me/salespouch";
 export const ADMIN_WHATSAPP = "https://wa.me/6285783797770";
 
