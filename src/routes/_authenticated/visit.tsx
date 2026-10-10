@@ -307,8 +307,132 @@ function StockSourceSelector({ value, onChange }: { value: StockSource; onChange
   return <section className="rounded-2xl border bg-card p-3"><div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Asal stok</div><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => onChange("sales")} className={`rounded-xl border p-3 text-left ${value === "sales" ? "border-primary bg-primary/10" : ""}`}><b>Stok Sales</b><div className="mt-1 text-[11px] text-muted-foreground">Barang yang sudah dimuat dari Gudang ke kendaraan Sales.</div></button><button type="button" onClick={() => onChange("warehouse")} className={`rounded-xl border p-3 text-left ${value === "warehouse" ? "border-primary bg-primary/10" : ""}`}><b>Stok Gudang</b><div className="mt-1 text-[11px] text-muted-foreground">Jual langsung dari Gudang Utama.</div></button></div></section>;
 }
 
-function PreviousStockEditor({ rows, setRows, lineItems, stockScheme }: { rows: Row[]; setRows: React.Dispatch<React.SetStateAction<Row[]>>; lineItems: LineItem[]; stockScheme: "accumulation" | "clean_pull" }) {
-  return <section className="mt-6"><h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Hitung Titipan Sebelumnya</h2>{rows.length === 0 && <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Tidak ada sisa stok di outlet ini.</p>}<div className="mt-3 space-y-3">{rows.map((r, i) => { const li = lineItems[i]; const set = (patch: Partial<Row>) => setRows((current) => current.map((x, j) => j === i ? { ...x, ...patch } : x)); return <div key={i} className="rounded-2xl border bg-card p-4"><div className="flex justify-between gap-2"><b>{r.name}</b><span className="text-sm text-muted-foreground">Titip: {formatQty(r.prev_stock, r.pcs_per_pack)}</span></div><div className="mt-3"><Field label="Harga per pack" value={r.price} onChange={(v) => set({ price: v })} /></div>{stockScheme === "accumulation" && <QtyPair label="Sisa rak" pack={r.shelfPack} pcs={r.shelfPcs} size={r.pcs_per_pack} setPack={(v) => set({ shelfPack: v })} setPcs={(v) => set({ shelfPcs: v })} /> }<QtyPair label="Retur fisik ke gudang" pack={r.returnPack} pcs={r.returnPcs} size={r.pcs_per_pack} setPack={(v) => set({ returnPack: v })} setPcs={(v) => set({ returnPcs: v })} /><div className="mt-3 flex justify-between font-mono text-xs"><span>Terjual: <b>{formatQty(li?.sold ?? 0, r.pcs_per_pack)}</b></span><span>{rp(r.price / r.pcs_per_pack)}/pcs = <b>{rp(li?.subtotal ?? 0)}</b></span></div>{stockScheme === "accumulation" && <div className="mt-1 font-mono text-xs text-muted-foreground">Sisa di rak: <b>{formatQty(li?.remaining ?? 0, r.pcs_per_pack)}</b></div>}<div className="mt-1 font-mono text-xs text-muted-foreground">Retur fisik: <b>{formatQty(li?.returned ?? 0, r.pcs_per_pack)}</b></div></div>; })}</div></section>;
+function PreviousStockEditor({
+  rows,
+  setRows,
+  lineItems,
+  stockScheme,
+}: {
+  rows: Row[];
+  setRows: React.Dispatch<React.SetStateAction<Row[]>>;
+  lineItems: LineItem[];
+  stockScheme: "accumulation" | "clean_pull";
+}) {
+  const [openReturns, setOpenReturns] = useState<Record<number, boolean>>({});
+
+  return (
+    <section className="mt-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          Hitung Titipan Sebelumnya
+        </h2>
+        <span className="text-[11px] text-muted-foreground">{rows.length} produk titip</span>
+      </div>
+
+      {rows.length === 0 && (
+        <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+          Tidak ada sisa stok di outlet ini.
+        </p>
+      )}
+
+      <div className="mt-3 space-y-2.5">
+        {rows.map((r, i) => {
+          const li = lineItems[i];
+          const set = (patch: Partial<Row>) =>
+            setRows((current) => current.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+          const hasReturn = Number(r.returnPack) > 0 || Number(r.returnPcs) > 0;
+          const isReturnOpen = openReturns[i] || hasReturn;
+
+          return (
+            <div key={i} className="space-y-2.5 rounded-xl border bg-card p-3 shadow-xs transition-all">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold leading-tight text-foreground">{r.name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    Titip: <span className="font-medium text-foreground">{formatQty(r.prev_stock, r.pcs_per_pack)}</span>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <div className="flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-1 text-xs">
+                    <span className="text-[10px] text-muted-foreground">Rp</span>
+                    <input
+                      type="number"
+                      value={r.price || ""}
+                      onChange={(e) => set({ price: num(e.target.value) })}
+                      className="w-16 bg-transparent text-right font-medium focus:outline-hidden"
+                      placeholder="0"
+                      title="Harga per pack"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      set({ shelfPack: "0", shelfPcs: "0", returnPack: "0", returnPcs: "0" });
+                      toast.success(`${r.name}: diset Laku Semua`);
+                    }}
+                    className="h-7 border-emerald-500/40 px-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                  >
+                    Laku Semua
+                  </Button>
+                </div>
+              </div>
+
+              {stockScheme === "accumulation" && (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-1.5">
+                  <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">Sisa Rak:</span>
+                  <div className="grid w-48 grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1 rounded-md border bg-background px-2 py-0.5">
+                      <span className="text-[10px] text-muted-foreground">Pack</span>
+                      <Input type="number" min={0} step={1} value={r.shelfPack} placeholder="0" onChange={(e) => set({ shelfPack: e.target.value })} className="h-7 w-full border-0 p-0 text-right text-xs focus-visible:ring-0" />
+                    </div>
+                    <div className="flex items-center gap-1 rounded-md border bg-background px-2 py-0.5">
+                      <span className="text-[10px] text-muted-foreground">Pcs</span>
+                      <Input type="number" min={0} max={r.pcs_per_pack - 1} step={1} value={r.shelfPcs} placeholder="0" onChange={(e) => set({ shelfPcs: e.target.value })} className="h-7 w-full border-0 p-0 text-right text-xs focus-visible:ring-0" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isReturnOpen ? (
+                <div className="space-y-1.5 rounded-lg border border-amber-500/25 bg-amber-500/5 p-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">Retur Fisik (BS / Rusak):</span>
+                    <button type="button" onClick={() => { set({ returnPack: "0", returnPcs: "0" }); setOpenReturns((prev) => ({ ...prev, [i]: false })); }} className="text-[10px] text-muted-foreground underline hover:text-destructive">Batal Retur</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1 rounded-md border bg-background px-2 py-0.5">
+                      <span className="text-[10px] text-muted-foreground">Pack</span>
+                      <Input type="number" min={0} step={1} value={r.returnPack} placeholder="0" onChange={(e) => set({ returnPack: e.target.value })} className="h-7 w-full border-0 p-0 text-right text-xs focus-visible:ring-0" />
+                    </div>
+                    <div className="flex items-center gap-1 rounded-md border bg-background px-2 py-0.5">
+                      <span className="text-[10px] text-muted-foreground">Pcs</span>
+                      <Input type="number" min={0} max={r.pcs_per_pack - 1} step={1} value={r.returnPcs} placeholder="0" onChange={(e) => set({ returnPcs: e.target.value })} className="h-7 w-full border-0 p-0 text-right text-xs focus-visible:ring-0" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-end pt-0.5">
+                  <button type="button" onClick={() => setOpenReturns((prev) => ({ ...prev, [i]: true }))} className="flex items-center gap-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-primary">
+                    <span>+ Ada Retur Fisik / Rusak?</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+                <div className="text-muted-foreground">
+                  Terjual: <b className="text-foreground">{formatQty(li?.sold ?? 0, r.pcs_per_pack)}</b>
+                  {Boolean(li?.returned) && <span className="ml-1.5 font-medium text-amber-600">(Retur: {formatQty(li?.returned ?? 0, r.pcs_per_pack)})</span>}
+                </div>
+                <div className="font-mono font-semibold text-primary">{rp(li?.subtotal ?? 0)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function QtyPair({ label, pack, pcs, size, setPack, setPcs }: { label: string; pack: string; pcs: string; size: number; setPack: (v: string) => void; setPcs: (v: string) => void }) {
