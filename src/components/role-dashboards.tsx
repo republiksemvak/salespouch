@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ShoppingCart,
   LockKeyhole,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeSwitcher } from "@/components/mode-switcher";
@@ -282,48 +283,113 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
 // -------------------------------------------------------------
 export function SuperAdminDashboard() {
   return (
-    <main className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-4">
-      <Header title="Super Admin" subtitle="Panel Kontrol Pusat" />
-      <section className="mt-4 rounded-xl border bg-card p-4 shadow-xs">
+    <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
+      <Header title="Super Admin" subtitle="Pusat Kontrol Backend & Lisensi" />
+
+      {/* Kartu Status Akses Backend */}
+      <section className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
             <ShieldCheck className="h-5 w-5" />
           </div>
-          <div>
-            <h2 className="text-sm font-bold">Kontrol Super Admin</h2>
-            <p className="text-xs text-muted-foreground">Kelola lisensi, tenant, dan promo.</p>
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold text-foreground">Backend Kontrol Pusat</h2>
+            <p className="text-xs text-muted-foreground">
+              Akses bypass aktif. Kelola seluruh data tenant, lisensi, dan pemeliharaan aplikasi.
+            </p>
           </div>
         </div>
-        <Button asChild className="mt-3 h-10 w-full rounded-lg text-xs">
-          <Link to="/admin">Buka Dashboard Super Admin</Link>
-        </Button>
       </section>
 
-      {/* Submenu Operasional — khusus Owner */}
-      <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
-        <div className="mb-2 flex items-center gap-2 px-1">
-          <Wallet className="h-4 w-4 text-slate-600" />
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Operasional</div>
-            <div className="text-[10px] text-muted-foreground">Pengelolaan dana operasional Sales</div>
+      {/* Menu Kontrol Utama SaaS */}
+      <section className="mt-4 space-y-2">
+        <div className="px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          Modul Kontrol SaaS
+        </div>
+
+        {/* 1. Pengguna & Lisensi */}
+        <Link
+          to="/admin"
+          className="group flex items-center justify-between rounded-xl border bg-card p-3.5 transition-all hover:border-primary/50 hover:bg-muted/40 active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-foreground">Pengguna & Lisensi Bisnis</div>
+              <div className="text-[10px] text-muted-foreground">
+                Perpanjang lisensi, reset password, & monitoring tenant
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Link
-            to="/operations"
-            className="rounded-lg border p-3 transition-colors hover:bg-muted/50"
-          >
-            <div className="text-xs font-semibold">Ringkasan Operasional</div>
-            <div className="mt-0.5 text-[10px] text-muted-foreground">Saldo & rekap Sales</div>
-          </Link>
-          <Link
-            to="/travel-funds"
-            className="rounded-lg border p-3 transition-colors hover:bg-muted/50"
-          >
-            <div className="text-xs font-semibold">Input Uang Jalan Sales</div>
-            <div className="mt-0.5 text-[10px] text-muted-foreground">Berikan atau kurangi uang jalan</div>
-          </Link>
-        </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+        </Link>
+
+        {/* 2. Paket Berlangganan */}
+        <Link
+          to="/admin"
+          className="group flex items-center justify-between rounded-xl border bg-card p-3.5 transition-all hover:border-primary/50 hover:bg-muted/40 active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
+              <Package className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-foreground">Paket Berlangganan</div>
+              <div className="text-[10px] text-muted-foreground">
+                Atur paket harga (bulanan/tahunan) & durasi lisensi
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+        </Link>
+
+        {/* 3. Promo & Diskon */}
+        <Link
+          to="/admin"
+          className="group flex items-center justify-between rounded-xl border bg-card p-3.5 transition-all hover:border-primary/50 hover:bg-muted/40 active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+              <Settings2 className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-foreground">Kupon Promo & Voucher</div>
+              <div className="text-[10px] text-muted-foreground">
+                Diskon persen & bonus hari masa aktif
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+        </Link>
+
+        {/* 4. Alat Pemulihan / Bantuan Tenant */}
+        <Link
+          to="/admin-stock-reset"
+          className="group flex items-center justify-between rounded-xl border border-orange-200/80 bg-orange-50/50 p-3.5 transition-all hover:border-orange-300 hover:bg-orange-100/40 active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
+              <RotateCcw className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-foreground">Reset Stok Pembukaan</div>
+              <div className="text-[10px] text-orange-950/70">
+                Bantuan darurat jika user salah input opname awal
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+        </Link>
+      </section>
+
+      {/* Petunjuk Simulator Role untuk Testing */}
+      <section className="mt-5 rounded-xl border border-dashed bg-muted/30 p-3 text-center">
+        <div className="text-[11px] font-semibold text-foreground">Simulasi Tampilan Role</div>
+        <p className="mt-0.5 text-[10px] text-muted-foreground leading-relaxed">
+          Gunakan tombol di pojok kanan atas untuk mensimulasikan tampilan aplikasi sebagai <b>Owner</b>, <b>Manager</b>, <b>Admin</b>, atau <b>Sales</b> tanpa perlu logout.
+        </p>
       </section>
     </main>
   );
