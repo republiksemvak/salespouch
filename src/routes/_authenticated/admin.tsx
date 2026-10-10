@@ -108,8 +108,181 @@ function Packages() {
 }
 
 function Promos() {
-  const qc = useQueryClient(); const [f, setF] = useState({ code: "", description: "", discount_percent: "", bonus_days: "", valid_until: "" }); const { data } = useQuery({ queryKey: ["admin-promos"], queryFn: async () => (await supabase.from("promos").select("*").order("created_at", { ascending: false })).data ?? [] }); const refresh = () => qc.invalidateQueries({ queryKey: ["admin-promos"] });
-  async function add(e: React.FormEvent) { e.preventDefault(); const { error } = await supabase.from("promos").insert({ code: f.code.trim().toUpperCase(), description: f.description.trim() || null, discount_percent: Number(f.discount_percent) || 0, bonus_days: Number(f.bonus_days) || 0, valid_until: f.valid_until ? `${f.valid_until}T23:59:59` : null }); if (error) toast.error(error.message); else { setF({ code: "", description: "", discount_percent: "", bonus_days: "", valid_until: "" }); refresh(); } }
-  async function remove(id: string) { if (!confirm("Hapus promo ini?")) return; const { error } = await supabase.from("promos").delete().eq("id", id); if (error) toast.error(error.message); else refresh(); }
-  return <div className="mt-4 space-y-4"><form onSubmit={add} className="grid gap-2 rounded-2xl border bg-card p-4"><Input required placeholder="Kode promo" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /><Input placeholder="Deskripsi" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /><Input type="number" min="0" max="100" placeholder="Diskon %" value={f.discount_percent} onChange={(e) => setF({ ...f, discount_percent: e.target.value })} /><Input type="number" min="0" placeholder="Bonus hari" value={f.bonus_days} onChange={(e) => setF({ ...f, bonus_days: e.target.value })} /><Input type="date" value={f.valid_until} onChange={(e) => setF({ ...f, valid_until: e.target.value })} /><Button>Tambah Promo</Button></form><div className="space-y-2">{(data as Promo[]).map((p) => <div key={p.id} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3"><div><div className="font-semibold">{p.code}</div><div className="text-xs text-muted-foreground">{p.description || "Tanpa deskripsi"} · Diskon {p.discount_percent}% · Bonus {p.bonus_days} hari{p.valid_until ? ` · sampai ${fmt(p.valid_until)}` : ""}</div></div><Button size="sm" variant="ghost" className="text-destructive" onClick={() => remove(p.id)}>Hapus</Button></div>)}</div></div>;
+  const qc = useQueryClient();
+  const [f, setF] = useState({
+    code: "",
+    description: "",
+    discount_percent: "",
+    bonus_days: "",
+    valid_until: "",
+  });
+  const [busy, setBusy] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-promos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("promos")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as Promo[]) ?? [];
+    },
+  });
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-promos"] });
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!f.code.trim()) {
+      toast.error("Kode promo wajib diisi");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const validUntilIso = f.valid_until
+        ? new Date(`${f.valid_until}T23:59:59`).toISOString()
+        : null;
+
+      const { error } = await supabase.from("promos").insert({
+        code: f.code.trim().toUpperCase(),
+        description: f.description.trim() || null,
+        discount_percent: Math.min(100, Math.max(0, Number(f.discount_percent) || 0)),
+        bonus_days: Math.max(0, Number(f.bonus_days) || 0),
+        valid_until: validUntilIso,
+        active: true,
+      });
+
+      if (error) throw error;
+
+      toast.success(`Kode promo ${f.code.trim().toUpperCase()} berhasil dibuat!`);
+      setF({ code: "", description: "", discount_percent: "", bonus_days: "", valid_until: "" });
+      refresh();
+    } catch (err) {
+      toast.error((err as Error).message || "Gagal membuat promo");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string, code: string) {
+    if (!confirm(`Hapus promo "${code}"?`)) return;
+    try {
+      const { error } = await supabase.from("promos").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Promo berhasil dihapus");
+      refresh();
+    } catch (err) {
+      toast.error((err as Error).message || "Gagal menghapus promo");
+    }
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      <form onSubmit={add} className="grid gap-3 rounded-2xl border bg-card p-4 shadow-xs">
+        <div>
+          <h3 className="text-sm font-bold text-foreground">Buat Kupon Promo Baru</h3>
+          <p className="text-xs text-muted-foreground">Promo dapat berupa diskon biaya lisensi atau bonus hari aktif.</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground">Kode Promo (Wajib)</label>
+            <Input
+              required
+              placeholder="Contoh: MERDEKA50"
+              value={f.code}
+              onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })}
+              className="mt-1 font-mono uppercase"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground">Deskripsi / Catatan</label>
+            <Input
+              placeholder="Contoh: Promo launching diskon 50%"
+              value={f.description}
+              onChange={(e) => setF({ ...f, description: e.target.value })}
+              className="mt-1"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground">Diskon (%)</label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              placeholder="0 - 100"
+              value={f.discount_percent}
+              onChange={(e) => setF({ ...f, discount_percent: e.target.value })}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground">Bonus Hari</label>
+            <Input
+              type="number"
+              min="0"
+              placeholder="Hari"
+              value={f.bonus_days}
+              onChange={(e) => setF({ ...f, bonus_days: e.target.value })}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground">Berlaku Sampai</label>
+            <Input
+              type="date"
+              value={f.valid_until}
+              onChange={(e) => setF({ ...f, valid_until: e.target.value })}
+              className="mt-1"
+            />
+          </div>
+        </div>
+
+        <Button disabled={busy} className="mt-1 w-full rounded-xl">
+          {busy ? "Menyimpan…" : "Tambah Promo"}
+        </Button>
+      </form>
+
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-muted-foreground">Daftar Kupon Promo Aktif & Riwayat</div>
+        {isLoading && <div className="p-4 text-center text-xs text-muted-foreground">Memuat promo…</div>}
+        {data && data.length === 0 && (
+          <div className="rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+            Belum ada kupon promo yang dibuat.
+          </div>
+        )}
+        {data?.map((p) => (
+          <div key={p.id} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3 shadow-xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm font-bold text-foreground">{p.code}</span>
+                {p.valid_until && new Date(p.valid_until) < new Date() && (
+                  <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] text-destructive font-medium">
+                    Kedaluwarsa
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                {p.description || "Tanpa deskripsi"} · Diskon {p.discount_percent}% · Bonus {p.bonus_days} hari
+                {p.valid_until ? ` · Berakhir ${fmt(p.valid_until)}` : " · Selamanya"}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:bg-destructive/10"
+              onClick={() => remove(p.id, p.code)}
+            >
+              Hapus
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
