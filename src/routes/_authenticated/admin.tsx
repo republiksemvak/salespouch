@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -13,7 +13,18 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+type AdminSearch = {
+  tab?: "users" | "packages" | "promos" | "stock-reset";
+};
+
 export const Route = createFileRoute("/_authenticated/admin")({
+  validateSearch: (search: Record<string, unknown>): AdminSearch => {
+    const valid = ["users", "packages", "promos", "stock-reset"];
+    const tab = typeof search.tab === "string" && valid.includes(search.tab)
+      ? (search.tab as AdminSearch["tab"])
+      : "users";
+    return { tab };
+  },
   head: () => ({ meta: [{ title: "Super Admin — Sales Pouch" }, { name: "description", content: "Kelola akun User Utama, lisensi, paket dan promo." }, { property: "og:title", content: "Super Admin — Sales Pouch" }, { property: "og:description", content: "Kelola akun User Utama, lisensi, paket dan promo." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: AdminPage,
 });
@@ -25,12 +36,8 @@ type Promo = { id: string; code: string; description: string | null; discount_pe
 
 function AdminPage() {
   const { data: isAdmin, isLoading } = useIsAdmin();
-
-  // Membaca parameter tab dari URL (?tab=packages, ?tab=promos, dll)
-  const searchTab = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
-  const validTabs = ["users", "packages", "promos", "stock-reset"];
-  const initialTab = validTabs.includes(searchTab || "") ? (searchTab as string) : "users";
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const { tab = "users" } = Route.useSearch();
+  const navigate = useNavigate();
 
   if (isLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
   if (!isAdmin) return <div className="p-10 text-center text-destructive">Halaman ini khusus super admin.</div>;
@@ -41,7 +48,17 @@ function AdminPage() {
         <ArrowLeft className="h-4 w-4" />Kembali
       </Link>
       <h1 className="mt-2 text-2xl font-bold">Dashboard Super Admin</h1>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-5">
+      <Tabs
+        value={tab}
+        onValueChange={(newTab) => {
+          navigate({
+            to: "/admin",
+            search: { tab: newTab as AdminSearch["tab"] },
+            replace: true,
+          });
+        }}
+        className="mt-5"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="users">Pengguna</TabsTrigger>
           <TabsTrigger value="packages">Paket</TabsTrigger>
