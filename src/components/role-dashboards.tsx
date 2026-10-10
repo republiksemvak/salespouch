@@ -310,6 +310,7 @@ export function SuperAdminDashboard() {
         {/* 1. Pengguna & Lisensi */}
         <Link
           to="/admin"
+          search={{ tab: "users" } as any}
           className="group flex items-center justify-between rounded-xl border bg-card p-3.5 transition-all hover:border-primary/50 hover:bg-muted/40 active:scale-[0.99]"
         >
           <div className="flex items-center gap-3">
@@ -329,6 +330,7 @@ export function SuperAdminDashboard() {
         {/* 2. Paket Berlangganan */}
         <Link
           to="/admin"
+          search={{ tab: "packages" } as any}
           className="group flex items-center justify-between rounded-xl border bg-card p-3.5 transition-all hover:border-primary/50 hover:bg-muted/40 active:scale-[0.99]"
         >
           <div className="flex items-center gap-3">
@@ -348,6 +350,7 @@ export function SuperAdminDashboard() {
         {/* 3. Promo & Diskon */}
         <Link
           to="/admin"
+          search={{ tab: "promos" } as any}
           className="group flex items-center justify-between rounded-xl border bg-card p-3.5 transition-all hover:border-primary/50 hover:bg-muted/40 active:scale-[0.99]"
         >
           <div className="flex items-center gap-3">
