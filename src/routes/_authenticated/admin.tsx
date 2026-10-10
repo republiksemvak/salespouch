@@ -25,9 +25,36 @@ type Promo = { id: string; code: string; description: string | null; discount_pe
 
 function AdminPage() {
   const { data: isAdmin, isLoading } = useIsAdmin();
+
+  // Membaca parameter tab dari URL (?tab=packages, ?tab=promos, dll)
+  const searchTab = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
+  const validTabs = ["users", "packages", "promos", "stock-reset"];
+  const initialTab = validTabs.includes(searchTab || "") ? (searchTab as string) : "users";
+  const [activeTab, setActiveTab] = useState(initialTab);
+
   if (isLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
   if (!isAdmin) return <div className="p-10 text-center text-destructive">Halaman ini khusus super admin.</div>;
-  return <main className="mx-auto min-h-screen max-w-3xl px-5 pb-16 pt-6"><Link to="/dashboard" className="flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" />Kembali</Link><h1 className="mt-2 text-2xl font-bold">Dashboard Super Admin</h1><Tabs defaultValue="users" className="mt-5"><TabsList className="grid w-full grid-cols-4"><TabsTrigger value="users">Pengguna</TabsTrigger><TabsTrigger value="packages">Paket</TabsTrigger><TabsTrigger value="promos">Promo</TabsTrigger><TabsTrigger value="stock-reset">Stok</TabsTrigger></TabsList><TabsContent value="users"><Users /></TabsContent><TabsContent value="packages"><Packages /></TabsContent><TabsContent value="promos"><Promos /></TabsContent><TabsContent value="stock-reset"><StockReset /></TabsContent></Tabs></main>;
+
+  return (
+    <main className="mx-auto min-h-screen max-w-3xl px-5 pb-16 pt-6">
+      <Link to="/dashboard" className="flex items-center gap-1 text-sm text-muted-foreground">
+        <ArrowLeft className="h-4 w-4" />Kembali
+      </Link>
+      <h1 className="mt-2 text-2xl font-bold">Dashboard Super Admin</h1>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-5">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="users">Pengguna</TabsTrigger>
+          <TabsTrigger value="packages">Paket</TabsTrigger>
+          <TabsTrigger value="promos">Promo</TabsTrigger>
+          <TabsTrigger value="stock-reset">Stok</TabsTrigger>
+        </TabsList>
+        <TabsContent value="users"><Users /></TabsContent>
+        <TabsContent value="packages"><Packages /></TabsContent>
+        <TabsContent value="promos"><Promos /></TabsContent>
+        <TabsContent value="stock-reset"><StockReset /></TabsContent>
+      </Tabs>
+    </main>
+  );
 }
 
 function StockReset() {
