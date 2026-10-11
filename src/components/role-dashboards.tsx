@@ -1,5 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { getAdminUsers, getActiveAnnouncement, saveAnnouncement, setAnnouncementActive } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BarChart3,
@@ -20,6 +24,10 @@ import {
   ShoppingCart,
   LockKeyhole,
   RotateCcw,
+  Megaphone,
+  Clock,
+  X,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeSwitcher } from "@/components/mode-switcher";
@@ -276,128 +284,218 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
       </section>
     </main>
   );
+      <OwnerAnnouncementBanner />
 }
 
 // -------------------------------------------------------------
 // ROLE DASHBOARD LAINNYA (TETAP KOMPAK & CEPAT)
 // -------------------------------------------------------------
-export function SuperAdminDashboard() {
-  return (
-    <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
-      <Header title="Super Admin" subtitle="Pusat Kontrol Backend & Lisensi" />
+function OwnerAnnouncementBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  const fetchActive = useServerFn(getActiveAnnouncement);
+  const { data: announcement } = useQuery({
+    queryKey: ["active-announcement"],
+    queryFn: async () => {
+      try {
+        return await fetchActive();
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 60_000,
+  });
 
-      {/* Kartu Status Akses Backend */}
-      <section className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-            <ShieldCheck className="h-5 w-5" />
+  const [locallyDismissed, setLocallyDismissed] = useState(false);
+  useEffect(() => {
+    if (!announcement || typeof window === "undefined") return;
+    setLocallyDismissed(
+      localStorage.getItem("sp_dismiss_announcement_" + announcement.id) === "true",
+    );
+  }, [announcement?.id]);
+
+  if (!announcement || !announcement.is_active || dismissed || locallyDismissed) return null;
+  const bgStyle =
+    announcement.type === "important"
+      ? "border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-200"
+      : announcement.type === "warning"
+      ? "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+      : "border-primary/30 bg-primary/10 text-foreground";
+
+  return (
+    <div className={"mt-3 rounded-xl border p-3 text-xs shadow-xs transition-all " + bgStyle}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <div className="mt-0.5 rounded-full bg-background/80 p-1 text-primary shadow-xs">
+            <Megaphone className="h-3.5 w-3.5" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-foreground">Backend Kontrol Pusat</h2>
-            <p className="text-xs text-muted-foreground">
-              Akses bypass aktif. Kelola seluruh data tenant, lisensi, dan pemeliharaan aplikasi.
-            </p>
+            <div className="font-bold leading-tight">{announcement.title}</div>
+            <div className="mt-1 whitespace-pre-line text-[11px] leading-relaxed opacity-90">{announcement.content}</div>
           </div>
+        </div>
+        <button type="button" onClick={() => {
+          setDismissed(true);
+          setLocallyDismissed(true);
+          localStorage.setItem("sp_dismiss_announcement_" + announcement.id, "true");
+        }} className="shrink-0 p-1 text-muted-foreground hover:text-foreground" aria-label="Tutup">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function SuperAdminDashboard() {
+  const qc = useQueryClient();
+  const getUsers = useServerFn(getAdminUsers);
+  const fetchActive = useServerFn(getActiveAnnouncement);
+  const postAnnouncement = useServerFn(saveAnnouncement);
+  const toggleActive = useServerFn(setAnnouncementActive);
+
+  const { data: usersData, isLoading: loadingUsers } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: () => getUsers({}),
+  });
+  const { data: activeAnnouncement, refetch: refetchAnnouncement } = useQuery({
+    queryKey: ["active-announcement"],
+    queryFn: async () => {
+      try {
+        return await fetchActive();
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [type, setType] = useState<"info" | "warning" | "important">("info");
+  const [busy, setBusy] = useState(false);
+
+  const owners = (usersData?.owners ?? []) as Profile[];
+  const recentRegistered = [...owners]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 6);
+  const totalLicensed = owners.filter((u) => u.license_until && new Date(u.license_until) > new Date()).length;
+
+  async function handleSaveAnnouncement(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!title.trim() || !content.trim()) {
+      toast.error("Judul dan isi info wajib diisi");
+      return;
+    }
+    setBusy(true);
+    try {
+      await postAnnouncement({ data: { title: title.trim(), content: content.trim(), type, is_active: true } });
+      toast.success("Informasi penting berhasil disiarkan ke seluruh Owner!");
+      setTitle("");
+      setContent("");
+      await refetchAnnouncement();
+      await qc.invalidateQueries({ queryKey: ["active-announcement"] });
+    } catch (err) {
+      toast.error((err as Error).message || "Gagal menyimpan pengumuman");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleToggleStatus(id: string, current: boolean) {
+    try {
+      await toggleActive({ data: { id, is_active: !current } });
+      toast.success(current ? "Informasi dinonaktifkan" : "Informasi diaktifkan kembali");
+      await refetchAnnouncement();
+      await qc.invalidateQueries({ queryKey: ["active-announcement"] });
+    } catch (err) {
+      toast.error((err as Error).message || "Gagal mengubah status informasi");
+    }
+  }
+
+  const fmtDate = (value: string) => new Date(value).toLocaleString("id-ID", {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-4 pb-14 pt-4">
+      <Header title="Super Admin" subtitle="Pusat Kontrol & Monitoring Pendaftaran" />
+
+      <section className="mt-3 grid grid-cols-3 divide-x rounded-xl border bg-card/60 p-2 text-center shadow-xs">
+        <div><div className="text-[10px] text-muted-foreground">Total Bisnis</div><div className="mt-0.5 text-sm font-bold text-foreground">{loadingUsers ? "…" : owners.length}</div></div>
+        <div><div className="text-[10px] text-muted-foreground">Lisensi Aktif</div><div className="mt-0.5 text-sm font-bold text-emerald-600">{loadingUsers ? "…" : totalLicensed}</div></div>
+        <div><div className="text-[10px] text-muted-foreground">Freemium</div><div className="mt-0.5 text-sm font-bold text-foreground">{loadingUsers ? "…" : owners.length - totalLicensed}</div></div>
+      </section>
+
+      <section className="mt-4 rounded-xl border bg-card p-3.5 shadow-xs">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Megaphone className="h-4 w-4" /></div>
+          <div><h2 className="text-xs font-bold text-foreground">Info Penting ke Dashboard Owner</h2><p className="text-[10px] text-muted-foreground">Muncul di bagian atas dashboard semua Owner.</p></div>
+        </div>
+
+        {activeAnnouncement?.is_active && (
+          <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className="rounded bg-primary/20 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-primary">Sedang Tayang</span>
+                <div className="mt-1 text-xs font-semibold text-foreground">{activeAnnouncement.title}</div>
+                <div className="mt-0.5 whitespace-pre-line text-[11px] text-muted-foreground">{activeAnnouncement.content}</div>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => handleToggleStatus(activeAnnouncement.id, true)} className="h-6 shrink-0 border-destructive/40 px-2 text-[10px] text-destructive hover:bg-destructive/10">Tarik / Matikan</Button>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSaveAnnouncement} className="mt-3 space-y-2">
+          <div><label className="text-[10px] font-medium text-muted-foreground">Judul Pesan</label><Input required maxLength={100} placeholder="Contoh: Pemeliharaan Sistem Nanti Malam" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-0.5 h-8 text-xs" /></div>
+          <div><label className="text-[10px] font-medium text-muted-foreground">Isi Pesan / Penjelasan</label><textarea required maxLength={1000} rows={3} placeholder="Tuliskan info penting yang perlu dibaca pemilik usaha…" value={content} onChange={(e) => setContent(e.target.value)} className="mt-0.5 w-full rounded-md border bg-background p-2 text-xs focus:outline-hidden" /></div>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="flex items-center gap-1.5 text-xs">
+              {(["info", "warning", "important"] as const).map((t) => <button key={t} type="button" onClick={() => setType(t)} className={"rounded-md px-2 py-1 text-[10px] font-medium transition-all " + (type === t ? "bg-foreground text-background" : "bg-muted text-muted-foreground")}>{t === "info" ? "Info Biasa" : t === "warning" ? "Peringatan" : "Penting"}</button>)}
+            </div>
+            <Button type="submit" size="sm" disabled={busy} className="h-7 text-xs font-semibold">{busy ? "Menyimpan…" : "Tayangkan Info"}</Button>
+          </div>
+        </form>
+      </section>
+
+      <section className="mt-4">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-muted-foreground" /><h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Log Pendaftaran Terbaru</h2></div>
+          <Link to="/admin" search={{ tab: "users" } as any} className="text-[11px] font-medium text-primary hover:underline">Semua Pengguna ({owners.length}) →</Link>
+        </div>
+        <div className="mt-2 space-y-2">
+          {loadingUsers && <div className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">Memeriksa pendaftar baru…</div>}
+          {!loadingUsers && recentRegistered.length === 0 && <div className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">Belum ada pendaftaran akun baru.</div>}
+          {recentRegistered.map((u) => {
+            const hasLicense = !!u.license_until && new Date(u.license_until) > new Date();
+            return (
+              <div key={u.id} className="flex items-center justify-between gap-2 rounded-xl border bg-card p-2.5 shadow-xs transition-colors hover:bg-muted/40">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5"><span className="truncate text-xs font-semibold text-foreground">{u.user_email || "Tanpa Email"}</span><span className={"shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-medium " + (hasLicense ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground")}>{hasLicense ? "Premium" : "Freemium"}</span></div>
+                  <div className="truncate text-[11px] text-muted-foreground">{u.business_name || "(Belum isi profil)"}{u.business_category ? " · " + u.business_category : ""}</div>
+                  <div className="mt-0.5 text-[10px] text-muted-foreground/80">Daftar: <span className="font-medium text-foreground">{fmtDate(u.created_at)}</span></div>
+                </div>
+                <Link to="/admin" search={{ tab: "users" } as any} className="shrink-0 rounded-lg border bg-background px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted">Kelola</Link>
+              </div>
+            );
+          })}
         </div>
       </section>
 
-      {/* Menu Kontrol Utama SaaS */}
-      <section className="mt-4 space-y-2">
-        <div className="px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          Modul Kontrol SaaS
+      <section className="mt-5 space-y-2">
+        <div className="px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi & Pemeliharaan Sistem</div>
+        <div className="grid grid-cols-2 gap-2">
+          <Link to="/admin" search={{ tab: "packages" } as any} className="flex items-center gap-2.5 rounded-xl border bg-card p-3 transition-colors hover:bg-muted/50">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600"><Package className="h-4 w-4" /></div><div><div className="text-xs font-semibold">Paket Lisensi</div><div className="text-[10px] text-muted-foreground">Atur harga paket</div></div>
+          </Link>
+          <Link to="/admin" search={{ tab: "promos" } as any} className="flex items-center gap-2.5 rounded-xl border bg-card p-3 transition-colors hover:bg-muted/50">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600"><Settings2 className="h-4 w-4" /></div><div><div className="text-xs font-semibold">Kupon Promo</div><div className="text-[10px] text-muted-foreground">Diskon & voucher</div></div>
+          </Link>
         </div>
-
-        {/* 1. Pengguna & Lisensi */}
-        <Link
-          to="/admin"
-          search={{ tab: "users" } as any}
-          className="group flex items-center justify-between rounded-xl border bg-card p-3.5 transition-all hover:border-primary/50 hover:bg-muted/40 active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
-              <Users className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-foreground">Pengguna & Lisensi Bisnis</div>
-              <div className="text-[10px] text-muted-foreground">
-                Perpanjang lisensi, reset password, & monitoring tenant
-              </div>
-            </div>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+        <Link to="/admin-stock-reset" className="flex items-center justify-between rounded-xl border border-orange-200/80 bg-orange-50/50 p-3 transition-colors hover:bg-orange-100/50">
+          <div className="flex items-center gap-2.5"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-700"><RotateCcw className="h-4 w-4" /></div><div><div className="text-xs font-semibold text-foreground">Reset Stok Opname Awal</div><div className="text-[10px] text-orange-950/70">Bantuan darurat jika user salah opname</div></div></div><ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
-
-        {/* 2. Paket Berlangganan */}
-        <Link
-          to="/admin"
-          search={{ tab: "packages" } as any}
-          className="group flex items-center justify-between rounded-xl border bg-card p-3.5 transition-all hover:border-primary/50 hover:bg-muted/40 active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
-              <Package className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-foreground">Paket Berlangganan</div>
-              <div className="text-[10px] text-muted-foreground">
-                Atur paket harga (bulanan/tahunan) & durasi lisensi
-              </div>
-            </div>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-        </Link>
-
-        {/* 3. Promo & Diskon */}
-        <Link
-          to="/admin"
-          search={{ tab: "promos" } as any}
-          className="group flex items-center justify-between rounded-xl border bg-card p-3.5 transition-all hover:border-primary/50 hover:bg-muted/40 active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
-              <Settings2 className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-foreground">Kupon Promo & Voucher</div>
-              <div className="text-[10px] text-muted-foreground">
-                Diskon persen & bonus hari masa aktif
-              </div>
-            </div>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-        </Link>
-
-        {/* 4. Alat Pemulihan / Bantuan Tenant */}
-        <Link
-          to="/admin-stock-reset"
-          className="group flex items-center justify-between rounded-xl border border-orange-200/80 bg-orange-50/50 p-3.5 transition-all hover:border-orange-300 hover:bg-orange-100/40 active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
-              <RotateCcw className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-foreground">Reset Stok Pembukaan</div>
-              <div className="text-[10px] text-orange-950/70">
-                Bantuan darurat jika user salah input opname awal
-              </div>
-            </div>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-        </Link>
-      </section>
-
-      {/* Petunjuk Simulator Role untuk Testing */}
-      <section className="mt-5 rounded-xl border border-dashed bg-muted/30 p-3 text-center">
-        <div className="text-[11px] font-semibold text-foreground">Simulasi Tampilan Role</div>
-        <p className="mt-0.5 text-[10px] text-muted-foreground leading-relaxed">
-          Gunakan tombol di pojok kanan atas untuk mensimulasikan tampilan aplikasi sebagai <b>Owner</b>, <b>Manager</b>, <b>Admin</b>, atau <b>Sales</b> tanpa perlu logout.
-        </p>
       </section>
     </main>
   );
 }
-
 export function SalesDashboard({ businessName, profile, salesUserId }: DashboardProps & { salesUserId?: string }) {
   const activeSalesId = salesUserId ?? profile?.id;
   const subtitle = profile?.display_name
