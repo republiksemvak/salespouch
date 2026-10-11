@@ -153,3 +153,82 @@ export const resetMyStockOpening = createServerFn({ method: "POST" })
     if (deleteError) throw new Error(deleteError.message);
     return { ok: true, reset: true };
   });
+
+export const getActiveAnnouncement = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: userData, error: authError } = await context.supabase.auth.getUser();
+    if (authError || !userData.user || userData.user.id !== context.userId) {
+      throw new Error("Sesi login tidak valid.");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("app_announcements")
+      .select("id,title,content,type,is_active,created_at,updated_at")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data;
+  });
+
+export const saveAnnouncement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      title: z.string().trim().min(1, "Judul info wajib diisi").max(100),
+      content: z.string().trim().min(1, "Isi pesan wajib diisi").max(1000),
+      type: z.enum(["info", "warning", "important"]).default("info"),
+      is_active: z.boolean().default(true),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.is_active) {
+      const { error: deactivateError } = await supabaseAdmin
+        .from("app_announcements")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("is_active", true);
+      if (deactivateError) throw new Error(deactivateError.message);
+    }
+
+    const { data: inserted, error } = await supabaseAdmin
+      .from("app_announcements")
+      .insert({
+        title: data.title,
+        content: data.content,
+        type: data.type,
+        is_active: data.is_active,
+      })
+      .select("id,title,content,type,is_active,created_at,updated_at")
+      .single();
+    if (error) throw new Error(error.message);
+    return inserted;
+  });
+
+export const setAnnouncementActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid(), is_active: z.boolean() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.is_active) {
+      const { error: deactivateError } = await supabaseAdmin
+        .from("app_announcements")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("is_active", true)
+        .neq("id", data.id);
+      if (deactivateError) throw new Error(deactivateError.message);
+    }
+
+    const { error } = await supabaseAdmin
+      .from("app_announcements")
+      .update({ is_active: data.is_active, updated_at: new Date().toISOString() })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
