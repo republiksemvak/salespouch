@@ -27,7 +27,6 @@ import {
   Megaphone,
   Clock,
   X,
-  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeSwitcher } from "@/components/mode-switcher";
