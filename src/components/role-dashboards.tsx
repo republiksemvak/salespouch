@@ -164,6 +164,8 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
         subtitle="Kendali Operasional Lapangan"
       />
 
+      <OwnerAnnouncementBanner />
+
       {hasPremiumAccess(profile) ? (
         <CompactSummary ownerId={profile?.id} />
       ) : (
@@ -284,7 +286,6 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
       </section>
     </main>
   );
-      <OwnerAnnouncementBanner />
 }
 
 // -------------------------------------------------------------
