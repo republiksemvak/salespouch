@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Phone, Store, TrendingUp } from "lucide-react";
+import { ArrowLeft, Download, Phone, Store, TrendingUp, Flame } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useTeamPermissions } from "@/hooks/use-team-permissions";
 import { hasAccess } from "@/lib/team-access";
 import { Input } from "@/components/ui/input";
+import { useOutletTopProducts } from "@/hooks/use-outlet-top-products";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({
@@ -57,17 +58,122 @@ function OwnerReportsPage() {
   const canFinance = account?.role === "owner" || hasAccess(permissions, "reports.finance");
   const canReceivables = account?.role === "owner" || hasAccess(permissions, "reports.receivables");
   const canExport = account?.role === "owner" || hasAccess(permissions, "reports.export");
-  const [tab, setTab] = useState<"finance" | "aging">(canFinance ? "finance" : "aging");
+  const canViewTopProducts = account?.role === "owner" || account?.role === "manager";
+  const [tab, setTab] = useState<"finance" | "aging" | "top_products">(
+    canFinance ? "finance" : canReceivables ? "aging" : "top_products",
+  );
+  const visibleTabs = Number(canFinance) + Number(canReceivables) + Number(canViewTopProducts);
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 pb-12 pt-6">
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
       <h1 className="mt-4 text-2xl font-bold">Laporan</h1>
-      {canFinance && canReceivables && <div className="mt-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-xs font-semibold">
-        <button onClick={() => setTab("finance")} className={`rounded-lg py-2 ${tab === "finance" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Laba Rugi & Omset</button>
-        <button onClick={() => setTab("aging")} className={`rounded-lg py-2 ${tab === "aging" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Piutang Outlet</button>
+      {visibleTabs > 1 && <div className="mt-4 flex rounded-xl bg-muted p-1 text-xs font-semibold">
+        {canFinance && <button onClick={() => setTab("finance")} className={`flex-1 rounded-lg px-1 py-2 ${tab === "finance" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Omset & Laba</button>}
+        {canReceivables && <button onClick={() => setTab("aging")} className={`flex-1 rounded-lg px-1 py-2 ${tab === "aging" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Piutang</button>}
+        {canViewTopProducts && <button onClick={() => setTab("top_products")} className={`flex-1 rounded-lg px-1 py-2 ${tab === "top_products" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Produk Terlaris</button>}
       </div>}
-      {canFinance && tab === "finance" ? <FinancialReportTab canExport={canExport} /> : canReceivables ? <OutletReceivablesTab /> : <div className="mt-6 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Belum ada akses laporan.</div>}
+      {canFinance && tab === "finance" ? <FinancialReportTab canExport={canExport} />
+        : canReceivables && tab === "aging" ? <OutletReceivablesTab />
+        : canViewTopProducts && tab === "top_products" ? <OutletTopProductsTab ownerId={account?.ownerId} />
+        : <div className="mt-6 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Belum ada akses laporan.</div>}
     </main>
+  );
+}
+
+function OutletTopProductsTab({ ownerId }: { ownerId?: string }) {
+  const [selectedOutlet, setSelectedOutlet] = useState("all");
+  const [days, setDays] = useState(90);
+  const [search, setSearch] = useState("");
+  const { data: outlets = [] } = useQuery({
+    queryKey: ["outlet-top-products-outlets", ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("outlets")
+        .select("id,name")
+        .eq("user_id", ownerId!)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 60_000,
+  });
+  const { data: list = [], isLoading, isError } = useOutletTopProducts({
+    ownerId,
+    outletId: selectedOutlet === "all" ? null : selectedOutlet,
+    days,
+    limit: selectedOutlet === "all" ? 50 : 15,
+  });
+
+  const filtered = list.filter((item) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return item.outlet_name.toLowerCase().includes(q) || item.product_name.toLowerCase().includes(q);
+  });
+  const groupedByOutlet = filtered.reduce((acc, item) => {
+    if (!acc[item.outlet_name]) acc[item.outlet_name] = [];
+    acc[item.outlet_name].push(item);
+    return acc;
+  }, {} as Record<string, typeof list>);
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="space-y-3 rounded-2xl border bg-card p-4">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Pilih Outlet</label>
+          <select value={selectedOutlet} onChange={(e) => setSelectedOutlet(e.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm">
+            <option value="all">Semua Outlet (Ranking per Toko)</option>
+            {outlets.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1">
+            <label className="text-xs font-medium text-muted-foreground">Rentang Waktu</label>
+            <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="mt-1 h-9 w-full rounded-lg border bg-background px-2 text-xs">
+              <option value={30}>30 Hari Terakhir</option>
+              <option value={90}>90 Hari (3 Bulan)</option>
+              <option value={180}>180 Hari (6 Bulan)</option>
+              <option value={365}>1 Tahun Terakhir</option>
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="text-xs font-medium text-muted-foreground">Cari Nama Toko / Produk</label>
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari…" className="mt-1 h-9 text-xs" />
+          </div>
+        </div>
+      </div>
+      {isLoading ? <div className="p-8 text-center text-sm text-muted-foreground">Menganalisis produk terlaris…</div>
+        : isError ? <div className="rounded-xl border border-dashed p-8 text-center text-sm text-destructive">Data produk terlaris belum dapat dimuat.</div>
+        : Object.keys(groupedByOutlet).length === 0 ? <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Tidak ada data penjualan produk pada rentang waktu ini.</div>
+        : <div className="space-y-4">
+          {Object.entries(groupedByOutlet).map(([outletName, items]) => (
+            <div key={outletName} className="rounded-2xl border bg-card p-4 shadow-xs">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <Store className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">{outletName}</h3>
+                <span className="text-[11px] text-muted-foreground">({items.length} produk)</span>
+              </div>
+              <div className="mt-3 divide-y">
+                {items.map((item, idx) => (
+                  <div key={item.product_name} className="flex items-center justify-between gap-3 py-2 text-xs">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-[10px] font-bold">{idx + 1}</span>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{item.product_name}</div>
+                        <div className="text-[10px] text-muted-foreground">{item.transaction_count}x repeat order · Terakhir: {item.last_sold_at ? new Date(item.last_sold_at).toLocaleDateString("id-ID") : "—"}</div>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="font-bold text-foreground">{Number(item.total_qty).toLocaleString("id-ID")} pcs</div>
+                      <div className="text-[10px] text-muted-foreground">{rp(Number(item.total_sales) || 0)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>}
+    </div>
   );
 }
 
