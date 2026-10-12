@@ -316,7 +316,7 @@ function OwnerAnnouncementBanner() {
 
   if (!announcement || !announcement.is_active || dismissed || locallyDismissed) return null;
   const bgStyle =
-    announcement.type === "important"
+    announcement.type === "important" || announcement.type === "danger"
       ? "border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-200"
       : announcement.type === "warning"
       ? "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-200"
@@ -372,6 +372,11 @@ export function SuperAdminDashboard() {
   const [content, setContent] = useState("");
   const [type, setType] = useState<"info" | "warning" | "important">("info");
   const [busy, setBusy] = useState(false);
+  const EMOJI_PRESETS = ["📢", "⚠️", "🚀", "💡", "🔥", "💰", "🎉", "📌", "⚡", "✨"];
+
+  function insertEmoji(emoji: string) {
+    setContent((prev) => (prev ? `${prev} ${emoji}` : emoji));
+  }
 
   const owners = (usersData?.owners ?? []) as Profile[];
   const recentRegistered = [...owners]
@@ -444,14 +449,68 @@ export function SuperAdminDashboard() {
           </div>
         )}
 
-        <form onSubmit={handleSaveAnnouncement} className="mt-3 space-y-2">
-          <div><label className="text-[10px] font-medium text-muted-foreground">Judul Pesan</label><Input required maxLength={100} placeholder="Contoh: Pemeliharaan Sistem Nanti Malam" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-0.5 h-8 text-xs" /></div>
-          <div><label className="text-[10px] font-medium text-muted-foreground">Isi Pesan / Penjelasan</label><textarea required maxLength={1000} rows={3} placeholder="Tuliskan info penting yang perlu dibaca pemilik usaha…" value={content} onChange={(e) => setContent(e.target.value)} className="mt-0.5 w-full rounded-md border bg-background p-2 text-xs focus:outline-hidden" /></div>
+        <form onSubmit={handleSaveAnnouncement} className="mt-3 space-y-2.5">
+          <div>
+            <span className="text-[10px] font-medium text-muted-foreground">Pilih Emotikon Cepat:</span>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {EMOJI_PRESETS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => insertEmoji(emoji)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md border bg-muted/60 text-sm hover:bg-muted active:scale-95"
+                  aria-label={`Sisipkan emoji ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-medium text-muted-foreground">Judul Pesan</label>
+            <Input
+              required
+              maxLength={150}
+              placeholder="Contoh: Update! 🚀"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-0.5 h-8 text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-medium text-muted-foreground">Isi Pesan / Penjelasan</label>
+            <textarea
+              required
+              maxLength={2000}
+              rows={3}
+              placeholder="Tuliskan info penting yang perlu dibaca pemilik usaha… 💰"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="mt-0.5 w-full rounded-md border bg-background p-2 text-xs focus:outline-hidden"
+            />
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <div className="flex items-center gap-1.5 text-xs">
-              {(["info", "warning", "important"] as const).map((t) => <button key={t} type="button" onClick={() => setType(t)} className={"rounded-md px-2 py-1 text-[10px] font-medium transition-all " + (type === t ? "bg-foreground text-background" : "bg-muted text-muted-foreground")}>{t === "info" ? "Info Biasa" : t === "warning" ? "Peringatan" : "Penting"}</button>)}
+              {(["info", "warning", "important"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setType(t)}
+                  className={
+                    "rounded-md px-2 py-1 text-[10px] font-medium transition-all " +
+                    (type === t ? "bg-foreground text-background" : "bg-muted text-muted-foreground")
+                  }
+                >
+                  {t === "info" ? "Info Biasa" : t === "warning" ? "Peringatan" : "Penting"}
+                </button>
+              ))}
             </div>
-            <Button type="submit" size="sm" disabled={busy} className="h-7 text-xs font-semibold">{busy ? "Menyimpan…" : "Tayangkan Info"}</Button>
+            <Button type="submit" size="sm" disabled={busy} className="h-7 text-xs font-semibold">
+              {busy ? "Menyimpan…" : "Tayangkan Info"}
+            </Button>
           </div>
         </form>
       </section>
