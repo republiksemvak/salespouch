@@ -249,3 +249,65 @@ export const setAnnouncementActive = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+
+// Konfigurasi cadangan jika database belum terisi.
+const DEFAULT_SUPPORT_CONFIG = {
+  id: "default",
+  whatsapp_number: "6281234567890",
+  support_name: "CS Sales Pouch Pro",
+  operating_hours: "Senin - Sabtu, 08:00 - 17:00 WIB",
+  default_message: "Halo CS Sales Pouch Pro, saya butuh bantuan untuk akun:",
+  is_active: true,
+};
+
+export const getSupportConfig = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("app_support_config")
+      .select("*")
+      .eq("id", "default")
+      .maybeSingle();
+
+    if (error || !data) return DEFAULT_SUPPORT_CONFIG;
+    return data;
+  });
+
+export const saveSupportConfig = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      whatsapp_number: z.string().trim().min(8, "Nomor WhatsApp tidak valid"),
+      support_name: z.string().trim().min(1, "Nama CS wajib diisi").max(100),
+      operating_hours: z.string().trim().min(1, "Jam operasional wajib diisi").max(100),
+      is_active: z.boolean().default(true),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let cleanNumber = data.whatsapp_number.replace(/\D/g, "");
+    if (cleanNumber.startsWith("0")) {
+      cleanNumber = "62" + cleanNumber.substring(1);
+    }
+    if (cleanNumber.length < 8) throw new Error("Nomor WhatsApp tidak valid");
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("app_support_config")
+      .upsert({
+        id: "default",
+        whatsapp_number: cleanNumber,
+        support_name: data.support_name,
+        operating_hours: data.operating_hours,
+        is_active: data.is_active,
+        updated_at: new Date().toISOString(),
+      })
+      .select("*")
+      .single();
+
+    if (error) throw new Error(error.message);
+    return updated;
+  });
