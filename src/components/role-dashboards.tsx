@@ -556,116 +556,119 @@ export function SuperAdminDashboard() {
     </main>
   );
 }
-export function SalesDashboard({ businessName, profile, salesUserId }: DashboardProps & { salesUserId?: string }) {
+export function SalesDashboard({
+  businessName,
+  profile,
+  salesUserId,
+}: DashboardProps & { salesUserId?: string }) {
   const activeSalesId = salesUserId ?? profile?.id;
   const subtitle = profile?.display_name
     ? `${profile.display_name} • Sales Lapangan`
-    : (businessName || "Mode Kunjungan Lapangan");
+    : businessName || "Mode Kunjungan Lapangan";
 
   return (
-    <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
+    <main className="mx-auto min-h-screen max-w-md px-4 pb-14 pt-4">
       <Header title="Sales Field" subtitle={subtitle} />
 
-      {/* Tombol Aksi Utama: Mulai Kunjungan */}
       <div className="mt-4">
-        <Button asChild className="h-12 w-full rounded-xl text-sm font-semibold shadow-sm">
+        <Button
+          asChild
+          className="h-14 w-full rounded-2xl bg-primary text-base font-bold text-primary-foreground shadow-md transition-transform active:scale-[0.98]"
+        >
           <Link to="/visit" search={{ outlet: undefined }}>
-            <Play className="mr-2 h-5 w-5 fill-current" />
-            Mulai Kunjungan
+            <Play className="mr-2.5 h-6 w-6 fill-current" />
+            Mulai Kunjungan Toko
           </Link>
         </Button>
       </div>
 
-      {/* Ringkasan Finansial, Uang Jalan, & Target Rute Hari Ini */}
       <SalesFinancialSummary salesId={activeSalesId} />
-
-      {/* Kartu Stok Fisik yang Dibawa Sales */}
       <SalesStockSummary salesId={activeSalesId} />
 
-      {/* Grid Menu Lapangan 6 Pilihan Simetris */}
-      <section className="mt-4 rounded-xl border bg-card p-3 shadow-xs">
-        <div className="mb-2.5 flex items-center justify-between px-1">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+      <section className="mt-4 rounded-2xl border-2 border-slate-200/90 bg-card p-3.5 shadow-xs dark:border-slate-800">
+        <div className="mb-3 flex items-center justify-between px-1">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
             Menu Operasional
           </div>
+          <span className="text-[11px] font-medium text-slate-500">Pintasan Cepat</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2.5">
           <Link
             to="/outlets"
-            className="flex items-center gap-3 rounded-lg border bg-amber-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-xl border-2 border-amber-200/90 bg-amber-50/40 p-3 transition-all hover:bg-amber-100/60 active:scale-[0.98] dark:border-amber-900/40 dark:bg-amber-950/20"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
-              <Store className="h-5 w-5" />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
+              <Store className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-foreground">Outlet</div>
-              <div className="text-[10px] text-muted-foreground">Data Warung</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white">Outlet</div>
+              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Data Warung</div>
             </div>
           </Link>
 
           <Link
             to="/schedule"
-            className="flex items-center gap-3 rounded-lg border bg-sky-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-xl border-2 border-sky-200/90 bg-sky-50/40 p-3 transition-all hover:bg-sky-100/60 active:scale-[0.98] dark:border-sky-900/40 dark:bg-sky-950/20"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600">
-              <CalendarDays className="h-5 w-5" />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-xs">
+              <CalendarDays className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-foreground">Jadwal Rute</div>
-              <div className="text-[10px] text-muted-foreground">Urutan Toko</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white">Jadwal Rute</div>
+              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Urutan Toko</div>
             </div>
           </Link>
 
           <Link
             to="/sales-stock-day"
-            className="flex items-center gap-3 rounded-lg border bg-blue-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-xl border-2 border-blue-200/90 bg-blue-50/40 p-3 transition-all hover:bg-blue-100/60 active:scale-[0.98] dark:border-blue-900/40 dark:bg-blue-950/20"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600">
-              <Truck className="h-5 w-5" />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+              <Truck className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-foreground">Stok Sales</div>
-              <div className="text-[10px] text-muted-foreground">Muat & Sisa</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white">Stok Sales</div>
+              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Muat & Sisa</div>
             </div>
           </Link>
 
           <Link
             to="/transactions"
-            className="flex items-center gap-3 rounded-lg border bg-purple-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-xl border-2 border-purple-200/90 bg-purple-50/40 p-3 transition-all hover:bg-purple-100/60 active:scale-[0.98] dark:border-purple-900/40 dark:bg-purple-950/20"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600">
-              <History className="h-5 w-5" />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white shadow-xs">
+              <History className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-foreground">Riwayat Nota</div>
-              <div className="text-[10px] text-muted-foreground">Penjualan</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white">Riwayat Nota</div>
+              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Penjualan</div>
             </div>
           </Link>
 
           <Link
             to="/expenses"
-            className="flex items-center gap-3 rounded-lg border bg-rose-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-xl border-2 border-rose-200/90 bg-rose-50/40 p-3 transition-all hover:bg-rose-100/60 active:scale-[0.98] dark:border-rose-900/40 dark:bg-rose-950/20"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
-              <Wallet className="h-5 w-5" />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white shadow-xs">
+              <Wallet className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-foreground">Pengeluaran</div>
-              <div className="text-[10px] text-muted-foreground">Bensin & Makan</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white">Pengeluaran</div>
+              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Bensin & Makan</div>
             </div>
           </Link>
 
           <Link
             to="/notes"
-            className="flex items-center gap-3 rounded-lg border bg-orange-500/5 p-3 transition-colors hover:bg-muted/50 active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-xl border-2 border-orange-200/90 bg-orange-50/40 p-3 transition-all hover:bg-orange-100/60 active:scale-[0.98] dark:border-orange-900/40 dark:bg-orange-950/20"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600">
-              <FileText className="h-5 w-5" />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-white shadow-xs">
+              <FileText className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-foreground">Catatan</div>
-              <div className="text-[10px] text-muted-foreground">Pengingat Toko</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white">Catatan</div>
+              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Pengingat Toko</div>
             </div>
           </Link>
         </div>
@@ -856,7 +859,7 @@ export function AdminDashboard({ businessName, profile, permissions }: Permissio
 }
 
 
-// Ringkasan stok yang sedang dibawa Sales.
+// Kartu stok Sales dengan kontras tinggi untuk penggunaan outdoor.
 function SalesStockSummary({ salesId }: { salesId?: string }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["sales-dashboard-stock-summary", salesId],
@@ -874,25 +877,33 @@ function SalesStockSummary({ salesId }: { salesId?: string }) {
   const total = (data ?? []).reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
 
   return (
-    <section className="mt-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3 shadow-xs">
+    <section className="mt-3.5 rounded-2xl border-2 border-blue-300 bg-blue-50/80 p-3.5 shadow-sm dark:border-blue-800 dark:bg-blue-950/30">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-wider text-blue-800">Stok Dibawa</div>
-          <div className="mt-0.5 text-[10px] text-muted-foreground">Stok yang saat ini ada di tangan Anda</div>
+          <div className="text-xs font-extrabold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+            Stok Dibawa Saat Ini
+          </div>
+          <div className="mt-0.5 text-xs font-medium text-blue-800/90 dark:text-blue-200/80">
+            Total barang fisik di bagasi / kendaraan
+          </div>
         </div>
-        <Truck className="h-4 w-4 text-blue-700" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+          <Truck className="h-5 w-5" />
+        </div>
       </div>
-      <div className="mt-2 text-xl font-bold text-foreground">
+      <div className="mt-2.5 text-2xl font-black text-slate-900 dark:text-white">
         {isLoading ? "…" : isError ? "—" : `${total.toLocaleString("id-ID")} pcs`}
       </div>
       {!isLoading && !isError && total === 0 && (
-        <div className="mt-1 text-[10px] text-muted-foreground">Belum ada stok yang dimuat ke Sales.</div>
+        <div className="mt-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
+          ⚠️ Belum ada muat stok hari ini.
+        </div>
       )}
     </section>
   );
 }
 
-// Ringkasan informasi Sales hari ini.
+// Ringkasan finansial dan rute hari ini dengan kontras tinggi.
 function SalesFinancialSummary({ salesId }: { salesId?: string }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["sales-dashboard-financial-summary", salesId],
@@ -921,39 +932,51 @@ function SalesFinancialSummary({ salesId }: { salesId?: string }) {
   };
 
   return (
-    <section className="mt-3 rounded-xl border bg-card p-3 shadow-xs">
-      <div className="mb-2.5 flex items-center justify-between">
+    <section className="mt-3.5 rounded-2xl border-2 border-slate-200/90 bg-card p-3.5 shadow-xs dark:border-slate-800">
+      <div className="mb-3 flex items-center justify-between">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-slate-100">
             Ringkasan Hari Ini
           </div>
-          <div className="text-[10px] text-muted-foreground">
-            Target berdasarkan jadwal hari ini
+          <div className="text-xs font-medium text-slate-600 dark:text-slate-400">
+            Target rute & tagihan berjalan
           </div>
         </div>
-        <CalendarDays className="h-4 w-4 text-primary" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <CalendarDays className="h-4 w-4" />
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border bg-emerald-500/5 p-2.5">
-          <div className="text-[10px] font-medium text-muted-foreground">Uang Jalan</div>
-          <div className="mt-1 truncate text-sm font-bold text-foreground">{value(data?.travel_balance, true)}</div>
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="rounded-xl border border-emerald-300 bg-emerald-50/70 p-3 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+          <div className="text-xs font-bold text-emerald-900 dark:text-emerald-300">Sisa Uang Jalan</div>
+          <div className="mt-1 truncate text-base font-extrabold text-slate-900 dark:text-white">
+            {value(data?.travel_balance, true)}
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-blue-500/5 p-2.5">
-          <div className="text-[10px] font-medium text-muted-foreground">Jumlah Outlet</div>
-          <div className="mt-1 text-sm font-bold text-foreground">{value(data?.scheduled_outlets_today)} toko</div>
+        <div className="rounded-xl border border-sky-300 bg-sky-50/70 p-3 dark:border-sky-800/60 dark:bg-sky-950/20">
+          <div className="text-xs font-bold text-sky-900 dark:text-sky-300">Jumlah Outlet</div>
+          <div className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">
+            {value(data?.scheduled_outlets_today)} toko
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-purple-500/5 p-2.5">
-          <div className="text-[10px] font-medium text-muted-foreground">Target Tagihan</div>
-          <div className="mt-1 truncate text-sm font-bold text-foreground">{value(data?.scheduled_bill_target, true)}</div>
+        <div className="rounded-xl border border-purple-300 bg-purple-50/70 p-3 dark:border-purple-800/60 dark:bg-purple-950/20">
+          <div className="text-xs font-bold text-purple-900 dark:text-purple-300">Target Tagihan</div>
+          <div className="mt-1 truncate text-base font-extrabold text-slate-900 dark:text-white">
+            {value(data?.scheduled_bill_target, true)}
+          </div>
         </div>
 
-        <div className="rounded-lg border bg-amber-500/5 p-2.5">
-          <div className="text-[10px] font-medium text-muted-foreground">Nilai Tagihan</div>
-          <div className="mt-1 truncate text-sm font-bold text-foreground">{value(data?.collected_today, true)}</div>
-          <div className="mt-0.5 text-[9px] text-muted-foreground">sudah tertagih</div>
+        <div className="rounded-xl border border-amber-300 bg-amber-50/70 p-3 dark:border-amber-800/60 dark:bg-amber-950/20">
+          <div className="text-xs font-bold text-amber-900 dark:text-amber-300">Uang Tertagih</div>
+          <div className="mt-1 truncate text-base font-extrabold text-slate-900 dark:text-white">
+            {value(data?.collected_today, true)}
+          </div>
+          <div className="mt-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-400">
+            sudah disetor/masuk
+          </div>
         </div>
       </div>
     </section>
