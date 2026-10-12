@@ -177,9 +177,9 @@ export const saveAnnouncement = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z.object({
-      title: z.string().trim().min(1, "Judul info wajib diisi").max(100),
-      content: z.string().trim().min(1, "Isi pesan wajib diisi").max(1000),
-      type: z.enum(["info", "warning", "important"]).default("info"),
+      title: z.string().trim().min(1, "Judul info wajib diisi").max(150),
+      content: z.string().trim().min(1, "Isi pesan wajib diisi").max(2000),
+      type: z.enum(["info", "warning", "important", "danger"]).default("info"),
       is_active: z.boolean().default(true),
     }).parse(d),
   )
@@ -205,6 +205,23 @@ export const saveAnnouncement = createServerFn({ method: "POST" })
       })
       .select("id,title,content,type,is_active,created_at,updated_at")
       .single();
+
+    if (error && error.message.includes("app_announcements_type_check") && data.type === "important") {
+      const fallbackResult = await supabaseAdmin
+        .from("app_announcements")
+        .insert({
+          title: data.title,
+          content: data.content,
+          type: "danger",
+          is_active: data.is_active,
+        })
+        .select("id,title,content,type,is_active,created_at,updated_at")
+        .single();
+
+      if (fallbackResult.error) throw new Error(fallbackResult.error.message);
+      return fallbackResult.data;
+    }
+
     if (error) throw new Error(error.message);
     return inserted;
   });
