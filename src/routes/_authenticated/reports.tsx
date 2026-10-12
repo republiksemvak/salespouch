@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Phone, Store, TrendingUp, Flame } from "lucide-react";
+import { ArrowLeft, Download, Phone, Store, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
@@ -67,7 +67,7 @@ function OwnerReportsPage() {
     <main className="mx-auto min-h-screen max-w-md px-5 pb-12 pt-6">
       <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Kembali</Link>
       <h1 className="mt-4 text-2xl font-bold">Laporan</h1>
-      {visibleTabs > 1 && <div className="mt-4 flex rounded-xl bg-muted p-1 text-xs font-semibold">
+      {visibleTabs > 0 && <div className="mt-4 flex rounded-xl bg-muted p-1 text-xs font-semibold">
         {canFinance && <button onClick={() => setTab("finance")} className={`flex-1 rounded-lg px-1 py-2 ${tab === "finance" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Omset & Laba</button>}
         {canReceivables && <button onClick={() => setTab("aging")} className={`flex-1 rounded-lg px-1 py-2 ${tab === "aging" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Piutang</button>}
         {canViewTopProducts && <button onClick={() => setTab("top_products")} className={`flex-1 rounded-lg px-1 py-2 ${tab === "top_products" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>Produk Terlaris</button>}
