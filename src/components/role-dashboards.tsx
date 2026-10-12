@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { getAdminUsers, getActiveAnnouncement, saveAnnouncement, setAnnouncementActive } from "@/lib/admin.functions";
+import { getAdminUsers, getActiveAnnouncement, saveAnnouncement, setAnnouncementActive, getSupportConfig, saveSupportConfig } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BarChart3,
@@ -25,6 +25,8 @@ import {
   LockKeyhole,
   RotateCcw,
   Megaphone,
+  MessageCircle,
+  Headphones,
   Clock,
   X,
 } from "lucide-react";
@@ -156,6 +158,41 @@ function CompactSummary({ ownerId }: { ownerId?: string }) {
 // -------------------------------------------------------------
 // OWNER DASHBOARD
 // -------------------------------------------------------------
+
+function OwnerSupportFloatingButton({ profile, businessName }: DashboardProps) {
+  const fetchSupport = useServerFn(getSupportConfig);
+  const { data: config } = useQuery({
+    queryKey: ["app-support-config-public"],
+    queryFn: () => fetchSupport(),
+    staleTime: 60_000,
+  });
+
+  if (!config || !config.is_active || !config.whatsapp_number) return null;
+
+  const cleanNumber = String(config.whatsapp_number).replace(/\D/g, "");
+  const textMessage = encodeURIComponent(
+    `Halo ${config.support_name || "CS Sales Pouch Pro"}, saya butuh bantuan:\n\n` +
+    `• Email: ${profile?.user_email || "-"}\n` +
+    `• Nama Usaha: ${businessName || profile?.business_name || "-"}\n` +
+    `• Status Akun: ${hasPremiumAccess(profile) ? "Premium" : "Freemium"}\n\n` +
+    "Kendala / Pertanyaan:"
+  );
+  const waUrl = `https://wa.me/${cleanNumber}?text=${textMessage}`;
+
+  return (
+    <a
+      href={waUrl}
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Hubungi Bantuan WhatsApp"
+      className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-emerald-600 px-3.5 py-2.5 text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+    >
+      <MessageCircle className="h-5 w-5 fill-current" />
+      <span className="text-xs font-bold tracking-wide">Bantuan CS</span>
+    </a>
+  );
+}
+
 export function OwnerDashboard({ profile, businessName }: DashboardProps) {
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 pb-12 pt-4">
@@ -284,6 +321,8 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
           />
         </div>
       </section>
+
+      <OwnerSupportFloatingButton profile={profile} businessName={businessName} />
     </main>
   );
 }
@@ -352,6 +391,8 @@ export function SuperAdminDashboard() {
   const fetchActive = useServerFn(getActiveAnnouncement);
   const postAnnouncement = useServerFn(saveAnnouncement);
   const toggleActive = useServerFn(setAnnouncementActive);
+  const fetchSupport = useServerFn(getSupportConfig);
+  const updateSupport = useServerFn(saveSupportConfig);
 
   const { data: usersData, isLoading: loadingUsers } = useQuery({
     queryKey: ["admin-users"],
@@ -367,6 +408,49 @@ export function SuperAdminDashboard() {
       }
     },
   });
+
+  const { data: supportConfig, refetch: refetchSupport } = useQuery({
+    queryKey: ["admin-support-config"],
+    queryFn: () => fetchSupport(),
+  });
+
+  const [waNumber, setWaNumber] = useState("");
+  const [csName, setCsName] = useState("");
+  const [csHours, setCsHours] = useState("");
+  const [csActive, setCsActive] = useState(true);
+  const [savingSupport, setSavingSupport] = useState(false);
+
+  useEffect(() => {
+    if (supportConfig) {
+      setWaNumber(supportConfig.whatsapp_number || "");
+      setCsName(supportConfig.support_name || "");
+      setCsHours(supportConfig.operating_hours || "");
+      setCsActive(supportConfig.is_active ?? true);
+    }
+  }, [supportConfig]);
+
+  async function handleSaveSupport(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSavingSupport(true);
+    try {
+      await updateSupport({
+        data: {
+          whatsapp_number: waNumber,
+          support_name: csName,
+          operating_hours: csHours,
+          is_active: csActive,
+        },
+      });
+      toast.success("Pengaturan WhatsApp CS berhasil disimpan!");
+      await refetchSupport();
+      await qc.invalidateQueries({ queryKey: ["admin-support-config"] });
+      await qc.invalidateQueries({ queryKey: ["app-support-config-public"] });
+    } catch (err) {
+      toast.error((err as Error).message || "Gagal menyimpan pengaturan CS");
+    } finally {
+      setSavingSupport(false);
+    }
+  }
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -511,6 +595,91 @@ export function SuperAdminDashboard() {
             <Button type="submit" size="sm" disabled={busy} className="h-7 text-xs font-semibold">
               {busy ? "Menyimpan…" : "Tayangkan Info"}
             </Button>
+          </div>
+        </form>
+      </section>
+
+
+      {/* PENGATURAN WHATSAPP CS RESMI */}
+      <section className="mt-4 rounded-xl border bg-card p-3.5 shadow-xs">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+              <Headphones className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-xs font-bold text-foreground">Kontak WhatsApp CS Support</h2>
+              <p className="text-[10px] text-muted-foreground">Nomor ini tampil di tombol bantuan akun Owner.</p>
+            </div>
+          </div>
+          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${csActive ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
+            {csActive ? "CS Aktif" : "Nonaktif"}
+          </span>
+        </div>
+
+        <form onSubmit={handleSaveSupport} className="mt-3 space-y-2.5">
+          <div>
+            <label className="text-[10px] font-medium text-muted-foreground">Nomor WhatsApp CS (diawali 62 atau 08)</label>
+            <Input
+              required
+              placeholder="Contoh: 081234567890"
+              value={waNumber}
+              onChange={(e) => setWaNumber(e.target.value)}
+              className="mt-0.5 h-8 text-xs font-mono"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground">Nama Tim CS</label>
+              <Input
+                required
+                maxLength={100}
+                placeholder="CS Sales Pouch Pro"
+                value={csName}
+                onChange={(e) => setCsName(e.target.value)}
+                className="mt-0.5 h-8 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground">Jam Operasional</label>
+              <Input
+                required
+                maxLength={100}
+                placeholder="Senin-Sabtu 08-17 WIB"
+                value={csHours}
+                onChange={(e) => setCsHours(e.target.value)}
+                className="mt-0.5 h-8 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={csActive}
+                onChange={(e) => setCsActive(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              Tampilkan Tombol Bantuan ke Owner
+            </label>
+
+            <div className="flex shrink-0 items-center gap-2">
+              {waNumber && (
+                <a
+                  href={`https://wa.me/${waNumber.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted"
+                >
+                  Uji Chat
+                </a>
+              )}
+              <Button type="submit" size="sm" disabled={savingSupport} className="h-7 text-xs font-semibold">
+                {savingSupport ? "Menyimpan…" : "Simpan Kontak CS"}
+              </Button>
+            </div>
           </div>
         </form>
       </section>
