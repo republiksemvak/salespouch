@@ -2,7 +2,6 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, profileQueryKey } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -38,19 +37,7 @@ function AuthenticatedShell() {
   return (
     <div className="min-h-screen">
       <Outlet />
-      {/* Logout ditumpuk di atas tombol Bantuan CS di kanan bawah */}
-      <div className="fixed bottom-18 right-4 z-40">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-10 w-10 rounded-full border border-border/80 bg-background/90 text-muted-foreground shadow-md backdrop-blur-sm transition-transform hover:scale-105 hover:text-destructive active:scale-95"
-          onClick={() => supabase.auth.signOut()}
-          aria-label="Keluar"
-          title="Keluar"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
-      </div>
+      {/* Tombol floating logout dihapus; logout tersedia di menu role kanan atas. */}
     </div>
   );
 }
