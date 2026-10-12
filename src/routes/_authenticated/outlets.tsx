@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { loadLastVisit } from "@/lib/visit";
+import { OutletTopProductsWidget } from "@/components/outlet-top-products-widget";
 
 export const Route = createFileRoute("/_authenticated/outlets")({
   head: () => ({
@@ -391,6 +392,21 @@ function AllOutlets() {
                 ) : (
                   <div className="mt-4 rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">Tidak ada stok titipan aktif.</div>
                 )}
+              </section>
+
+              <section className="rounded-2xl border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+                    <Store className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold">Produk Terlaris Warung Ini</div>
+                    <div className="text-[11px] text-muted-foreground">Berdasarkan riwayat transaksi 90 hari</div>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <OutletTopProductsWidget ownerId={ownerId} outletId={infoId!} />
+                </div>
               </section>
 
               <section className="rounded-2xl border bg-card p-4 shadow-sm">
