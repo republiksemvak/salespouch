@@ -38,11 +38,12 @@ function AuthenticatedShell() {
   return (
     <div className="min-h-screen">
       <Outlet />
-      <div className="fixed bottom-4 right-4 z-50">
+      {/* Logout ditumpuk di atas tombol Bantuan CS di kanan bawah */}
+      <div className="fixed bottom-18 right-4 z-40">
         <Button
           variant="outline"
           size="icon"
-          className="rounded-full bg-card shadow-md"
+          className="h-10 w-10 rounded-full border border-border/80 bg-background/90 text-muted-foreground shadow-md backdrop-blur-sm transition-transform hover:scale-105 hover:text-destructive active:scale-95"
           onClick={() => supabase.auth.signOut()}
           aria-label="Keluar"
           title="Keluar"
