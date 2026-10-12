@@ -10,6 +10,7 @@ import { useProducts, tierPrice, TIERS, type Product, type PriceTier } from "@/l
 import { useProfile } from "@/hooks/use-profile";
 import { formatQty, packSize, proportionalPrice, toPieces } from "@/lib/units";
 import { Button } from "@/components/ui/button";
+import { OutletTopProductsWidget } from "@/components/outlet-top-products-widget";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -133,6 +134,33 @@ function VisitPage() {
   const remainingDebt = Math.max(0, totalDue - amountPaid);
   const outletName = outlets.find((o) => o.id === outletId)?.name;
   const matches = outlets.filter((o) => o.name.toLowerCase().includes(outletQ.trim().toLowerCase())).slice(0, 30);
+
+  function handleQuickAdd(productName: string) {
+    const prod = products.find((p) => p.name.toLowerCase() === productName.toLowerCase());
+    if (!prod) {
+      toast.error(`Produk ${productName} tidak ditemukan di master data`);
+      return;
+    }
+
+    if (type === "Consignment") {
+      const exists = newItems.some((item) => item.name.toLowerCase() === prod.name.toLowerCase());
+      if (exists) {
+        toast.info(`${prod.name} sudah ada di daftar titipan baru`);
+        return;
+      }
+      setNewItems((current) => [...current, { name: prod.name, price: tierPrice(prod, tier), qty: 0, pcs_per_pack: prod.pcs_per_pack }]);
+      toast.success(`${prod.name} ditambahkan ke daftar titipan baru`);
+      return;
+    }
+
+    const exists = directItems.some((item) => item.name.toLowerCase() === prod.name.toLowerCase());
+    if (exists) {
+      toast.info(`${prod.name} sudah ada di daftar jual langsung`);
+      return;
+    }
+    setDirectItems((current) => [...current, { name: prod.name, price: tierPrice(prod, tier), qty: 0, pcs_per_pack: prod.pcs_per_pack }]);
+    toast.success(`${prod.name} ditambahkan ke daftar jual langsung`);
+  }
 
   function changeTier(next: PriceTier) {
     setTier(next);
@@ -283,6 +311,13 @@ function VisitPage() {
       <button onClick={() => setStarted(false)} className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4" /> Ganti outlet / sumber stok</button>
       <div className="mt-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{type === "Direct Sale" ? `Jual Langsung · ${stockSource === "warehouse" ? "Gudang" : "Sales"}` : history.isLoading ? "Memeriksa riwayat…" : isFirst ? "Kunjungan pertama" : "Kunjungan rutin"} · {salesName}</div>
       <h1 className="text-2xl font-bold">{outletName}</h1>
+      <div className="mt-3">
+        <OutletTopProductsWidget
+          ownerId={account?.ownerId}
+          outletId={outletId}
+          onQuickAdd={handleQuickAdd}
+        />
+      </div>
       {type === "Consignment" && <p className="mt-2 text-sm text-muted-foreground">Skema stok: <b className="text-foreground">{stockScheme === "accumulation" ? "Akumulasi" : "Tarik Bersih"}</b> · Sumber: <b className="text-foreground">Sales</b></p>}
       {type === "Direct Sale" && <div className="mt-3"><StockSourceSelector value={stockSource} onChange={setStockSource} /></div>}
 
