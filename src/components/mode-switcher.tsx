@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, LogIn, ShieldCheck, Users, UserRound } from "lucide-react";
+import { ChevronDown, LogIn, ShieldCheck, Users, UserRound, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isSuperAdminEmail } from "@/lib/access";
 import { getTestMode, setTestMode, type TestMode } from "@/lib/test-mode";
@@ -43,6 +43,12 @@ export function ModeSwitcher() {
     window.location.assign(`/auth?login_as=${target}`);
   };
 
+  const handleLogout = async () => {
+    setOpen(false);
+    await supabase.auth.signOut();
+    window.location.assign("/auth");
+  };
+
   return (
     <div className="relative">
       <Button
@@ -59,57 +65,73 @@ export function ModeSwitcher() {
       </Button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border bg-card p-1.5 shadow-lg" role="menu">
-          {superAdmin ? (
-            <>
-              <div className="px-2.5 py-2">
-                <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">Mode</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">Super Admin bisa menguji tampilan role tanpa mengubah akun.</div>
-              </div>
-              {testMode && (
-                <button type="button" onClick={clearTestMode} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
-                  <ShieldCheck className="h-4 w-4" />
-                  Kembali ke Super Admin
+        <>
+          {/* Backdrop transparan agar klik di luar menutup menu */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+
+          <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border bg-card p-1.5 shadow-lg" role="menu">
+            {superAdmin ? (
+              <>
+                <div className="px-2.5 py-2">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">Mode</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">Super Admin bisa menguji tampilan role tanpa mengubah akun.</div>
+                </div>
+                {testMode && (
+                  <button type="button" onClick={clearTestMode} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
+                    <ShieldCheck className="h-4 w-4" />
+                    Kembali ke Super Admin
+                  </button>
+                )}
+                {!testMode && (
+                  <Link to="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted">
+                    <ShieldCheck className="h-4 w-4" />
+                    Dashboard Super Admin
+                  </Link>
+                )}
+                <button type="button" onClick={() => activateTestMode("owner")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
+                  <UserRound className="h-4 w-4" />
+                  Owner <span className="ml-auto text-[10px] text-muted-foreground">TEST</span>
                 </button>
-              )}
-              {!testMode && (
-                <Link to="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted">
-                  <ShieldCheck className="h-4 w-4" />
-                  Dashboard Super Admin
-                </Link>
-              )}
-              <button type="button" onClick={() => activateTestMode("owner")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
-                <UserRound className="h-4 w-4" />
-                Owner <span className="ml-auto text-[10px] text-muted-foreground">TEST</span>
-              </button>
-              <button type="button" onClick={() => activateTestMode("manager")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
-                <Users className="h-4 w-4" />
-                Manager <span className="ml-auto text-[10px] text-muted-foreground">TEST</span>
-              </button>
-              <button type="button" onClick={() => activateTestMode("sales")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
-                <UserRound className="h-4 w-4" />
-                Sales <span className="ml-auto text-[10px] text-muted-foreground">TEST</span>
-              </button>
-            </>
-          ) : isOwner ? (
-            <>
-              <div className="px-2.5 py-2">
-                <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">Login Tim</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">Keluar dari Owner lalu masuk memakai akun tim.</div>
-              </div>
-              <button type="button" onClick={() => loginAs("manager")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
-                <LogIn className="h-4 w-4" />
-                Login Manager
-              </button>
-              <button type="button" onClick={() => loginAs("sales")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
-                <LogIn className="h-4 w-4" />
-                Login Sales
-              </button>
-            </>
-          ) : (
-            <div className="px-2.5 py-2 text-xs text-muted-foreground">Mode {labels[role as keyof typeof labels]}</div>
-          )}
-        </div>
+                <button type="button" onClick={() => activateTestMode("manager")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
+                  <Users className="h-4 w-4" />
+                  Manager <span className="ml-auto text-[10px] text-muted-foreground">TEST</span>
+                </button>
+                <button type="button" onClick={() => activateTestMode("sales")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
+                  <UserRound className="h-4 w-4" />
+                  Sales <span className="ml-auto text-[10px] text-muted-foreground">TEST</span>
+                </button>
+              </>
+            ) : isOwner ? (
+              <>
+                <div className="px-2.5 py-2">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">Login Tim</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">Keluar dari Owner lalu masuk memakai akun tim.</div>
+                </div>
+                <button type="button" onClick={() => loginAs("manager")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
+                  <LogIn className="h-4 w-4" />
+                  Login Manager
+                </button>
+                <button type="button" onClick={() => loginAs("sales")} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-muted">
+                  <LogIn className="h-4 w-4" />
+                  Login Sales
+                </button>
+              </>
+            ) : (
+              <div className="px-2.5 py-2 text-xs text-muted-foreground">Mode {labels[role as keyof typeof labels]}</div>
+            )}
+
+            {/* Garis Pemisah & Tombol Keluar untuk Semua Role */}
+            <div className="my-1 border-t border-border" />
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4" />
+              Keluar (Log Out)
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
