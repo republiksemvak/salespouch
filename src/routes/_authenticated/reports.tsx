@@ -391,35 +391,45 @@ function OutletReceivablesTab() {
       // Read the owner's own consignment transactions and calculate the current
       // outlet stock locally. This keeps the report usable even when an older
       // database function is still cached in PostgREST.
-      const [{ data: txs, error: txError }, { data: outlets, error: outletError }] = await Promise.all([
+      const [{ data: txs, error: txError }, { data: outlets, error: outletError }, { data: warehouseSales, error: warehouseSalesError }] = await Promise.all([
         supabase
           .from("transactions")
-          .select("id,outlet_id,visit_date,created_at,stock_scheme,line_items,new_consignment_items")
+          .select("id,outlet_id,visit_date,created_at,transaction_type,remaining_debt,stock_scheme,line_items,new_consignment_items")
           .eq("user_id", ownerId)
-          .eq("transaction_type", "Consignment")
           .order("visit_date", { ascending: false })
           .order("created_at", { ascending: false }),
         supabase
           .from("outlets")
           .select("id,name,owner_phone")
           .eq("user_id", ownerId),
+        supabase
+          .from("warehouse_direct_sales")
+          .select("buyer_outlet_id,total_sales,discount_amount,amount_paid")
+          .eq("owner_id", ownerId)
+          .not("buyer_outlet_id", "is", null),
       ]);
 
       if (txError) throw txError;
       if (outletError) throw outletError;
+      if (warehouseSalesError) throw warehouseSalesError;
 
       type Tx = {
         id: string;
         outlet_id: string;
         visit_date: string;
         created_at: string;
+        transaction_type: string;
+        remaining_debt: number | null;
         stock_scheme: string | null;
         line_items: any[] | null;
         new_consignment_items: any[] | null;
       };
 
       const latest = new Map<string, Tx>();
+      const latestDebt = new Map<string, number>();
       for (const raw of (txs ?? []) as Tx[]) {
+        if (!latestDebt.has(raw.outlet_id)) latestDebt.set(raw.outlet_id, Math.max(0, Number(raw.remaining_debt) || 0));
+        if (raw.transaction_type !== "Consignment") continue;
         const activeOld = raw.stock_scheme === "accumulation"
           ? (raw.line_items ?? []).reduce((sum, item) => sum + Math.max(0, Number(item?.remaining) || 0), 0)
           : 0;
@@ -430,6 +440,13 @@ function OutletReceivablesTab() {
         if (activeOld + activeNew > 0 && !latest.has(raw.outlet_id)) {
           latest.set(raw.outlet_id, raw);
         }
+      }
+
+      const warehouseDebtByOutlet = new Map<string, number>();
+      for (const sale of warehouseSales ?? []) {
+        if (!sale.buyer_outlet_id) continue;
+        const debt = Math.max(0, (Number(sale.total_sales) || 0) - (Number(sale.discount_amount) || 0) - (Number(sale.amount_paid) || 0));
+        warehouseDebtByOutlet.set(sale.buyer_outlet_id, (warehouseDebtByOutlet.get(sale.buyer_outlet_id) ?? 0) + debt);
       }
 
       return (outlets ?? [])
@@ -463,16 +480,21 @@ function OutletReceivablesTab() {
             phone: outlet.owner_phone ?? null,
             stock_pcs: stockPcs,
             receivable_value: receivableValue,
-            stock_since: visit.visit_date,
+            invoice_debt: (latestDebt.get(outlet.id) ?? 0) + (warehouseDebtByOutlet.get(outlet.id) ?? 0),
+            stock_since: visit?.visit_date ?? null,
           };
         })
-        .filter((row): row is NonNullable<typeof row> => !!row && row.receivable_value > 0)
-        .sort((a, b) => b.receivable_value - a.receivable_value || a.outlet_name.localeCompare(b.outlet_name));
+        .filter((row): row is NonNullable<typeof row> => !!row && (row.receivable_value > 0 || row.invoice_debt > 0))
+        .sort((a, b) => b.invoice_debt - a.invoice_debt || b.receivable_value - a.receivable_value || a.outlet_name.localeCompare(b.outlet_name));
     },
   });
 
   const totalValue = useMemo(
     () => (rows ?? []).reduce((sum, row) => sum + Number(row.receivable_value || 0), 0),
+    [rows],
+  );
+  const totalInvoiceDebt = useMemo(
+    () => (rows ?? []).reduce((sum, row) => sum + Number(row.invoice_debt || 0), 0),
     [rows],
   );
   const totalStock = useMemo(
@@ -483,10 +505,13 @@ function OutletReceivablesTab() {
   return (
     <div className="mt-4 space-y-4">
       <div className="rounded-2xl border bg-card p-4">
-        <div className="text-xs text-muted-foreground">Total Piutang Outlet</div>
-        <div className="mt-1 text-2xl font-bold text-destructive">{rp(totalValue)}</div>
-        <div className="mt-2 text-xs text-muted-foreground">
-          Nilai barang titipan yang masih berada di outlet · {totalStock} pcs
+        <div className="text-xs text-muted-foreground">Total Nilai Barang Titipan (Konsinyasi)</div>
+        <div className="mt-1 text-2xl font-bold">{rp(totalValue)}</div>
+        <div className="mt-1 text-xs text-muted-foreground">Nilai stok fisik yang masih berada di outlet · {totalStock.toLocaleString("id-ID")} pcs</div>
+        <div className="mt-4 border-t pt-3">
+          <div className="text-xs text-muted-foreground">Total Sisa Utang Tagihan (Nota)</div>
+          <div className="mt-1 text-2xl font-bold text-destructive">{rp(totalInvoiceDebt)}</div>
+          <div className="mt-1 text-xs text-muted-foreground">Utang dari transaksi kunjungan dan penjualan langsung Gudang</div>
         </div>
       </div>
 
@@ -502,11 +527,12 @@ function OutletReceivablesTab() {
                 <div className="flex items-center gap-1.5 font-bold"><Store className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="truncate">{o.outlet_name}</span></div>
                 <div className="mt-1 text-xs text-muted-foreground">Stok titipan: {Number(o.stock_pcs).toLocaleString("id-ID")} pcs</div>
               </div>
-              <div className="shrink-0 text-right"><div className="text-xs text-muted-foreground">Nilai Piutang</div><div className="font-bold text-destructive">{rp(Number(o.receivable_value))}</div></div>
+              <div className="shrink-0 text-right"><div className="text-xs text-muted-foreground">Nilai Barang Titipan</div><div className="font-bold">{rp(Number(o.receivable_value))}</div><div className="mt-1 text-[10px] text-muted-foreground">Sisa Utang Nota</div><div className="font-bold text-destructive">{rp(Number(o.invoice_debt))}</div></div>
             </div>
             <div className="rounded-xl bg-muted/60 p-3 text-xs">
-              <div className="flex justify-between"><span>Nilai stok outlet</span><b>{rp(Number(o.receivable_value))}</b></div>
+              <div className="flex justify-between"><span>Nilai barang titipan</span><b>{rp(Number(o.receivable_value))}</b></div>
               <div className="mt-1 flex justify-between text-muted-foreground"><span>Stok yang masih dititipkan</span><span>{Number(o.stock_pcs).toLocaleString("id-ID")} pcs</span></div>
+              <div className="mt-2 flex justify-between border-t pt-2"><span>Sisa utang tagihan</span><b className="text-destructive">{rp(Number(o.invoice_debt))}</b></div>
             </div>
             <div className="flex items-center justify-between border-t pt-2 text-xs">
               <span className="text-[11px] text-muted-foreground">Stok sejak {o.stock_since?.slice(0, 10) ?? "-"}</span>
