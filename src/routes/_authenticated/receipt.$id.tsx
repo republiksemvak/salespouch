@@ -817,8 +817,6 @@ function ReceiptPage() {
 
         {hr}
 
-        {hr}
-
         {prevDebt > 0 && (
           <Row k="Utang Sebelumnya" v={rp(prevDebt)} />
         )}
