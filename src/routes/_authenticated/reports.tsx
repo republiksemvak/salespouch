@@ -452,10 +452,8 @@ function OutletReceivablesTab() {
       return (outlets ?? [])
         .map((outlet) => {
           const visit = latest.get(outlet.id);
-          if (!visit) return null;
-
-          const oldItems = visit.stock_scheme === "accumulation" ? (visit.line_items ?? []) : [];
-          const newItems = visit.new_consignment_items ?? [];
+          const oldItems = visit?.stock_scheme === "accumulation" ? (visit.line_items ?? []) : [];
+          const newItems = visit?.new_consignment_items ?? [];
           const values = [
             ...oldItems.map((item) => ({
               qty: Math.max(0, Number(item?.remaining) || 0),
