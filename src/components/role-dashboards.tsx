@@ -21,6 +21,9 @@ import {
   Settings2,
   ShieldCheck,
   ChevronRight,
+  Crown,
+  Sparkles,
+  AlertTriangle,
   ShoppingCart,
   LockKeyhole,
   RotateCcw,
@@ -155,6 +158,129 @@ function CompactSummary({ ownerId }: { ownerId?: string }) {
   );
 }
 
+function OwnerLicenseCard({ profile }: { profile: Profile | null }) {
+  const ownerId = profile?.id;
+  const licenseUntil = profile?.license_until;
+
+  const isPremium = Boolean(
+    licenseUntil && new Date(licenseUntil).getTime() > Date.now(),
+  );
+  const daysLeft = isPremium
+    ? Math.ceil(
+        (new Date(licenseUntil!).getTime() - Date.now()) /
+          (1000 * 60 * 60 * 24),
+      )
+    : 0;
+
+  const { data: outletCount = 0 } = useQuery({
+    queryKey: ["owner-outlet-count", ownerId],
+    enabled: !!ownerId,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("outlets")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", ownerId!);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    staleTime: 60_000,
+  });
+
+  const MAX_FREE_OUTLET = 10;
+  const isNearExpiry = isPremium && daysLeft <= 7;
+  const isLimitReached = !isPremium && outletCount >= MAX_FREE_OUTLET;
+  const expiryFormatted = licenseUntil
+    ? new Date(licenseUntil).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "-";
+
+  return (
+    <section className="mt-3 rounded-2xl border bg-card p-3.5 shadow-xs">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          {isPremium ? (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+              <Crown className="h-4 w-4" />
+            </div>
+          ) : (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wide">
+                {isPremium ? "Paket Pro / Premium" : "Paket Gratis (Freemium)"}
+              </span>
+              {isPremium && (
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
+                  Aktif
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {isPremium
+                ? `Berlaku s/d ${expiryFormatted} (${daysLeft} hari lagi)`
+                : `Batas maksimal ${MAX_FREE_OUTLET} outlet terdaftar`}
+            </p>
+          </div>
+        </div>
+
+        <Link
+          to="/license"
+          className="inline-flex shrink-0 items-center gap-0.5 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+        >
+          {isPremium ? (isNearExpiry ? "Perpanjang" : "Detail") : "Upgrade"}
+          <ChevronRight className="h-3 w-3" />
+        </Link>
+      </div>
+
+      {!isPremium && (
+        <div className="mt-3 border-t border-dashed pt-2.5">
+          <div className="flex justify-between gap-2 text-[11px]">
+            <span className="text-muted-foreground">Penggunaan Outlet:</span>
+            <span className={`font-semibold ${isLimitReached ? "text-destructive" : "text-foreground"}`}>
+              {outletCount} / {MAX_FREE_OUTLET} Warung
+            </span>
+          </div>
+          <div
+            className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-label="Penggunaan kuota outlet"
+            aria-valuemin={0}
+            aria-valuemax={MAX_FREE_OUTLET}
+            aria-valuenow={Math.min(outletCount, MAX_FREE_OUTLET)}
+          >
+            <div
+              className={`h-full rounded-full transition-all ${isLimitReached ? "bg-destructive" : "bg-primary"}`}
+              style={{
+                width: `${Math.min(100, (outletCount / MAX_FREE_OUTLET) * 100)}%`,
+              }}
+            />
+          </div>
+          {isLimitReached && (
+            <p className="mt-1.5 text-[10px] font-medium text-destructive">
+              ⚠️ Kuota outlet habis. Upgrade ke Premium untuk menambah warung baru.
+            </p>
+          )}
+        </div>
+      )}
+
+      {isNearExpiry && (
+        <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Masa aktif tersisa {daysLeft} hari lagi. Segera perpanjang agar laporan tidak terkunci.
+          </span>
+        </div>
+      )}
+    </section>
+  );
+}
+
 // -------------------------------------------------------------
 // OWNER DASHBOARD
 // -------------------------------------------------------------
@@ -202,6 +328,8 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
       />
 
       <OwnerAnnouncementBanner />
+
+      <OwnerLicenseCard profile={profile} />
 
       {hasPremiumAccess(profile) ? (
         <CompactSummary ownerId={profile?.id} />
