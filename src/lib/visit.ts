@@ -26,6 +26,7 @@ type VisitRow = {
   new_consignment_items: NewItem[] | null;
   remaining_debt: number;
   stock_scheme: "accumulation" | "clean_pull";
+  transaction_type: "Consignment" | "Direct Sale";
 };
 
 /**
@@ -41,10 +42,9 @@ export async function loadLastVisit(outletId: string) {
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "line_items,new_consignment_items,remaining_debt,stock_scheme"
+      "line_items,new_consignment_items,remaining_debt,stock_scheme,transaction_type"
     )
     .eq("outlet_id", outletId)
-    .eq("transaction_type", "Consignment")
     .order("visit_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(50);
@@ -112,6 +112,7 @@ export async function loadLastVisit(outletId: string) {
   let selectedStock: ReturnType<typeof stockFromVisit> = [];
 
   for (const visit of visits) {
+    if (visit.transaction_type !== "Consignment") continue;
     const stock = stockFromVisit(visit);
     if (stock.length > 0) {
       selected = visit;
