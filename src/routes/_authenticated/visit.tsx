@@ -80,7 +80,7 @@ function VisitPage() {
 
   const history = useQuery({
     queryKey: ["last-visit", outletId],
-    enabled: started && type === "Consignment" && !!outletId,
+    enabled: started && !!outletId,
     queryFn: () => loadLastVisit(outletId),
   });
 
@@ -105,7 +105,7 @@ function VisitPage() {
   useEffect(() => setSavedInput(false), [rows, newItems, directItems, type, stockSource]);
 
   const isFirst = type === "Consignment" && started && history.isSuccess && history.data === null;
-  const previousDebt = type === "Consignment" ? history.data?.previousDebt ?? 0 : 0;
+  const previousDebt = history.data?.previousDebt ?? 0;
 
   const lineItems: LineItem[] = useMemo(() => {
     if (type === "Direct Sale") {
