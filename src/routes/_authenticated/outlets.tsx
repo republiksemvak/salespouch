@@ -148,17 +148,20 @@ function AllOutlets() {
     setInfoLoading(true);
     setInfoData(null);
     try {
-      const [{ data: outlet, error: outletError }, stockResult] = await Promise.all([
+      const [{ data: outlet, error: outletError }, stockResult, { data: warehouseSales, error: warehouseSalesError }] = await Promise.all([
         supabase.from("outlets").select("id,name,owner_name,owner_phone,address,map_location,route_notes").eq("id", outletId).single(),
         loadLastVisit(outletId),
+        supabase.from("warehouse_direct_sales").select("total_sales,discount_amount,amount_paid").eq("owner_id", ownerId!).eq("buyer_outlet_id", outletId),
       ]);
       if (outletError) throw outletError;
+      if (warehouseSalesError) throw warehouseSalesError;
+      const warehouseDebt = (warehouseSales ?? []).reduce((sum, sale) => sum + Math.max(0, (Number(sale.total_sales) || 0) - (Number(sale.discount_amount) || 0) - (Number(sale.amount_paid) || 0)), 0);
       const scheduleRows = (schedules as any[]).filter((row) => row.outlet_id === outletId);
       const stock = (stockResult.stock ?? []).map((item) => ({
         ...item,
         value: (Number(item.qty) || 0) * ((Number(item.price) || 0) / (Number(item.pcs_per_pack) || 1)),
       }));
-      setInfoData({ outlet, stock, scheduleRows });
+      setInfoData({ outlet, stock, scheduleRows, invoiceDebt: (Number(stockResult.previousDebt) || 0) + warehouseDebt });
     } catch (error) {
       toast.error(`Gagal memuat info outlet: ${(error as Error).message}`);
       setInfoId(null);
@@ -368,8 +371,8 @@ function AllOutlets() {
                       <span className="text-sm font-bold">Rp</span>
                     </div>
                     <div>
-                      <div className="text-sm font-semibold">Piutang Outlet</div>
-                      <div className="text-[11px] text-muted-foreground">Nilai stok titipan saat ini</div>
+                      <div className="text-sm font-semibold">Nilai Barang Titipan (Konsinyasi)</div>
+                      <div className="text-[11px] text-muted-foreground">Nilai stok fisik yang masih berada di outlet</div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -392,6 +395,16 @@ function AllOutlets() {
                 ) : (
                   <div className="mt-4 rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">Tidak ada stok titipan aktif.</div>
                 )}
+              </section>
+
+              <section className="rounded-2xl border bg-card p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold">Sisa Utang Tagihan (Nota)</div>
+                    <div className="text-[11px] text-muted-foreground">Sisa utang dari nota kunjungan dan penjualan langsung Gudang</div>
+                  </div>
+                  <div className="shrink-0 text-right text-lg font-bold text-destructive">Rp {Math.round(Number(infoData.invoiceDebt) || 0).toLocaleString("id-ID")}</div>
+                </div>
               </section>
 
               <section className="rounded-2xl border bg-card p-4 shadow-sm">
