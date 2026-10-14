@@ -311,3 +311,33 @@ export const saveSupportConfig = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return updated;
   });
+
+
+export const getDatabaseMetrics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data, error } = await (supabaseAdmin as any).rpc("get_admin_database_metrics");
+    if (error) throw new Error(error.message);
+
+    return data as {
+      total_db_size: string;
+      total_db_bytes: number;
+      active_connections: number;
+      tables: Array<{
+        table_name: string;
+        row_estimate: number;
+        total_size: string;
+        total_bytes: number;
+      }>;
+      top_tenants: Array<{
+        owner_id: string;
+        company_name: string;
+        user_email: string | null;
+        total_transactions: number;
+        total_outlets: number;
+      }>;
+    };
+  });
