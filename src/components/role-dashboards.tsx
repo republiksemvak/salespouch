@@ -3,11 +3,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { getAdminUsers, getActiveAnnouncement, saveAnnouncement, setAnnouncementActive, getSupportConfig, saveSupportConfig } from "@/lib/admin.functions";
+import { getAdminUsers, getActiveAnnouncement, saveAnnouncement, setAnnouncementActive, getSupportConfig, saveSupportConfig, getDatabaseMetrics } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BarChart3,
   Building2,
+  Database,
+  HardDrive,
+  Activity,
   FileText,
   History,
   Package,
@@ -437,6 +440,84 @@ function OwnerAnnouncementBanner() {
   );
 }
 
+function DatabaseMetricsCard() {
+  const fetchMetrics = useServerFn(getDatabaseMetrics);
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ["admin-database-metrics"],
+    queryFn: () => fetchMetrics(),
+    staleTime: 60_000,
+  });
+
+  if (isLoading) {
+    return <div className="mt-3 animate-pulse rounded-xl border bg-card p-4 text-center text-xs text-muted-foreground">Memuat metrik database…</div>;
+  }
+
+  if (error || !data) {
+    return (
+      <div className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-xs text-destructive">
+        <div className="font-semibold">Gagal memuat metrik database</div>
+        <p className="mt-1 break-words">{(error as Error | null)?.message || "Data tidak tersedia."}</p>
+        <Button variant="outline" size="sm" className="mt-3 h-8" onClick={() => refetch()}>Coba Lagi</Button>
+      </div>
+    );
+  }
+
+  const largestTenant = data.top_tenants?.[0];
+
+  return (
+    <section className="mt-3 space-y-4 rounded-xl border bg-card p-3.5 shadow-xs">
+      <div className="flex items-center justify-between gap-2 border-b pb-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Database className="h-4 w-4 shrink-0 text-primary" />
+          <h2 className="text-xs font-bold text-foreground">Kapasitas & Beban Database</h2>
+        </div>
+        <Button variant="ghost" size="sm" className="h-7 shrink-0 text-[11px]" disabled={isFetching} onClick={() => refetch()}>
+          {isFetching ? "Memuat…" : "Segarkan"}
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-muted/40 p-2.5">
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><HardDrive className="h-3.5 w-3.5" />Total Ukuran DB</div>
+          <p className="mt-1 font-mono text-lg font-bold text-foreground">{data.total_db_size}</p>
+          <p className="text-[10px] text-muted-foreground">{Number(data.total_db_bytes || 0).toLocaleString("id-ID")} byte</p>
+        </div>
+        <div className="rounded-lg bg-muted/40 p-2.5">
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><Activity className="h-3.5 w-3.5" />Koneksi Aktif</div>
+          <p className="mt-1 font-mono text-lg font-bold text-foreground">{Number(data.active_connections || 0).toLocaleString("id-ID")}</p>
+          <p className="text-[10px] text-muted-foreground">koneksi PostgreSQL aktif</p>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tabel Paling Banyak Memakai Space</h3>
+        <div className="divide-y rounded-lg border bg-background/50 text-xs">
+          {(data.tables ?? []).map((table) => (
+            <div key={table.table_name} className="flex items-center justify-between gap-3 px-2.5 py-2">
+              <div className="min-w-0"><div className="truncate font-mono text-foreground">{table.table_name}</div><div className="text-[10px] text-muted-foreground">~{Number(table.row_estimate || 0).toLocaleString("id-ID")} baris</div></div>
+              <span className="shrink-0 font-mono font-semibold text-foreground">{table.total_size}</span>
+            </div>
+          ))}
+          {(data.tables ?? []).length === 0 && <div className="p-3 text-center text-xs text-muted-foreground">Belum ada statistik tabel.</div>}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Top 5 Tenant Berdasarkan Transaksi</h3>
+        <div className="space-y-2">
+          {(data.top_tenants ?? []).map((tenant, index) => (
+            <div key={tenant.owner_id} className="flex items-center justify-between gap-3 rounded-lg border bg-background/50 px-2.5 py-2">
+              <div className="flex min-w-0 items-start gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">{index + 1}</span><div className="min-w-0"><div className="truncate text-xs font-semibold text-foreground">{tenant.company_name || "Tanpa Nama"}</div><div className="truncate text-[10px] text-muted-foreground">{tenant.user_email || "Email tidak tersedia"}</div></div></div>
+              <div className="shrink-0 text-right"><div className="text-xs font-bold text-foreground">{Number(tenant.total_transactions || 0).toLocaleString("id-ID")} transaksi</div><div className="text-[10px] text-muted-foreground">{Number(tenant.total_outlets || 0).toLocaleString("id-ID")} outlet</div></div>
+            </div>
+          ))}
+          {(data.top_tenants ?? []).length === 0 && <div className="rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground">Belum ada data tenant.</div>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function SuperAdminDashboard({ embedded = false }: { embedded?: boolean } = {}) {
   const qc = useQueryClient();
   const getUsers = useServerFn(getAdminUsers);
@@ -581,6 +662,8 @@ export function SuperAdminDashboard({ embedded = false }: { embedded?: boolean }
         <div><div className="text-[10px] text-muted-foreground">Lisensi Aktif</div><div className="mt-0.5 text-sm font-bold text-emerald-600">{loadingUsers ? "…" : totalLicensed}</div></div>
         <div><div className="text-[10px] text-muted-foreground">Freemium</div><div className="mt-0.5 text-sm font-bold text-foreground">{loadingUsers ? "…" : owners.length - totalLicensed}</div></div>
       </section>
+
+      <DatabaseMetricsCard />
 
       <section className="mt-3 overflow-hidden rounded-xl border bg-card shadow-xs transition-all">
         <button type="button" onClick={() => setOpenAnnouncement((prev) => !prev)} aria-expanded={openAnnouncement} className="flex w-full items-center justify-between p-3.5 text-left transition-colors hover:bg-muted/40">
