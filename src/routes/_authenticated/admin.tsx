@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { SuperAdminDashboard } from "@/components/role-dashboards";
+import { ModeSwitcher } from "@/components/mode-switcher";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -14,15 +16,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type AdminSearch = {
-  tab?: "users" | "packages" | "promos" | "stock-reset";
+  tab?: "overview" | "users" | "packages" | "promos" | "stock-reset";
 };
 
 export const Route = createFileRoute("/_authenticated/admin")({
   validateSearch: (search: Record<string, unknown>): AdminSearch => {
-    const valid = ["users", "packages", "promos", "stock-reset"];
+    const valid = ["overview", "users", "packages", "promos", "stock-reset"];
     const tab = typeof search.tab === "string" && valid.includes(search.tab)
       ? (search.tab as AdminSearch["tab"])
-      : "users";
+      : "overview";
     return { tab };
   },
   head: () => ({ meta: [{ title: "Super Admin — Sales Pouch" }, { name: "description", content: "Kelola akun User Utama, lisensi, paket dan promo." }, { property: "og:title", content: "Super Admin — Sales Pouch" }, { property: "og:description", content: "Kelola akun User Utama, lisensi, paket dan promo." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -36,7 +38,7 @@ type Promo = { id: string; code: string; description: string | null; discount_pe
 
 function AdminPage() {
   const { data: isAdmin, isLoading } = useIsAdmin();
-  const { tab = "users" } = Route.useSearch();
+  const { tab = "overview" } = Route.useSearch();
   const navigate = useNavigate();
 
   if (isLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
@@ -44,10 +46,15 @@ function AdminPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-3xl px-5 pb-16 pt-6">
-      <Link to="/dashboard" className="flex items-center gap-1 text-sm text-muted-foreground">
-        <ArrowLeft className="h-4 w-4" />Kembali
-      </Link>
-      <h1 className="mt-2 text-2xl font-bold">Dashboard Super Admin</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <Link to="/dashboard" className="flex items-center gap-1 text-sm text-muted-foreground">
+            <ArrowLeft className="h-4 w-4" />Kembali
+          </Link>
+          <h1 className="mt-2 text-2xl font-bold">Dashboard Super Admin</h1>
+        </div>
+        <ModeSwitcher />
+      </div>
       <Tabs
         value={tab}
         onValueChange={(newTab) => {
@@ -59,12 +66,14 @@ function AdminPage() {
         }}
         className="mt-5"
       >
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="flex w-full justify-start gap-1 overflow-x-auto">
+          <TabsTrigger value="overview">Ringkasan</TabsTrigger>
           <TabsTrigger value="users">Pengguna</TabsTrigger>
           <TabsTrigger value="packages">Paket</TabsTrigger>
           <TabsTrigger value="promos">Promo</TabsTrigger>
           <TabsTrigger value="stock-reset">Stok</TabsTrigger>
         </TabsList>
+        <TabsContent value="overview"><SuperAdminDashboard embedded /></TabsContent>
         <TabsContent value="users"><Users /></TabsContent>
         <TabsContent value="packages"><Packages /></TabsContent>
         <TabsContent value="promos"><Promos /></TabsContent>
