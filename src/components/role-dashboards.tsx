@@ -435,7 +435,7 @@ function OwnerAnnouncementBanner() {
   );
 }
 
-export function SuperAdminDashboard() {
+export function SuperAdminDashboard({ embedded = false }: { embedded?: boolean } = {}) {
   const qc = useQueryClient();
   const getUsers = useServerFn(getAdminUsers);
   const fetchActive = useServerFn(getActiveAnnouncement);
@@ -555,8 +555,19 @@ export function SuperAdminDashboard() {
   });
 
   return (
-    <main className="mx-auto min-h-screen max-w-md px-4 pb-14 pt-4">
-      <Header title="Super Admin" subtitle="Pusat Kontrol & Monitoring Pendaftaran" />
+    <main
+      className={
+        embedded
+          ? "w-full pb-4"
+          : "mx-auto min-h-screen max-w-md px-4 pb-14 pt-4"
+      }
+    >
+      {!embedded && (
+        <Header
+          title="Super Admin"
+          subtitle="Pusat Kontrol & Monitoring Pendaftaran"
+        />
+      )}
 
       <section className="mt-3 grid grid-cols-3 divide-x rounded-xl border bg-card/60 p-2 text-center shadow-xs">
         <div><div className="text-[10px] text-muted-foreground">Total Bisnis</div><div className="mt-0.5 text-sm font-bold text-foreground">{loadingUsers ? "…" : owners.length}</div></div>
