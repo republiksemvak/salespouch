@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Phone, Store, TrendingUp } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Phone, Store, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/lib/products";
 import { useProfile } from "@/hooks/use-profile";
@@ -182,6 +183,7 @@ function FinancialReportTab({ canExport = true }: { canExport?: boolean }) {
   const now = new Date();
   const [from, setFrom] = useState(ymd(new Date(now.getFullYear(), now.getMonth(), 1)));
   const [to, setTo] = useState(ymd(now));
+  const [downloading, setDownloading] = useState(false);
   const { data: products } = useProducts();
   const { data: account } = useProfile();
 
@@ -339,29 +341,86 @@ function FinancialReportTab({ canExport = true }: { canExport?: boolean }) {
   }, [reportData, products]);
 
   async function download() {
-    const XLSX = await import("xlsx");
-    const wb = XLSX.utils.book_new();
-    const n1 = report.rows.length + 1;
-    const s1 = XLSX.utils.aoa_to_sheet([
-      ["Tanggal", "No Nota", "Toko", "Sales", "Jenis", "Penjualan", "Diskon Nota", "Omset Bersih", "HPP", "Profit", "Dibayar", "Sisa Hutang"],
-      ...report.rows.map(x => [x.tanggal, x.nota, x.toko, x.sales, x.jenis, x.bruto, x.diskon, x.omset, x.hpp, x.profit, x.dibayar, x.sisa]),
-      ["TOTAL", "", "", "", "", ...["F", "G", "H", "I", "J", "K", "L"].map(col => ({ f: `SUM(${col}2:${col}${n1})` }))],
-    ]);
-    report.rows.forEach((x, i) => {
-      s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: x.omset };
-      s1[`J${i + 2}`] = { t: "n", f: `H${i + 2}-I${i + 2}`, v: x.profit };
-    });
-    s1["!cols"] = [12,18,20,14,12,14,14,14,14,14,14,14].map(wch => ({ wch }));
-    XLSX.utils.book_append_sheet(wb, s1, "Transaksi");
-    const n2 = report.products.length + 1;
-    const s2 = XLSX.utils.aoa_to_sheet([
-      ["Produk", "Terjual (pcs)", "Omset", "HPP", "Profit"],
-      ...report.products.map((p, i) => [p.name, p.qty, p.omset, p.hpp, { t: "n", f: `C${i + 2}-D${i + 2}`, v: p.omset - p.hpp }]),
-      ["TOTAL", { f: `SUM(B2:B${n2})` }, { f: `SUM(C2:C${n2})` }, { f: `SUM(D2:D${n2})` }, { f: `SUM(E2:E${n2})` }],
-    ]);
-    s2["!cols"] = [24,14,14,14,14].map(wch => ({ wch }));
-    XLSX.utils.book_append_sheet(wb, s2, "Per Produk");
-    XLSX.writeFile(wb, `Laporan-${from}_sd_${to}.xlsx`);
+    if (!report.rows.length) {
+      toast.error("Tidak ada data transaksi pada rentang tanggal ini.");
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+
+      // SHEET 1: DAFTAR TRANSAKSI
+      const n1 = report.rows.length + 1;
+      const s1 = XLSX.utils.aoa_to_sheet([
+        [
+          "Tanggal", "No Nota", "Toko", "Sales", "Jenis",
+          "Penjualan", "Diskon Nota", "Omset Bersih", "HPP", "Profit",
+          "Dibayar", "Sisa Hutang"
+        ],
+        ...report.rows.map((x) => [
+          x.tanggal, x.nota, x.toko, x.sales, x.jenis,
+          x.bruto, x.diskon, x.omset, x.hpp, x.profit,
+          x.dibayar, x.sisa
+        ]),
+        [
+          "TOTAL", "", "", "", "",
+          { t: "n", f: `SUM(F2:F${n1})`, v: report.totals.bruto },
+          { t: "n", f: `SUM(G2:G${n1})`, v: report.totals.diskon },
+          { t: "n", f: `SUM(H2:H${n1})`, v: report.totals.omset },
+          { t: "n", f: `SUM(I2:I${n1})`, v: report.totals.hpp },
+          { t: "n", f: `SUM(J2:J${n1})`, v: report.totals.profit },
+          { t: "n", f: `SUM(K2:K${n1})`, v: report.totals.dibayar },
+          { t: "n", f: `SUM(L2:L${n1})`, v: report.totals.sisa },
+        ],
+      ]);
+
+      report.rows.forEach((x, i) => {
+        s1[`H${i + 2}`] = { t: "n", f: `F${i + 2}-G${i + 2}`, v: x.omset };
+        s1[`J${i + 2}`] = { t: "n", f: `H${i + 2}-I${i + 2}`, v: x.profit };
+      });
+
+      s1["!cols"] = [12, 18, 20, 14, 12, 14, 14, 14, 14, 14, 14, 14].map((wch) => ({ wch }));
+      XLSX.utils.book_append_sheet(wb, s1, "Transaksi");
+
+      // SHEET 2: PER PRODUK
+      if (report.products.length > 0) {
+        const n2 = report.products.length + 1;
+        const totalQty = report.products.reduce((s, p) => s + p.qty, 0);
+        const totalOmset = report.products.reduce((s, p) => s + p.omset, 0);
+        const totalHpp = report.products.reduce((s, p) => s + p.hpp, 0);
+        const totalProfit = totalOmset - totalHpp;
+
+        const s2 = XLSX.utils.aoa_to_sheet([
+          ["Produk", "Terjual (pcs)", "Omset", "HPP", "Profit"],
+          ...report.products.map((p, i) => [
+            p.name,
+            p.qty,
+            p.omset,
+            p.hpp,
+            { t: "n", f: `C${i + 2}-D${i + 2}`, v: p.omset - p.hpp },
+          ]),
+          [
+            "TOTAL",
+            { t: "n", f: `SUM(B2:B${n2})`, v: totalQty },
+            { t: "n", f: `SUM(C2:C${n2})`, v: totalOmset },
+            { t: "n", f: `SUM(D2:D${n2})`, v: totalHpp },
+            { t: "n", f: `SUM(E2:E${n2})`, v: totalProfit },
+          ],
+        ]);
+        s2["!cols"] = [24, 14, 14, 14, 14].map((wch) => ({ wch }));
+        XLSX.utils.book_append_sheet(wb, s2, "Per Produk");
+      }
+
+      XLSX.writeFile(wb, `Laporan-${from}_sd_${to}.xlsx`);
+      toast.success("Laporan Excel berhasil diunduh.");
+    } catch (err: any) {
+      console.error("Gagal download excel:", err);
+      toast.error(err?.message || "Gagal membuat file Excel.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   const margin = report.totals.omset ? (report.totals.profit / report.totals.omset) * 100 : 0;
@@ -372,7 +431,21 @@ function FinancialReportTab({ canExport = true }: { canExport?: boolean }) {
     <div className="mt-4">
       <div className="grid grid-cols-2 gap-2"><label className="text-xs text-muted-foreground">Dari<Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-11" /></label><label className="text-xs text-muted-foreground">Sampai<Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-11" /></label></div>
       <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border bg-card p-4"><Box label="Omset Bersih" v={rp(report.totals.omset)} /><Box label="HPP" v={rp(report.totals.hpp)} /><Box label="Profit" v={rp(report.totals.profit)} strong /><Box label="Margin" v={`${margin.toFixed(1)}%`} /><div className="col-span-2 border-t border-dashed pt-2 text-xs text-muted-foreground">Uang diterima: <b className="text-foreground">{rp(report.totals.dibayar)}</b> · {report.rows.length} transaksi</div></div>
-      {canExport && <Button onClick={download} disabled={!report.rows.length} className="mt-4 h-12 w-full"><Download className="mr-1 h-4 w-4" /> Download Excel</Button>}
+      {canExport && (
+        <Button onClick={download} disabled={!report.rows.length || downloading} className="mt-4 h-12 w-full">
+          {downloading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Menyiapkan Excel…
+            </>
+          ) : (
+            <>
+              <Download className="mr-1 h-4 w-4" />
+              Download Excel
+            </>
+          )}
+        </Button>
+      )}
       <ProductInsights topSelling={topSelling} topRevenue={topRevenue} />
       <h2 className="mt-6 font-semibold">Performa Produk</h2>
       <div className="mt-2 space-y-2">{isLoading && <p className="text-sm text-muted-foreground">Memuat data…</p>}{!isLoading && !report.products.length && <p className="text-sm text-muted-foreground">Belum ada transaksi di periode ini.</p>}{report.products.map(p => <div key={p.name} className="rounded-xl border bg-card p-3 text-sm"><div className="flex justify-between font-medium"><span className="truncate">{p.name}</span><span>{p.qty} pcs</span></div><div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Omset {rp(p.omset)}</span><span>HPP {rp(p.hpp)}</span><b className={p.profit < 0 ? "text-destructive" : "text-primary"}>{rp(p.profit)}</b></div></div>)}</div>
