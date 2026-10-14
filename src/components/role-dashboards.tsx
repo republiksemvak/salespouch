@@ -969,7 +969,7 @@ function SalesStockSummary({ salesId }: { salesId?: string }) {
       if (error) throw error;
       return (data ?? []) as { product_id: string; quantity: number }[];
     },
-    staleTime: 5_000,
+    staleTime: 30_000,
   });
 
   const total = (data ?? []).reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
