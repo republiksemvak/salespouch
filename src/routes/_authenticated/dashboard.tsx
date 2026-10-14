@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useProfile } from "@/hooks/use-profile";
@@ -14,7 +15,22 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
+  const navigate = useNavigate();
   const { data: p, isLoading } = useProfile();
+  const superAdmin = Boolean(p && isSuperAdminEmail(p.email));
+  const testMode = superAdmin ? getTestMode() : null;
+  const effectiveRole = superAdmin ? testMode ?? "super-admin" : p?.role;
+
+  useEffect(() => {
+    if (effectiveRole === "super-admin") {
+      void navigate({
+        to: "/admin",
+        search: { tab: "overview" },
+        replace: true,
+      });
+    }
+  }, [effectiveRole, navigate]);
+
   const fetchPermissions = useServerFn(getMyTeamPermissions);
   const { data: access } = useQuery({
     queryKey: ["my-team-permissions", p?.userId, p?.role],
@@ -28,9 +44,6 @@ function Dashboard() {
 
   if (isLoading || !p) return <div className="min-h-screen p-10 text-center text-muted-foreground">Memuat dashboard…</div>;
 
-  const superAdmin = isSuperAdminEmail(p.email);
-  const testMode = superAdmin ? getTestMode() : null;
-  const effectiveRole = superAdmin ? testMode ?? "super-admin" : p.role;
   const roleDefaults: Record<string, string[]> = {
     manager: [...MANAGER_DEFAULTS],
     admin: [...ADMIN_DEFAULTS],
@@ -51,7 +64,7 @@ function Dashboard() {
         : (roleDefaults[effectiveRole] ?? [])
       : [];
 
-  if (effectiveRole === "super-admin") return <SuperAdminDashboard />;
+  if (effectiveRole === "super-admin") return <div className="min-h-screen p-10 text-center text-muted-foreground">Membuka panel Super Admin…</div>;
   if (effectiveRole === "manager") return <ManagerDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} permissions={permissions} />;
   if (effectiveRole === "admin") return <AdminDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} permissions={permissions} />;
   if (effectiveRole === "sales") return <SalesDashboard profile={p.profile} businessName={p.profile?.business_name ?? null} salesUserId={p.userId} />;
