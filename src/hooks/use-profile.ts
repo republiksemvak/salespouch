@@ -12,28 +12,29 @@ export function useProfile() {
   return useQuery({
     queryKey: [...profileQueryKey, typeof window === "undefined" ? null : getTestMode()],
     queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) throw new Error("Not signed in");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentUser = sessionData.session?.user ?? (await supabase.auth.getUser()).data.user;
+      if (!currentUser) throw new Error("Not signed in");
 
-      const email = u.user.email ?? null;
+      const email = currentUser.email ?? null;
       const testMode = isSuperAdminEmail(email) ? getTestMode() : null;
 
       // Load the user's profile and team membership in parallel.
       // This removes one sequential network round-trip for employee accounts.
       const [{ data, error }, { data: membership, error: teamError }] = await Promise.all([
-        supabase.from("profiles").select(profileFields).eq("id", u.user.id).maybeSingle(),
-        supabase.from("team_members").select("owner_id,position").eq("user_id", u.user.id).maybeSingle(),
+        supabase.from("profiles").select(profileFields).eq("id", currentUser.id).maybeSingle(),
+        supabase.from("team_members").select("owner_id,position").eq("user_id", currentUser.id).maybeSingle(),
       ]);
       if (error) throw error;
       if (teamError) throw teamError;
 
       if (isSuperAdminEmail(email)) {
         return {
-          userId: u.user.id,
+          userId: currentUser.id,
           profile: data as Profile | null,
           email,
           role: testMode ?? "owner",
-          ownerId: u.user.id,
+          ownerId: currentUser.id,
           testMode,
         } as const;
       }
@@ -46,14 +47,14 @@ export function useProfile() {
         // Preserve the employee's personal name while using the owner's business details.
         const personalDisplayName =
           (data as Profile | null)?.display_name ||
-          u.user.user_metadata?.display_name ||
+          currentUser.user_metadata?.display_name ||
           (data as Profile | null)?.username ||
-          u.user.user_metadata?.username ||
+          currentUser.user_metadata?.username ||
           null;
 
         const personalUsername =
           (data as Profile | null)?.username ||
-          u.user.user_metadata?.username ||
+          currentUser.user_metadata?.username ||
           null;
 
         profile = {
@@ -77,13 +78,14 @@ export function useProfile() {
         : ("owner" as const);
 
       return {
-        userId: u.user.id,
+        userId: currentUser.id,
         profile,
         email,
         role,
-        ownerId: membership?.owner_id ?? u.user.id,
+        ownerId: membership?.owner_id ?? currentUser.id,
         testMode: null,
       } as const;
     },
+    staleTime: 5 * 60 * 1000,
   });
 }
