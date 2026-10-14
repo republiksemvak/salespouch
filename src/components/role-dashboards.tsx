@@ -21,6 +21,8 @@ import {
   Settings2,
   ShieldCheck,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Crown,
   Sparkles,
   AlertTriangle,
@@ -444,6 +446,9 @@ export function SuperAdminDashboard({ embedded = false }: { embedded?: boolean }
   const fetchSupport = useServerFn(getSupportConfig);
   const updateSupport = useServerFn(saveSupportConfig);
 
+  const [openAnnouncement, setOpenAnnouncement] = useState(false);
+  const [openSupport, setOpenSupport] = useState(false);
+
   const { data: usersData, isLoading: loadingUsers } = useQuery({
     queryKey: ["admin-users"],
     queryFn: () => getUsers({}),
@@ -495,6 +500,7 @@ export function SuperAdminDashboard({ embedded = false }: { embedded?: boolean }
       await refetchSupport();
       await qc.invalidateQueries({ queryKey: ["admin-support-config"] });
       await qc.invalidateQueries({ queryKey: ["app-support-config-public"] });
+      setOpenSupport(false);
     } catch (err) {
       toast.error((err as Error).message || "Gagal menyimpan pengaturan CS");
     } finally {
@@ -532,6 +538,7 @@ export function SuperAdminDashboard({ embedded = false }: { embedded?: boolean }
       setContent("");
       await refetchAnnouncement();
       await qc.invalidateQueries({ queryKey: ["active-announcement"] });
+      setOpenAnnouncement(false);
     } catch (err) {
       toast.error((err as Error).message || "Gagal menyimpan pengumuman");
     } finally {
@@ -575,174 +582,43 @@ export function SuperAdminDashboard({ embedded = false }: { embedded?: boolean }
         <div><div className="text-[10px] text-muted-foreground">Freemium</div><div className="mt-0.5 text-sm font-bold text-foreground">{loadingUsers ? "…" : owners.length - totalLicensed}</div></div>
       </section>
 
-      <section className="mt-4 rounded-xl border bg-card p-3.5 shadow-xs">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Megaphone className="h-4 w-4" /></div>
-          <div><h2 className="text-xs font-bold text-foreground">Info Penting ke Dashboard Owner</h2><p className="text-[10px] text-muted-foreground">Muncul di bagian atas dashboard semua Owner.</p></div>
-        </div>
-
-        {activeAnnouncement?.is_active && (
-          <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <span className="rounded bg-primary/20 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-primary">Sedang Tayang</span>
-                <div className="mt-1 text-xs font-semibold text-foreground">{activeAnnouncement.title}</div>
-                <div className="mt-0.5 whitespace-pre-line text-[11px] text-muted-foreground">{activeAnnouncement.content}</div>
-              </div>
+      <section className="mt-3 overflow-hidden rounded-xl border bg-card shadow-xs transition-all">
+        <button type="button" onClick={() => setOpenAnnouncement((prev) => !prev)} aria-expanded={openAnnouncement} className="flex w-full items-center justify-between p-3.5 text-left transition-colors hover:bg-muted/40">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Megaphone className="h-4 w-4" /></div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5"><h2 className="text-xs font-bold text-foreground">Siaran Info Owner</h2>{activeAnnouncement?.is_active && <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600">Tayang</span>}</div>
+              <p className="truncate text-[10px] text-muted-foreground">{activeAnnouncement?.is_active ? activeAnnouncement.title : "Klik untuk buat pengumuman"}</p>
+            </div>
+          </div>
+          {openAnnouncement ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+        </button>
+        {openAnnouncement && <div className="border-t bg-muted/10 p-3.5 pt-3">
+          {activeAnnouncement?.is_active && <div className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+            <div className="flex items-start justify-between gap-2"><div className="min-w-0"><span className="rounded bg-primary/20 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-primary">Sedang Tayang</span><div className="mt-1 text-xs font-semibold text-foreground">{activeAnnouncement.title}</div><div className="mt-0.5 whitespace-pre-line text-[11px] text-muted-foreground">{activeAnnouncement.content}</div></div>
               <Button type="button" variant="outline" size="sm" onClick={() => handleToggleStatus(activeAnnouncement.id, true)} className="h-6 shrink-0 border-destructive/40 px-2 text-[10px] text-destructive hover:bg-destructive/10">Tarik / Matikan</Button>
             </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSaveAnnouncement} className="mt-3 space-y-2.5">
-          <div>
-            <span className="text-[10px] font-medium text-muted-foreground">Pilih Emotikon Cepat:</span>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {EMOJI_PRESETS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => insertEmoji(emoji)}
-                  className="flex h-7 w-7 items-center justify-center rounded-md border bg-muted/60 text-sm hover:bg-muted active:scale-95"
-                  aria-label={`Sisipkan emoji ${emoji}`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-medium text-muted-foreground">Judul Pesan</label>
-            <Input
-              required
-              maxLength={150}
-              placeholder="Contoh: Update! 🚀"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="mt-0.5 h-8 text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] font-medium text-muted-foreground">Isi Pesan / Penjelasan</label>
-            <textarea
-              required
-              maxLength={2000}
-              rows={3}
-              placeholder="Tuliskan info penting yang perlu dibaca pemilik usaha… 💰"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="mt-0.5 w-full rounded-md border bg-background p-2 text-xs focus:outline-hidden"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div className="flex items-center gap-1.5 text-xs">
-              {(["info", "warning", "important"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setType(t)}
-                  className={
-                    "rounded-md px-2 py-1 text-[10px] font-medium transition-all " +
-                    (type === t ? "bg-foreground text-background" : "bg-muted text-muted-foreground")
-                  }
-                >
-                  {t === "info" ? "Info Biasa" : t === "warning" ? "Peringatan" : "Penting"}
-                </button>
-              ))}
-            </div>
-            <Button type="submit" size="sm" disabled={busy} className="h-7 text-xs font-semibold">
-              {busy ? "Menyimpan…" : "Tayangkan Info"}
-            </Button>
-          </div>
-        </form>
+          </div>}
+          <form onSubmit={handleSaveAnnouncement} className="space-y-2.5">
+            <div><span className="text-[10px] font-medium text-muted-foreground">Pilih Emotikon Cepat:</span><div className="mt-1 flex flex-wrap gap-1">{EMOJI_PRESETS.map((emoji) => <button key={emoji} type="button" onClick={() => insertEmoji(emoji)} className="flex h-7 w-7 items-center justify-center rounded-md border bg-muted/60 text-sm hover:bg-muted active:scale-95" aria-label={`Sisipkan emoji ${emoji}`}>{emoji}</button>)}</div></div>
+            <div><label className="text-[10px] font-medium text-muted-foreground">Judul Pesan</label><Input required maxLength={150} placeholder="Contoh: Update! 🚀" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-0.5 h-8 text-xs" /></div>
+            <div><label className="text-[10px] font-medium text-muted-foreground">Isi Pesan / Penjelasan</label><textarea required maxLength={2000} rows={3} placeholder="Tuliskan info penting yang perlu dibaca pemilik usaha… 💰" value={content} onChange={(e) => setContent(e.target.value)} className="mt-0.5 w-full rounded-md border bg-background p-2 text-xs focus:outline-hidden" /></div>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1"><div className="flex items-center gap-1.5 text-xs">{(["info", "warning", "important"] as const).map((t) => <button key={t} type="button" onClick={() => setType(t)} className={"rounded-md px-2 py-1 text-[10px] font-medium transition-all " + (type === t ? "bg-foreground text-background" : "bg-muted text-muted-foreground")}>{t === "info" ? "Info Biasa" : t === "warning" ? "Peringatan" : "Penting"}</button>)}</div><Button type="submit" size="sm" disabled={busy} className="h-7 text-xs font-semibold">{busy ? "Menyimpan…" : "Tayangkan Info"}</Button></div>
+          </form>
+        </div>}
       </section>
 
-
       {/* PENGATURAN WHATSAPP CS RESMI */}
-      <section className="mt-4 rounded-xl border bg-card p-3.5 shadow-xs">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
-              <Headphones className="h-4 w-4" />
-            </div>
-            <div>
-              <h2 className="text-xs font-bold text-foreground">Kontak WhatsApp CS Support</h2>
-              <p className="text-[10px] text-muted-foreground">Nomor ini tampil di tombol bantuan akun Owner.</p>
-            </div>
-          </div>
-          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${csActive ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
-            {csActive ? "CS Aktif" : "Nonaktif"}
-          </span>
-        </div>
-
-        <form onSubmit={handleSaveSupport} className="mt-3 space-y-2.5">
-          <div>
-            <label className="text-[10px] font-medium text-muted-foreground">Nomor WhatsApp CS (diawali 62 atau 08)</label>
-            <Input
-              required
-              placeholder="Contoh: 081234567890"
-              value={waNumber}
-              onChange={(e) => setWaNumber(e.target.value)}
-              className="mt-0.5 h-8 text-xs font-mono"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground">Nama Tim CS</label>
-              <Input
-                required
-                maxLength={100}
-                placeholder="CS Sales Pouch Pro"
-                value={csName}
-                onChange={(e) => setCsName(e.target.value)}
-                className="mt-0.5 h-8 text-xs"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground">Jam Operasional</label>
-              <Input
-                required
-                maxLength={100}
-                placeholder="Senin-Sabtu 08-17 WIB"
-                value={csHours}
-                onChange={(e) => setCsHours(e.target.value)}
-                className="mt-0.5 h-8 text-xs"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-2 pt-1">
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={csActive}
-                onChange={(e) => setCsActive(e.target.checked)}
-                className="rounded border-slate-300"
-              />
-              Tampilkan Tombol Bantuan ke Owner
-            </label>
-
-            <div className="flex shrink-0 items-center gap-2">
-              {waNumber && (
-                <a
-                  href={`https://wa.me/${waNumber.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-lg border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted"
-                >
-                  Uji Chat
-                </a>
-              )}
-              <Button type="submit" size="sm" disabled={savingSupport} className="h-7 text-xs font-semibold">
-                {savingSupport ? "Menyimpan…" : "Simpan Kontak CS"}
-              </Button>
-            </div>
-          </div>
-        </form>
+      <section className="mt-3 overflow-hidden rounded-xl border bg-card shadow-xs transition-all">
+        <button type="button" onClick={() => setOpenSupport((prev) => !prev)} aria-expanded={openSupport} className="flex w-full items-center justify-between p-3.5 text-left transition-colors hover:bg-muted/40">
+          <div className="flex min-w-0 items-center gap-2.5"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600"><Headphones className="h-4 w-4" /></div><div className="min-w-0"><div className="flex items-center gap-1.5"><h2 className="text-xs font-bold text-foreground">Kontak WhatsApp CS Support</h2><span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${csActive ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground"}`}>{csActive ? "Aktif" : "Mati"}</span></div><p className="truncate font-mono text-[10px] text-muted-foreground">{waNumber || "Belum diatur"}</p></div></div>
+          {openSupport ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+        </button>
+        {openSupport && <div className="border-t bg-muted/10 p-3.5 pt-3"><form onSubmit={handleSaveSupport} className="space-y-2.5">
+          <div><label className="text-[10px] font-medium text-muted-foreground">Nomor WhatsApp CS (diawali 62 atau 08)</label><Input required placeholder="Contoh: 081234567890" value={waNumber} onChange={(e) => setWaNumber(e.target.value)} className="mt-0.5 h-8 font-mono text-xs" /></div>
+          <div className="grid grid-cols-2 gap-2"><div><label className="text-[10px] font-medium text-muted-foreground">Nama Tim CS</label><Input required maxLength={100} placeholder="CS Sales Pouch Pro" value={csName} onChange={(e) => setCsName(e.target.value)} className="mt-0.5 h-8 text-xs" /></div><div><label className="text-[10px] font-medium text-muted-foreground">Jam Operasional</label><Input required maxLength={100} placeholder="Senin-Sabtu 08-17 WIB" value={csHours} onChange={(e) => setCsHours(e.target.value)} className="mt-0.5 h-8 text-xs" /></div></div>
+          <div className="flex items-center justify-between gap-2 pt-1"><label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={csActive} onChange={(e) => setCsActive(e.target.checked)} className="rounded border-slate-300" />Tampilkan Tombol Bantuan ke Owner</label><div className="flex shrink-0 items-center gap-2">{waNumber && <a href={`https://wa.me/${waNumber.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="rounded-lg border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted">Uji Chat</a>}<Button type="submit" size="sm" disabled={savingSupport} className="h-7 text-xs font-semibold">{savingSupport ? "Menyimpan…" : "Simpan Kontak CS"}</Button></div></div>
+        </form></div>}
       </section>
 
       <section className="mt-4">
@@ -769,20 +645,12 @@ export function SuperAdminDashboard({ embedded = false }: { embedded?: boolean }
         </div>
       </section>
 
-      <section className="mt-5 space-y-2">
-        <div className="px-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi & Pemeliharaan Sistem</div>
-        <div className="grid grid-cols-2 gap-2">
-          <Link to="/admin" search={{ tab: "packages" } as any} className="flex items-center gap-2.5 rounded-xl border bg-card p-3 transition-colors hover:bg-muted/50">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600"><Package className="h-4 w-4" /></div><div><div className="text-xs font-semibold">Paket Lisensi</div><div className="text-[10px] text-muted-foreground">Atur harga paket</div></div>
-          </Link>
-          <Link to="/admin" search={{ tab: "promos" } as any} className="flex items-center gap-2.5 rounded-xl border bg-card p-3 transition-colors hover:bg-muted/50">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600"><Settings2 className="h-4 w-4" /></div><div><div className="text-xs font-semibold">Kupon Promo</div><div className="text-[10px] text-muted-foreground">Diskon & voucher</div></div>
-          </Link>
-        </div>
-        <Link to="/admin-stock-reset" className="flex items-center justify-between rounded-xl border border-orange-200/80 bg-orange-50/50 p-3 transition-colors hover:bg-orange-100/50">
-          <div className="flex items-center gap-2.5"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-700"><RotateCcw className="h-4 w-4" /></div><div><div className="text-xs font-semibold text-foreground">Reset Stok Opname Awal</div><div className="text-[10px] text-orange-950/70">Bantuan darurat jika user salah opname</div></div></div><ChevronRight className="h-4 w-4 text-muted-foreground" />
+      <div className="mt-5">
+        <Link to="/admin" search={{ tab: "users" } as any} className="flex items-center justify-between rounded-xl border bg-primary/5 p-3 text-primary transition-colors hover:bg-primary/10">
+          <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><span className="text-xs font-bold">Buka Panel Manajemen Lengkap</span></div>
+          <ChevronRight className="h-4 w-4" />
         </Link>
-      </section>
+      </div>
     </main>
   );
 }
