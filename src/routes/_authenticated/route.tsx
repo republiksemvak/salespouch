@@ -4,7 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile, profileQueryKey } from "@/hooks/use-profile";
-import { useIsAdmin } from "@/hooks/use-is-admin";
+import { isSuperAdminEmail } from "@/lib/access";
+import { getTestMode } from "@/lib/test-mode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,22 +16,24 @@ const businessModels = ["Titip Jual", "Cash", "Grosir", "Retail", "Campuran", "L
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData.session?.user) return { user: sessionData.session.user };
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
-
     return { user: data.user };
   },
-  component: Gate,
+  component: AuthenticatedGate,
 });
 
-function Gate() {
-  const { data: isAdmin, isLoading: adminLoading, error: adminError } = useIsAdmin();
-
-  if (adminLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
-  if (isAdmin) return <AuthenticatedShell />;
-  if (adminError) return <div className="p-10 text-center text-destructive">Gagal memeriksa akses akun. Silakan muat ulang.</div>;
-
-  return <OwnerGate />;
+function AuthenticatedGate() {
+  const { data: profileData, isLoading, error } = useProfile();
+  if (isLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
+  if (error || !profileData) return <div className="p-10 text-center text-destructive">Gagal memeriksa akses akun. Silakan muat ulang.</div>;
+  const isSuperAdmin = isSuperAdminEmail(profileData.email) && getTestMode() === null;
+  if (isSuperAdmin) return <AuthenticatedShell />;
+  if (!profileData.profile) return <div className="p-10 text-center text-destructive">Profil tidak ditemukan.</div>;
+  if (profileData.role === "owner" && !profileData.profile.business_name) return <Setup profile={profileData.profile} />;
+  return <AuthenticatedShell />;
 }
 
 function AuthenticatedShell() {
@@ -40,19 +43,6 @@ function AuthenticatedShell() {
       {/* Tombol floating logout dihapus; logout tersedia di menu role kanan atas. */}
     </div>
   );
-}
-
-function OwnerGate() {
-  const { data: profileData, isLoading: profileLoading, error: profileError } = useProfile();
-
-  if (profileLoading) return <div className="p-10 text-center text-muted-foreground">Memuat…</div>;
-  if (profileError || !profileData?.profile) return <div className="p-10 text-center text-destructive">Profil tidak ditemukan.</div>;
-
-  if (profileData.role === "owner" && !profileData.profile.business_name) {
-    return <Setup profile={profileData.profile} />;
-  }
-
-  return <AuthenticatedShell />;
 }
 
 function Setup({ profile }: { profile: { business_name: string | null; business_category: string | null; business_model: string | null; main_product: string | null } }) {
