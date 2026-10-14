@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, ChevronUp, Download, FileSpreadsheet, Loader2, Wallet } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import * as XLSX from "xlsx";
 import { useProfile } from "@/hooks/use-profile";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { isSuperAdminEmail } from "@/lib/access";
@@ -87,7 +86,8 @@ function OperasionalSales() {
 
   const totals = useMemo(() => summaries.reduce((acc, row) => ({ moneyIn: acc.moneyIn + row.moneyIn, expense: acc.expense + row.expense, ownerReduction: acc.ownerReduction + row.ownerReduction, balance: acc.balance + row.balance }), { moneyIn: 0, expense: 0, ownerReduction: 0, balance: 0 }), [summaries]);
 
-  function downloadExcel() {
+  async function downloadExcel() {
+    const XLSX = await import("xlsx");
     const summaryRows = summaries.map((row) => ({ Sales: row.name, "Uang Masuk": row.moneyIn, "Pengeluaran": row.expense, "Pengurangan Owner": row.ownerReduction, Saldo: row.balance }));
     summaryRows.push({ Sales: "TOTAL", "Uang Masuk": totals.moneyIn, "Pengeluaran": totals.expense, "Pengurangan Owner": totals.ownerReduction, Saldo: totals.balance });
     const detailRows = summaries.flatMap((row) => row.expenses.map((expense) => ({ Tanggal: expense.spent_at, Sales: row.name, Kategori: expense.category, Keterangan: expense.note ?? "", Nominal: Number(expense.amount) })));
