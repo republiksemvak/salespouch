@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { loadOutletBalances } from "@/lib/outlet-stock";
 
 export type LineItem = {
   name: string;
@@ -122,25 +123,13 @@ export async function loadLastVisit(outletId: string) {
   }
 
   if (!selected) {
-    const { data: opening, error: openingError } = await (supabase as any)
-      .from("outlet_opening_stock")
-      .select("product_id,quantity,products:product_id(name,price,pcs_per_pack)")
-      .eq("outlet_id", outletId)
-      .gt("quantity", 0);
-
-    if (openingError) throw openingError;
-
-    const stock = ((opening ?? []) as Array<{
-      product_id: string;
-      quantity: number;
-      products?: { name?: string; price?: number; pcs_per_pack?: number } | null;
-    }>)
-      .filter((row) => row.products?.name)
+    const stock = (await loadOutletBalances(outletId))
+      .filter((row) => row.quantity > 0)
       .map((row) => ({
-        name: row.products?.name ?? "",
-        price: Number(row.products?.price) || 0,
+        name: row.name,
+        price: row.price,
         qty: Number(row.quantity) || 0,
-        pcs_per_pack: Number(row.products?.pcs_per_pack) || 1,
+        pcs_per_pack: row.pcs_per_pack,
       }));
 
     return { stock, previousDebt: visits[0] ? Number(visits[0].remaining_debt) || 0 : 0 };

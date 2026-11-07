@@ -5,6 +5,7 @@ import { packSize } from "@/lib/units";
 import { useProfile } from "@/hooks/use-profile";
 import { getOwnerProducts } from "@/lib/team.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { loadOutletBalances } from "@/lib/outlet-stock";
 
 export type Product = { id: string; name: string; price: number; price_grosir: number; price_agen: number; cost_price: number; warehouse_stock: number; pcs_per_pack: number };
 
@@ -51,7 +52,7 @@ export function useProducts() {
 
 const key = (n: string) => n.trim().toLowerCase();
 
-/** Per product: stock at stores from the latest visit, or opening stock before the first consignment visit. */
+/** Physical stock comes from the same location ledger as Master Stok. */
 export function useStockSummary() {
   return useQuery({
     queryKey: ["stock-summary"],
@@ -67,33 +68,14 @@ export function useStockSummary() {
 
       const atStore = new Map<string, number>();
       const returned = new Map<string, number>();
-      const seen = new Set<string>();
       for (const t of data) {
         for (const li of (t.line_items as LineItem[]) ?? [])
           returned.set(key(li.name), (returned.get(key(li.name)) ?? 0) + (Number(li.returned) || 0));
-        if (seen.has(t.outlet_id)) continue;
-        seen.add(t.outlet_id);
-        for (const li of (t.line_items as LineItem[]) ?? [])
-          atStore.set(key(li.name), (atStore.get(key(li.name)) ?? 0) + (Number(li.remaining) || 0));
-        for (const ni of (t.new_consignment_items as NewItem[]) ?? [])
-          atStore.set(key(ni.name), (atStore.get(key(ni.name)) ?? 0) + (Number(ni.qty) || 0));
       }
 
-      const { data: opening, error: openingError } = await (supabase as any)
-        .from("outlet_opening_stock")
-        .select("outlet_id,product_id,quantity,products:product_id(name)")
-        .gt("quantity", 0);
-      if (openingError) throw openingError;
-
-      for (const row of (opening ?? []) as Array<{
-        outlet_id: string;
-        product_id: string;
-        quantity: number;
-        products?: { name?: string } | null;
-      }>) {
-        if (seen.has(row.outlet_id) || !row.products?.name) continue;
-        const name = key(row.products.name);
-        atStore.set(name, (atStore.get(name) ?? 0) + (Number(row.quantity) || 0));
+      for (const row of await loadOutletBalances()) {
+        const name = key(row.name);
+        atStore.set(name, (atStore.get(name) ?? 0) + row.quantity);
       }
 
       return { atStore, returned };
