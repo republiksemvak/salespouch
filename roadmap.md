@@ -16,3 +16,4 @@
 - [x] Tambahkan snapshot stok awal fisik pasca cut-off per produk dan lokasi di Master Stok.
 - [x] Tampilkan nama lokasi spesifik dan sinkronkan nama lokasi Sales dari profil.
 - [x] Validasi total titipan dan jual langsung terhadap stok fisik Sales.
+- [ ] Perbaiki info stok toko serta reset/hapus toko dan riwayat secara atomik, lalu hitung ulang saldo tersisa.
