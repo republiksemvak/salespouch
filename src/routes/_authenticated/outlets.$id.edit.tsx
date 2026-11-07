@@ -316,10 +316,7 @@ function EditOutletPage() {
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={resetting}>Batal</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={(event) => {
-                    event.preventDefault();
-                    void handleResetOutletData();
-                  }}
+                  onClick={() => void handleResetOutletData()}
                   disabled={resetting || deleting}
                   className="bg-amber-600 text-white hover:bg-amber-700"
                 >
@@ -351,10 +348,7 @@ function EditOutletPage() {
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={(event) => {
-                    event.preventDefault();
-                    void handleDeleteOutlet();
-                  }}
+                  onClick={() => void handleDeleteOutlet()}
                   disabled={resetting || deleting}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
