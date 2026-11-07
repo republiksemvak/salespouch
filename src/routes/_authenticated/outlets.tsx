@@ -686,6 +686,9 @@ function InlineEditOutlet({ id, onBack, onSaved }: { id: string; onBack: () => v
         <div className="space-y-2"><Label>Catatan Rute</Label><Textarea value={routeNotes} onChange={(e) => setRouteNotes(e.target.value)} placeholder="Patokan atau petunjuk menuju toko" rows={4} /></div>
         <Button type="submit" disabled={busy || !name.trim()} className="h-14 w-full text-base">{busy ? "Menyimpan…" : "Simpan Perubahan"}</Button>
       </form>
+      <Button asChild variant="destructive" className="mt-6 h-12 w-full">
+        <Link to="/outlets/$id/edit" params={{ id }}>Reset Riwayat / Hapus Toko</Link>
+      </Button>
     </main>
   );
 }
