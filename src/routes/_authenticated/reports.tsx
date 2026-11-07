@@ -112,8 +112,8 @@ function OutletTopProductsTab({ ownerId }: { ownerId?: string }) {
     return item.outlet_name.toLowerCase().includes(q) || item.product_name.toLowerCase().includes(q);
   });
   const groupedByOutlet = filtered.reduce((acc, item) => {
-    if (!acc[item.outlet_name]) acc[item.outlet_name] = [];
-    acc[item.outlet_name].push(item);
+    const group = acc[item.outlet_name] ?? (acc[item.outlet_name] = []);
+    group.push(item);
     return acc;
   }, {} as Record<string, typeof list>);
 

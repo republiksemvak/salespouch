@@ -259,7 +259,7 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
       <OwnerLicenseCard profile={profile} />
 
       {hasPremiumAccess(profile) ? (
-        <CompactSummary ownerId={profile?.id} />
+        <CompactSummary {...(profile?.id ? { ownerId: profile.id } : {})} />
       ) : (
         <section className="mt-3 rounded-xl border border-dashed bg-card/60 p-3 text-sm">
           <div className="flex items-center gap-2 font-semibold"><LockKeyhole className="h-4 w-4" /> Ringkasan Omset Premium</div>
@@ -377,7 +377,7 @@ export function OwnerDashboard({ profile, businessName }: DashboardProps) {
         </div>
       </section>
 
-      <OwnerSupportFloatingButton profile={profile} businessName={businessName} />
+      <OwnerSupportFloatingButton profile={profile} businessName={businessName ?? null} />
     </main>
   );
 }
@@ -763,8 +763,8 @@ export function SalesDashboard({
         </Button>
       </div>
 
-      <SalesFinancialSummary salesId={activeSalesId} />
-      <SalesStockSummary salesId={activeSalesId} />
+      <SalesFinancialSummary {...(activeSalesId ? { salesId: activeSalesId } : {})} />
+      <SalesStockSummary {...(activeSalesId ? { salesId: activeSalesId } : {})} />
 
       <section className="mt-4 rounded-2xl border-2 border-slate-200/90 bg-card p-3.5 shadow-xs dark:border-slate-800">
         <div className="mb-3 flex items-center justify-between px-1">

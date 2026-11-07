@@ -171,12 +171,12 @@ function SalesStockDayPage() {
   async function handleLoadStock(e: React.FormEvent) {
     e.preventDefault();
     if (!isOwner) return;
-    if (!salesUserId) return toast.error("Pilih Sales tujuan.");
-    if (!loadProductId) return toast.error("Pilih produk yang dimuat.");
+    if (!salesUserId) { toast.error("Pilih Sales tujuan."); return; }
+    if (!loadProductId) { toast.error("Pilih produk yang dimuat."); return; }
     const prod = products.find((p) => p.id === loadProductId);
     const pSize = Math.max(1, Number(prod?.pcs_per_pack ?? 1));
     const totalPcs = (Number(loadPacks) || 0) * pSize + (Number(loadPcs) || 0);
-    if (totalPcs <= 0) return toast.error("Masukkan jumlah muatan minimal 1 pcs.");
+    if (totalPcs <= 0) { toast.error("Masukkan jumlah muatan minimal 1 pcs."); return; }
     setBusy(true);
     try {
       const { error } = await supabase.rpc("record_sales_morning_load", {

@@ -18,7 +18,7 @@ export function useOutletTopProducts({
   limit = 5,
   enabled = true,
 }: {
-  ownerId?: string;
+  ownerId?: string | undefined;
   outletId?: string | null;
   days?: number;
   limit?: number;
@@ -28,8 +28,9 @@ export function useOutletTopProducts({
     queryKey: ["outlet-top-products", ownerId, outletId ?? "all", days, limit],
     enabled: !!ownerId && enabled,
     queryFn: async () => {
+      if (!ownerId) return [];
       const { data, error } = await (supabase as any).rpc("get_outlet_top_products", {
-        _owner_id: ownerId!,
+        _owner_id: ownerId,
         _outlet_id: outletId || null,
         _days: days,
         _limit: limit,

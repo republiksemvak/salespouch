@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   validateSearch: (search: Record<string, unknown>): AdminSearch => {
     const valid = ["overview", "users", "packages", "promos", "stock-reset"];
     const tab = typeof search.tab === "string" && valid.includes(search.tab)
-      ? (search.tab as AdminSearch["tab"])
+      ? (search.tab as NonNullable<AdminSearch["tab"]>)
       : "overview";
     return { tab };
   },
@@ -60,7 +60,7 @@ function AdminPage() {
         onValueChange={(newTab) => {
           navigate({
             to: "/admin",
-            search: { tab: newTab as AdminSearch["tab"] },
+            search: { tab: newTab as NonNullable<AdminSearch["tab"]> },
             replace: true,
           });
         }}

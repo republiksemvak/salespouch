@@ -88,12 +88,13 @@ function SchedulePage() {
     enabled: !!ownerId && !isOwner && !!profile?.userId,
     queryFn: async () => {
       const lookback = new Date(todayStart);
+      if (!ownerId || !profile?.userId) return [];
       lookback.setDate(lookback.getDate() - 84);
       const { data, error } = await supabase
         .from("transactions")
         .select("outlet_id,visit_date")
         .eq("user_id", ownerId)
-        .eq("sales_user_id", profile!.userId)
+        .eq("sales_user_id", profile.userId)
         .gte("visit_date", lookback.toISOString())
         .lt("visit_date", tomorrowStart.toISOString())
         .not("outlet_id", "is", null)
@@ -136,7 +137,9 @@ function SchedulePage() {
     for (const list of byDate.values()) {
       list.sort((a, b) => a.time - b.time);
       for (let i = 0; i < list.length; i++) {
-        const stat = stats.get(list[i].outletId);
+        const item = list[i];
+        if (!item) continue;
+        const stat = stats.get(item.outletId);
         if (stat) stat.score += list.length - i;
       }
     }
@@ -162,6 +165,7 @@ function SchedulePage() {
     queryKey: ["schedule-visited-today", ownerId, profile?.userId, todayStart.toISOString().slice(0, 10)],
     enabled: !!ownerId,
     queryFn: async () => {
+      if (!ownerId) return { visited: [], paid: [] };
       let query = supabase.from("transactions").select("outlet_id,amount_paid,visit_date").eq("user_id", ownerId).gte("visit_date", todayStart.toISOString()).lt("visit_date", tomorrowStart.toISOString());
       if (!isOwner && profile?.userId) query = query.eq("sales_user_id", profile.userId);
       const { data, error } = await query;

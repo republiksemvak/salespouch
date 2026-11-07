@@ -205,11 +205,11 @@ function TeamPage() {
                 <Package className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <div className="min-w-0">
                   <div className="font-semibold">
-                    Stok dibawa: {salesStock[member.user_id] ? `${salesStock[member.user_id].total} pcs` : "Memuat…"}
+                    Stok dibawa: {salesStock[member.user_id] ? `${salesStock[member.user_id]?.total} pcs` : "Memuat…"}
                   </div>
                   {salesStock[member.user_id]?.items.length ? (
                     <div className="mt-0.5 truncate text-[10px] text-blue-800/80">
-                      {salesStock[member.user_id].items.map((item) => `${item.name} ${item.qty} pcs`).join(" · ")}
+                      {salesStock[member.user_id]?.items.map((item) => `${item.name} ${item.qty} pcs`).join(" · ")}
                     </div>
                   ) : salesStock[member.user_id] ? (
                     <div className="mt-0.5 text-[10px] text-blue-800/80">Tidak ada stok di tangan</div>
