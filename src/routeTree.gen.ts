@@ -39,7 +39,7 @@ import { Route as AuthenticatedFeaturePreviewFeatureRouteImport } from './routes
 import { Route as AuthenticatedOutletsNewRouteImport } from './routes/_authenticated/outlets.new'
 import { Route as AuthenticatedReceiptIdRouteImport } from './routes/_authenticated/receipt.$id'
 import { Route as AuthenticatedTransactionsIndexRouteImport } from './routes/_authenticated/transactions.index'
-import { Route as AuthenticatedOutletsIdEditRouteImport } from './routes/_authenticated/outlets.$id.edit'
+import { Route as AuthenticatedOutletsIdEditRouteImport } from './routes/_authenticated/outlets_.$id.edit'
 import { Route as AuthenticatedTransactionsIdEditRouteImport } from './routes/_authenticated/transactions.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -203,9 +203,9 @@ const AuthenticatedTransactionsIndexRoute =
   } as any)
 const AuthenticatedOutletsIdEditRoute =
   AuthenticatedOutletsIdEditRouteImport.update({
-    id: '/$id/edit',
-    path: '/$id/edit',
-    getParentRoute: () => AuthenticatedOutletsRoute,
+    id: '/outlets_/$id/edit',
+    path: '/outlets/$id/edit',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedTransactionsIdEditRoute =
   AuthenticatedTransactionsIdEditRouteImport.update({
@@ -311,7 +311,7 @@ export interface FileRoutesById {
   '/_authenticated/outlets/new': typeof AuthenticatedOutletsNewRoute
   '/_authenticated/receipt/$id': typeof AuthenticatedReceiptIdRoute
   '/_authenticated/transactions/': typeof AuthenticatedTransactionsIndexRoute
-  '/_authenticated/outlets/$id/edit': typeof AuthenticatedOutletsIdEditRoute
+  '/_authenticated/outlets_/$id/edit': typeof AuthenticatedOutletsIdEditRoute
   '/_authenticated/transactions/$id/edit': typeof AuthenticatedTransactionsIdEditRoute
 }
 export interface FileRouteTypes {
@@ -412,7 +412,7 @@ export interface FileRouteTypes {
     | '/_authenticated/outlets/new'
     | '/_authenticated/receipt/$id'
     | '/_authenticated/transactions/'
-    | '/_authenticated/outlets/$id/edit'
+    | '/_authenticated/outlets_/$id/edit'
     | '/_authenticated/transactions/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -634,12 +634,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTransactionsIndexRouteImport
       parentRoute: typeof AuthenticatedTransactionsRoute
     }
-    '/_authenticated/outlets/$id/edit': {
-      id: '/_authenticated/outlets/$id/edit'
-      path: '/$id/edit'
+    '/_authenticated/outlets_/$id/edit': {
+      id: '/_authenticated/outlets_/$id/edit'
+      path: '/outlets/$id/edit'
       fullPath: '/outlets/$id/edit'
       preLoaderRoute: typeof AuthenticatedOutletsIdEditRouteImport
-      parentRoute: typeof AuthenticatedOutletsRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/transactions/$id/edit': {
       id: '/_authenticated/transactions/$id/edit'
@@ -653,12 +653,10 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedOutletsRouteChildren {
   AuthenticatedOutletsNewRoute: typeof AuthenticatedOutletsNewRoute
-  AuthenticatedOutletsIdEditRoute: typeof AuthenticatedOutletsIdEditRoute
 }
 
 const AuthenticatedOutletsRouteChildren: AuthenticatedOutletsRouteChildren = {
   AuthenticatedOutletsNewRoute: AuthenticatedOutletsNewRoute,
-  AuthenticatedOutletsIdEditRoute: AuthenticatedOutletsIdEditRoute,
 }
 
 const AuthenticatedOutletsRouteWithChildren =
@@ -706,6 +704,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWarehouseDirectSaleRoute: typeof AuthenticatedWarehouseDirectSaleRoute
   AuthenticatedFeaturePreviewFeatureRoute: typeof AuthenticatedFeaturePreviewFeatureRoute
   AuthenticatedReceiptIdRoute: typeof AuthenticatedReceiptIdRoute
+  AuthenticatedOutletsIdEditRoute: typeof AuthenticatedOutletsIdEditRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -735,6 +734,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFeaturePreviewFeatureRoute:
     AuthenticatedFeaturePreviewFeatureRoute,
   AuthenticatedReceiptIdRoute: AuthenticatedReceiptIdRoute,
+  AuthenticatedOutletsIdEditRoute: AuthenticatedOutletsIdEditRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
