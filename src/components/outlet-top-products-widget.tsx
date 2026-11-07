@@ -6,7 +6,7 @@ export function OutletTopProductsWidget({
   outletId,
   onQuickAdd,
 }: {
-  ownerId?: string;
+  ownerId?: string | undefined;
   outletId: string;
   onQuickAdd?: (productName: string) => void;
 }) {

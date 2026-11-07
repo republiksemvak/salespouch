@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export const Route = createFileRoute("/_authenticated/outlets/$id/edit")({
+export const Route = createFileRoute("/_authenticated/outlets_/$id/edit")({
   head: () => ({
     meta: [
       { title: "Edit Profil Toko — Sales Pouch" },
@@ -139,6 +139,7 @@ function EditOutletPage() {
       if (!updated) throw new Error("Perubahan toko tidak tersimpan.");
 
       await Promise.all([
+        qc.invalidateQueries(),
         qc.invalidateQueries({ queryKey: ["all-outlets"] }),
         qc.invalidateQueries({ queryKey: ["outlets"] }),
         qc.invalidateQueries({ queryKey: ["outlet-profile", id] }),
@@ -196,6 +197,8 @@ function EditOutletPage() {
       });
       if (rpcError) throw rpcError;
 
+      qc.removeQueries({ queryKey: ["outlet-profile", id] });
+      await qc.invalidateQueries();
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["all-outlets"] }),
         qc.invalidateQueries({ queryKey: ["outlets"] }),

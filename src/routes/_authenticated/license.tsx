@@ -51,18 +51,18 @@ function getPaymentLink(pkg: LicensePackage): string | null {
   const name = pkg.name.toLowerCase();
 
   if (name.includes("tahun") || name.includes("year") || pkg.days === 365) {
-    return PAYMENT_LINKS[365];
+    return PAYMENT_LINKS[365] ?? null;
   }
   if (name.includes("3 bulan") || name.includes("3 month") || pkg.days === 90) {
-    return PAYMENT_LINKS[90];
+    return PAYMENT_LINKS[90] ?? null;
   }
   if (name.includes("1 bulan") || name.includes("30 hari") || pkg.days === 30) {
-    return PAYMENT_LINKS[30];
+    return PAYMENT_LINKS[30] ?? null;
   }
 
-  if (pkg.days <= 45) return PAYMENT_LINKS[30];
-  if (pkg.days <= 120) return PAYMENT_LINKS[90];
-  return PAYMENT_LINKS[365];
+  if (pkg.days <= 45) return PAYMENT_LINKS[30] ?? null;
+  if (pkg.days <= 120) return PAYMENT_LINKS[90] ?? null;
+  return PAYMENT_LINKS[365] ?? null;
 }
 
 function getPackageLabel(pkg: LicensePackage): string {
