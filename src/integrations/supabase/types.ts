@@ -10,10 +10,70 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
+      app_announcements: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      app_support_config: {
+        Row: {
+          default_message: string
+          id: string
+          is_active: boolean
+          operating_hours: string
+          support_name: string
+          updated_at: string
+          whatsapp_number: string
+        }
+        Insert: {
+          default_message?: string
+          id?: string
+          is_active?: boolean
+          operating_hours?: string
+          support_name?: string
+          updated_at?: string
+          whatsapp_number?: string
+        }
+        Update: {
+          default_message?: string
+          id?: string
+          is_active?: boolean
+          operating_hours?: string
+          support_name?: string
+          updated_at?: string
+          whatsapp_number?: string
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           created_at: string
@@ -198,6 +258,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_type: string
           business_address: string | null
           business_category: string | null
           business_model: string | null
@@ -213,6 +274,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          account_type?: string
           business_address?: string | null
           business_category?: string | null
           business_model?: string | null
@@ -228,6 +290,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          account_type?: string
           business_address?: string | null
           business_category?: string | null
           business_model?: string | null
@@ -277,6 +340,24 @@ export type Database = {
         }
         Relationships: []
       }
+      receipt_counters: {
+        Row: {
+          last_number: number
+          owner_id: string
+          receipt_date: string
+        }
+        Insert: {
+          last_number?: number
+          owner_id: string
+          receipt_date: string
+        }
+        Update: {
+          last_number?: number
+          owner_id?: string
+          receipt_date?: string
+        }
+        Relationships: []
+      }
       sales_expenses: {
         Row: {
           amount: number
@@ -321,6 +402,64 @@ export type Database = {
             columns: ["sales_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_payment_collections: {
+        Row: {
+          amount: number
+          collected_at: string
+          collection_type: string
+          created_at: string
+          id: string
+          note: string | null
+          owner_id: string
+          sales_id: string
+          transaction_id: string
+        }
+        Insert: {
+          amount: number
+          collected_at?: string
+          collection_type?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          owner_id: string
+          sales_id: string
+          transaction_id: string
+        }
+        Update: {
+          amount?: number
+          collected_at?: string
+          collection_type?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          owner_id?: string
+          sales_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_payment_collections_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_payment_collections_sales_id_fkey"
+            columns: ["sales_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_payment_collections_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -773,6 +912,7 @@ export type Database = {
           outlet_id: string
           owner_id: string
           sales_id: string
+          visit_order: number | null
         }
         Insert: {
           created_at?: string
@@ -782,6 +922,7 @@ export type Database = {
           outlet_id: string
           owner_id: string
           sales_id: string
+          visit_order?: number | null
         }
         Update: {
           created_at?: string
@@ -791,6 +932,7 @@ export type Database = {
           outlet_id?: string
           owner_id?: string
           sales_id?: string
+          visit_order?: number | null
         }
         Relationships: [
           {
@@ -1163,8 +1305,21 @@ export type Database = {
       }
     }
     Functions: {
+      business_has_premium_access: {
+        Args: { _owner_id: string }
+        Returns: boolean
+      }
       business_owner_id: { Args: never; Returns: string }
+      can_manage_outlet_owner: { Args: { _owner_id: string }; Returns: boolean }
       close_sales_stock_day: {
+        Args: {
+          _occurred_at?: string
+          _sales_user_id: string
+          _stock_date?: string
+        }
+        Returns: string
+      }
+      close_sales_stock_day_legacy: {
         Args: {
           _occurred_at?: string
           _sales_user_id: string
@@ -1182,11 +1337,88 @@ export type Database = {
         }
         Returns: string
       }
+      get_admin_database_metrics: { Args: never; Returns: Json }
+      get_outlet_ar_aging: {
+        Args: never
+        Returns: {
+          address: string
+          aging_15_30: number
+          aging_8_14: number
+          current_0_7: number
+          last_transaction_date: string
+          outlet_id: string
+          outlet_name: string
+          over_30: number
+          phone: string
+          total_debt: number
+        }[]
+      }
+      get_outlet_ar_aging_v2: {
+        Args: { _owner_id: string }
+        Returns: {
+          address: string
+          aging_15_30: number
+          aging_8_14: number
+          current_0_7: number
+          last_transaction_date: string
+          outlet_id: string
+          outlet_name: string
+          over_30: number
+          phone: string
+          total_debt: number
+        }[]
+      }
+      get_outlet_receivables_v1: {
+        Args: { _owner_id: string }
+        Returns: {
+          outlet_id: string
+          outlet_name: string
+          phone: string
+          receivable_value: number
+          stock_pcs: number
+          stock_since: string
+        }[]
+      }
+      get_outlet_top_products: {
+        Args: {
+          _days?: number
+          _limit?: number
+          _outlet_id?: string
+          _owner_id: string
+        }
+        Returns: {
+          last_sold_at: string
+          outlet_id: string
+          outlet_name: string
+          product_name: string
+          total_qty: number
+          total_sales: number
+          transaction_count: number
+        }[]
+      }
       get_sales_current_stock: {
         Args: { _sales_user_id: string }
         Returns: {
           product_id: string
           quantity: number
+        }[]
+      }
+      get_sales_dashboard_financial_summary: {
+        Args: { _as_of_date?: string; _sales_id: string }
+        Returns: {
+          as_of_date: string
+          billed_today: number
+          collected_today: number
+          deposit_target: number
+          owner_id: string
+          sales_id: string
+          sales_value_today: number
+          scheduled_bill_target: number
+          scheduled_outlets_today: number
+          travel_balance: number
+          travel_expense_out: number
+          travel_fund_in: number
+          travel_fund_out: number
         }[]
       }
       has_role: {
@@ -1204,6 +1436,13 @@ export type Database = {
       is_business_owner: { Args: never; Returns: boolean }
       is_owner_of_team_member: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      lock_stock_product: {
+        Args: { _owner_id: string; _product_id: string }
+        Returns: undefined
+      }
+      next_receipt_number: { Args: { _receipt_date?: string }; Returns: string }
+      owner_delete_outlet: { Args: { _outlet_id: string }; Returns: Json }
+      owner_reset_outlet_data: { Args: { _outlet_id: string }; Returns: Json }
       rebuild_product_warehouse_stock: {
         Args: { _owner_id: string; _product_id: string }
         Returns: undefined
@@ -1222,7 +1461,7 @@ export type Database = {
         Args: {
           p_amount: number
           p_category: string
-          p_note?: string | null
+          p_note?: string
           p_spent_at?: string
         }
         Returns: {
@@ -1235,8 +1474,23 @@ export type Database = {
           sales_id: string
           spent_at: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "sales_expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       record_sales_morning_load: {
+        Args: {
+          _items: Json
+          _occurred_at?: string
+          _sales_user_id: string
+          _stock_date?: string
+        }
+        Returns: string
+      }
+      record_sales_morning_load_legacy: {
         Args: {
           _items: Json
           _occurred_at?: string
@@ -1306,6 +1560,10 @@ export type Database = {
       }
       set_team_member_role: {
         Args: { _position: string; _user_id: string }
+        Returns: undefined
+      }
+      swap_sales_schedule_order: {
+        Args: { _first_id: string; _second_id: string }
         Returns: undefined
       }
     }
