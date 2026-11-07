@@ -134,7 +134,7 @@ function SalesExpenses() {
       : await supabase.rpc("record_sales_expense", {
           p_category: payload.category,
           p_amount: payload.amount,
-          p_note: payload.note ?? undefined,
+          ...(payload.note ? { p_note: payload.note } : {}),
           p_spent_at: payload.spent_at,
         });
     setSaving(false);
