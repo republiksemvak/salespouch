@@ -25,3 +25,4 @@
 - Consignment sales leave the outlet as ledger sale movements, while new deposits transfer Sales stock to the outlet and physical returns transfer outlet stock to Sales. Why: each location's physical balance must reconcile after visits.
 - Post-cutoff physical opening counts are recorded as location stock adjustments, not production or purchases. Why: newly introduced products need an auditable baseline without misclassifying inventory origin.
 - Outlet stock reads use the location opening/movement ledger; owner resets remove outlet-linked visits, movements, openings and schedules atomically before deletion and rebuild warehouse caches. Why: invalidated history must not affect balances or depend on retired tables.
+- Outlet reset/delete uses an unnested edit route with the existing public URL. Why: the outlet list is a standalone page and cannot mount nested edit content.
